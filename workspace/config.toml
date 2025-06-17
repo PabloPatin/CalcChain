@@ -1,0 +1,13 @@
+title = "Startup configurations"
+
+[exec]
+    
+    [exec.sapfir]
+    
+        [sapfir.svn]
+        link = "some_link"
+        revision = "HEAD"
+        
+        [exec.sapfir.local]
+        path = "some_path"
+ 
