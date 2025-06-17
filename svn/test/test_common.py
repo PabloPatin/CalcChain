@@ -4,7 +4,7 @@ import os
 import subprocess
 import time
 
-from svn.client import SvnClient
+from svn import SvnClient
 from svn.data_structures import Info, Depth, Action
 from svn.exception import SvnError
 
