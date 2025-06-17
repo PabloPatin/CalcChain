@@ -30,5 +30,6 @@ class WorkspaceManager:
                                           f'Сейчас она содержит:\n{sep.join(workspace_content)}')
 
     def read_toml(self):
-        # with open(os.path.join(self.work_path, self.config_name)) as file:
-        self.configs = tomllib.loads(os.path.join(self.work_path, self.config_name))
+        with open(os.path.join(self.work_path, self.config_name), 'rb') as file:
+            self.configs = tomllib.load(file)
+        print(self.configs)
