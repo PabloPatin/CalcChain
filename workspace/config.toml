@@ -4,7 +4,7 @@ title = "Startup configurations"
     
     [exec.sapfir]
     
-        [sapfir.svn]
+        [exec.sapfir.svn]
         link = "some_link"
         revision = "HEAD"
         
