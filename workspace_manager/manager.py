@@ -9,6 +9,9 @@ class PathNotFoundError(OSError):
 class IncorrectDirectoryError(Exception):
     pass
 
+class ConfigNotFoundError(Exception):
+    pass
+
 
 class WorkspaceManager:
     config_name = 'config.toml'
@@ -16,9 +19,9 @@ class WorkspaceManager:
     def __init__(self, path_to_workspace: str):
         self.work_path = path_to_workspace
         self.__check_workspace_init()
-        self.configs = None
+        self.configs = self.read_toml()
 
-    def __check_workspace_init(self):
+    def __check_workspace_init(self) -> None:
         if not os.path.exists(self.work_path):
             raise PathNotFoundError(f'Не найдена директория по пути {self.work_path}')
         workspace_content = os.listdir(self.work_path)
@@ -29,7 +32,33 @@ class WorkspaceManager:
             raise IncorrectDirectoryError(f'Директория должна содержать только файл config.toml\n'
                                           f'Сейчас она содержит:\n{sep.join(workspace_content)}')
 
-    def read_toml(self):
+    def read_toml(self) -> dict:
         with open(os.path.join(self.work_path, self.config_name), 'rb') as file:
-            self.configs = tomllib.load(file)
-        print(self.configs)
+            return tomllib.load(file)
+
+    def load_all_exec(self):
+        for exec_name in self.configs['exec']:
+            self.load_exec(exec_name)
+
+
+    def load_exec(self, exec_name: str):
+        try:
+            exec_config = self.configs['exec'][exec_name]
+        except KeyError:
+            raise ConfigNotFoundError(f'Не найдена конфигурация для {exec_name}')
+        svn_config = exec_config.get('svn')
+        local_config = exec_config.get('local')
+        if svn_config:
+            return self.load_exec_svn(svn_config)
+        elif local_config:
+            return self.load_exec_local(local_config)
+        else:
+            raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
+
+    def load_exec_svn(self, svn_config):
+        #TODO: Сделать, когда будет тестовый репозиторий
+        pass
+
+    def load_exec_local(self, local_config):
+        #TODO: Сделать, когда напишу тесты
+        pass
