@@ -14,8 +14,9 @@ class SvnTool(AbstractManager):
         last_sep = max(link.rfind('/'), link.rfind('\\'))
         return link[:last_sep], link[last_sep + 1:]
 
-    def load_file_from_config(self, from_link, to_local_path, revision: int | None = None,
-                              local_file_name: str | None = None,  **kwargs) -> None:
+    def load_file_from_config(self, from_link: str, to_local_path: str,
+                              revision: int | None = None, local_file_name: str | None = None,
+                              **kwargs) -> None: # noqa ARG002 ARG003
         repo_link, rel_path = self.split_link(from_link)
         if not local_file_name:
             local_file_name = rel_path

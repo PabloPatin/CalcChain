@@ -73,6 +73,6 @@ class WorkspaceManager(AbstractManager):
             raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
 
 
-    def load_exec_local(self, local_config) -> None:
+    def load_exec_local(self, local_config: dict) -> None:
         # TODO: Сделать, когда напишу тесты
         pass
