@@ -3,7 +3,7 @@ import tomllib
 from typing import Any
 
 from .abstract import AbstractManager
-from .local_device_tool import LocalDeviceTool
+from .local_source_tool import LocalSourceTool
 from .svn_tool import SvnTool
 
 
@@ -28,7 +28,7 @@ class WorkspaceManager(AbstractManager):
         self.configs = self.read_toml()
         self.info = {}
         self.svn_tool = SvnTool(self.work_path)
-        self.local_device_tool = LocalDeviceTool(self.work_path)
+        self.local_source_tool = LocalSourceTool(self.work_path)
 
     def __check_workspace_init(self) -> None:
         if not os.path.exists(self.work_path):
@@ -76,7 +76,7 @@ class WorkspaceManager(AbstractManager):
         if isinstance(svn_config, dict):
             self.load_exec_from_svn(svn_config, self._exec_rel_path)
         elif isinstance(local_config, dict):
-            self.local_device_tool.load_file_from_config(**local_config,
+            self.local_source_tool.load_file_from_config(**local_config,
                                                          to_local_dir=self._exec_rel_path)
         else:
             raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')

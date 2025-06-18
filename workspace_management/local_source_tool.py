@@ -4,7 +4,7 @@ from workspace_management.abstract import AbstractManager
 import shutil
 
 
-class LocalDeviceTool(AbstractManager):
+class LocalSourceTool(AbstractManager):
     def load_file_from_config(self, path: str, to_local_dir: str = '',
                               local_file_name: str | None = None,
                               **kwargs) -> int:  # noqa ARG002 ARG003
