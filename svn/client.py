@@ -23,8 +23,8 @@ class SvnClient(Commander):
         :arg repo_link: Ссылка на репозиторий
         :param username: Имя пользователя (опционально)
         :param password: Пароль (опционально)
-        :param svn_filepath: Путь к исполняемому файлу утилиты SVN CLI \
-        (указать, если его нет в PATH)
+        :param svn_filepath: Путь к исполняемому файлу утилиты SVN CLI
+                             (указать, если его нет в PATH)
         :param trust_cert: Не проверяет наличие сертификата у сервера если True
         :param env: Переменные среды для SVN CLI
         """
