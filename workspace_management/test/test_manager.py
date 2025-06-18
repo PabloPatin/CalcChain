@@ -1,7 +1,7 @@
 import os
 import unittest
-from workspace_manager import WorkspaceManager
-from workspace_manager.manager import PathNotFoundError, IncorrectDirectoryError
+from workspace_management import WorkspaceManager
+from workspace_management.manager import PathNotFoundError, IncorrectDirectoryError
 
 
 class TestWorkspaceManager(unittest.TestCase):

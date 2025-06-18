@@ -1,6 +1,6 @@
 import argparse
 
-from workspace_manager import WorkspaceManager
+from workspace_management import WorkspaceManager
 
 def main() -> None:
     parser = argparse.ArgumentParser()
