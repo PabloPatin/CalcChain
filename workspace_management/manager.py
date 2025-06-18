@@ -1,9 +1,12 @@
 import os
 import tomllib
+import json
+from dataclasses import asdict
 from typing import Any
 
 from .abstract import AbstractManager
 from .local_source_tool import LocalSourceTool
+from .structure_info_data import InfoRoot, ExecData, SvnSourceData, LocalSourceData
 from .svn_tool import SvnTool
 
 
@@ -26,7 +29,7 @@ class WorkspaceManager(AbstractManager):
         super().__init__(path_to_workspace)
         self.__check_workspace_init()
         self.configs = self.read_toml()
-        self.info = {}
+        self.info = InfoRoot()
         self.svn_tool = SvnTool(self.work_path)
         self.local_source_tool = LocalSourceTool(self.work_path)
 
@@ -74,13 +77,35 @@ class WorkspaceManager(AbstractManager):
         svn_config = exec_config.get('svn')
         local_config = exec_config.get('local')
         if isinstance(svn_config, dict):
-            self.load_exec_from_svn(svn_config, self._exec_rel_path)
+            self.load_exec_from_svn(svn_config, self._exec_rel_path, exec_name)
         elif isinstance(local_config, dict):
-            self.local_source_tool.load_file_from_config(**local_config,
-                                                         to_local_dir=self._exec_rel_path)
+            self.load_exec_from_local(local_config, self._exec_rel_path, exec_name)
         else:
             raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
 
-    def load_exec_from_svn(self, svn_config: dict, to_local_dir: str) -> None:
+    def load_exec_from_svn(self, svn_config: dict, to_local_dir: str, exec_name: str) -> None:
         file_info = self.svn_tool.load_file_from_config(**svn_config, to_local_dir=to_local_dir)
         svn_config['revision'] = file_info.commit_revision
+        svn_data = SvnSourceData(
+                url=file_info.url,
+                rev=file_info.commit_revision,
+                repo_uuid=file_info.repository_uuid
+                )
+        self.info.exec[exec_name] = ExecData(filename=file_info.entry_path, export=svn_data)
+
+    def load_exec_from_local(self, local_config: dict, to_local_dir: str, exec_name: str) -> None:
+        file_info = self.local_source_tool.load_file_from_config(**local_config,
+                                                                to_local_dir=to_local_dir)
+        self.info.exec[exec_name] = ExecData(filename=file_info['file_name'],
+                                             export=LocalSourceData())
+
+    def dump_config(self):
+        pass
+        # TODO: как выгрузить в TOML?
+
+    def dump_info(self):
+        info_path = os.path.join(self.work_path, 'info.json')
+        info = asdict(self.info)
+        print(info)
+        with open(info_path, 'w', encoding='utf-8') as file:
+            json.dump(info, file, ensure_ascii=False, indent=4)
