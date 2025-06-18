@@ -73,5 +73,16 @@ class TestSvnTool(unittest.TestCase):
         self.assertTrue(os.path.exists(local_file_path))
         os.remove(local_file_path)
 
+    def test_file_loading_with_renaming(self):
+        test_file_link = f'{self.branch_link}/{self.TEST_EXEC_DIR}/{self.TEST_SAPFIR_FILE}'
+        self.svn_tool.load_file_from_config(test_file_link, local_file_name='new_sapfir.example')
+        local_file_path = os.path.join(self.TEST_WORKSPACE, 'new_sapfir.example')
+        self.assertTrue(os.path.exists(local_file_path))
+        os.remove(local_file_path)
+
     def tearDown(self):
         shutil.rmtree('test_workspace')
+
+
+if __name__ == '__main__':
+    unittest.main()
