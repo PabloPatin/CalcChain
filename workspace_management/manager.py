@@ -3,7 +3,7 @@ import tomllib
 from typing import Any
 
 from .abstract import AbstractManager
-from .svn_manager import SvnTool
+from .svn_tool import SvnTool
 
 
 class PathNotFoundError(OSError):
