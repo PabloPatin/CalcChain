@@ -5,6 +5,7 @@ from xml.etree import ElementTree
 
 from .data_structures import Info, LogRecord, LogPath, Action, StorageTree, StorageNode, Depth
 from .commander import Commander
+from .exception import SvnError
 
 path = str
 rev = int | str | None
@@ -27,13 +28,21 @@ class SvnClient(Commander):
         :param trust_cert: Не проверяет наличие сертификата у сервера если True
         :param env: Переменные среды для SVN CLI
         """
-
-        self.__repo_link = repo_link
+        self.__repo_link = None
         self.__username = username
         self.__password = password
         self.__svn_filepath = svn_filepath
         self.__trust_cert = trust_cert
         self.__env = env
+        self.set_repo_link(repo_link)
+
+    def set_repo_link(self, repo_link: str) -> None:
+        self.__repo_link = repo_link
+        try:
+            self.info()
+        except SvnError as ex:
+            ex.add_note('Некорректная ссылка на репозиторий')
+            raise ex
 
     def run_command(self, subcommand: str, *args: str, split_lines: bool = False,
                     return_binary: bool = False, encoding: str | None = 'cp866',
