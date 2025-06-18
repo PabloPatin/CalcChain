@@ -1,3 +1,5 @@
+import os.path
+
 from workspace_management.abstract import AbstractManager
 
 from svn import SvnClient
@@ -15,5 +17,8 @@ class SvnTool(AbstractManager):
     def load_file_from_config(self, from_link, to_local_path, revision: int | None = None,
                               local_file_name: str | None = None,  **kwargs) -> None:
         repo_link, rel_path = self.split_link(from_link)
+        if not local_file_name:
+            local_file_name = rel_path
+        local_path = os.path.join(to_local_path, local_file_name)
         self.svn_client = SvnClient(repo_link)
-        self.svn_client.export(rel_path, )
+        self.svn_client.export(rel_path, local_path, revision=revision)
