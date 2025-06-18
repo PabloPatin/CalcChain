@@ -2,7 +2,8 @@ import os
 import tomllib
 from typing import Any
 
-from svn import SvnClient
+from .abstract import AbstractManager
+from .svn_manager import SvnTool
 
 
 class PathNotFoundError(OSError):
@@ -16,15 +17,15 @@ class IncorrectDirectoryError(Exception):
 class ConfigNotFoundError(Exception):
     pass
 
-class WorkspaceManager:
+class WorkspaceManager(AbstractManager):
     __config_name = 'config.toml'
-    __exec_rel_path = 'exec'
 
     def __init__(self, path_to_workspace: str):
-        self.work_path = path_to_workspace
+        super().__init__(path_to_workspace)
         self.__check_workspace_init()
         self.configs = self.read_toml()
         self.__exec_path = os.path.join(self.work_path, self.__exec_rel_path)
+        self.svn_tool = SvnTool(self.work_path)
 
     def __check_workspace_init(self) -> None:
         if not os.path.exists(self.work_path):
@@ -63,16 +64,14 @@ class WorkspaceManager:
                                    f'Не найдена конфигурация для {exec_name}')
         svn_config = exec_config.get('svn')
         local_config = exec_config.get('local')
-        if svn_config:
-            return self.load_exec_svn(svn_config)
-        elif local_config:
+        if isinstance(svn_config, dict):
+            return self.svn_tool.load_file_from_config(**svn_config, to_local_path=
+                                                       os.path.join(self.__exec_path, exec_name))
+        elif isinstance(local_config, dict):
             return self.load_exec_local(local_config)
         else:
             raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
 
-    def load_exec_svn(self, svn_config) -> None:
-        # TODO: Сделать, когда будет тестовый репозиторий
-        pass
 
     def load_exec_local(self, local_config) -> None:
         # TODO: Сделать, когда напишу тесты
