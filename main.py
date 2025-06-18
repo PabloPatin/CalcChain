@@ -8,7 +8,7 @@ def main() -> None:
     args = parser.parse_args()
     manager = WorkspaceManager(args.path_to_workdir)
     manager.read_toml()
-    manager.load_exec('sapfir')
+    manager.load_all_exec()
 
 if __name__ == '__main__':
     main()

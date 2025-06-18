@@ -10,12 +10,12 @@ class SvnTool(AbstractManager):
         super().__init__(path_to_workspace)
         self.svn_client = None
 
-    def load_file_from_config(self, from_link: str, to_local_dir: str = '',
+    def load_file_from_config(self, link: str, to_local_dir: str = '',
                               revision: int | None = None, local_file_name: str | None = None,
                               **kwargs) -> data_structures.Info: # noqa ARG002 ARG003
         """
         Метод загружает в рабочее пространство файл из репозитория
-        :arg from_link: Ссылка на файл в репозитории
+        :arg link: Ссылка на файл в репозитории
         :param to_local_dir: Путь к директории относительно корня рабочей области,
                              куда поместить файл
         :param revision: Ревизия репозитория (по умолчанию HEAD)
@@ -23,7 +23,7 @@ class SvnTool(AbstractManager):
         :param kwargs: Прочие аргументы, которые могу быть в словаре с конфигурацией
         :return: Возвращает номер ревизии файла
         """
-        repo_link, rel_path = self.split_link(from_link)
+        repo_link, rel_path = self.split_link(link)
         if not local_file_name:
             local_file_name = rel_path
         local_path = os.path.join(self.work_path, to_local_dir, local_file_name)

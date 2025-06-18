@@ -27,7 +27,6 @@ class WorkspaceManager(AbstractManager):
         self.__check_workspace_init()
         self.configs = self.read_toml()
         self.info = {}
-        self.__exec_path = os.path.join(self.work_path, self.__exec_rel_path)
         self.svn_tool = SvnTool(self.work_path)
         self.local_device_tool = LocalDeviceTool(self.work_path)
 
@@ -48,16 +47,16 @@ class WorkspaceManager(AbstractManager):
             return tomllib.load(file)
 
     @staticmethod
-    def try_get_config(dictionary: dict, key: str, *keys: str,
+    def try_get_config(dictionary: dict, *keys: str,
                        error_message: str = '') -> Any:  # noqa ANN401
-        keys = (key, *keys)
         try:
             for key in keys:
-                value = dictionary[key]
+                dictionary = dictionary[key]
         except KeyError:
+            print(dictionary)
             raise ConfigNotFoundError(error_message)
         else:
-            return value
+            return dictionary
 
     def load_all_exec(self) -> None:
         for exec_name in self.try_get_config(self.configs, 'exec'):
@@ -68,21 +67,20 @@ class WorkspaceManager(AbstractManager):
         Загружает в рабочее пространство исполняемый файл, указанный в конфигурации
         :param exec_name: Имя программы, указанное в конфигурационном файле
         """
-        os.makedirs(self.__exec_path, exist_ok=True)
+        exec_path = os.path.join(self.work_path, self._exec_rel_path)
+        os.makedirs(exec_path, exist_ok=True)
         exec_config = self.try_get_config(self.configs, 'exec', exec_name,
-                                   f'Не найдена конфигурация для {exec_name}')
+                                   error_message=f'Не найдена конфигурация для {exec_name}')
         svn_config = exec_config.get('svn')
         local_config = exec_config.get('local')
-        local_path = os.path.join(self.__exec_path, exec_name)
-
         if isinstance(svn_config, dict):
-            self.load_exec_from_svn(svn_config, local_path)
+            self.load_exec_from_svn(svn_config, self._exec_rel_path)
         elif isinstance(local_config, dict):
-            self.local_device_tool.load_file_from_config(**local_config, to_local_dir=local_path)
+            self.local_device_tool.load_file_from_config(**local_config,
+                                                         to_local_dir=self._exec_rel_path)
         else:
             raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
 
-    def load_exec_from_svn(self, svn_config: dict, local_path: str) -> None:
-        file_info = self.svn_tool.load_file_from_config(**svn_config, to_local_dir=local_path)
-        revision = file_info.commit_revision
-        svn_config['revision'] = revision
+    def load_exec_from_svn(self, svn_config: dict, to_local_dir: str) -> None:
+        file_info = self.svn_tool.load_file_from_config(**svn_config, to_local_dir=to_local_dir)
+        svn_config['revision'] = file_info.commit_revision
