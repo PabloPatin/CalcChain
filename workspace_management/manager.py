@@ -7,7 +7,7 @@ from typing import Any
 
 from .abstract import AbstractManager
 from .local_source_tool import LocalSourceTool
-from .structure_info_data import *
+from .structure_info_data import InfoRoot, SvnSource, LocalSource
 from .svn_tool import SvnTool
 
 
@@ -93,16 +93,16 @@ class WorkspaceManager(AbstractManager):
                 url=file_info.url,
                 rev=file_info.commit_revision,
                 repo_uuid=file_info.repository_uuid,
-                type='exec'
+                type='exec',
                 )
         self.info.sources.append(svn_data)
 
     def load_exec_from_local(self, local_config: dict, to_local_dir: str, exec_name: str) -> None:
-        file_info = self.local_source_tool.load_file_from_config(**local_config,
+        self.local_source_tool.load_file_from_config(**local_config,
                                                                 to_local_dir=to_local_dir)
         self.info.sources.append(LocalSource(type='exec'))
 
-    def hash_dir(self, dir_path: str):
+    def hash_dir(self, dir_path: str) -> None:
         print(os.path.join(os.getcwd(), dir_path))
         for dir_rel_path, sub_dirs, files in os.walk(dir_path):
             for filename in files:
@@ -110,8 +110,8 @@ class WorkspaceManager(AbstractManager):
                 file_hash = self.hash_file(file_path)
                 self.info.hash_sums[file_path] = file_hash
 
-    def hash_file(self, file_path):
-        with open(file_path, "rb") as file:
+    def hash_file(self, file_path: str) -> str:
+        with open(file_path, 'rb') as file:
             hasher = hashlib.new('sha256')
             while True:
                 chunk = file.read(4096)
@@ -120,14 +120,14 @@ class WorkspaceManager(AbstractManager):
                 hasher.update(chunk)
         return hasher.hexdigest()
 
-    def hash_all(self):
+    def hash_all(self) -> None:
         self.hash_dir('.')
 
-    def dump_config(self):
+    def dump_config(self) -> None:
         # TODO: непонятно, как выгружать в TOML
         pass
 
-    def dump_info(self):
+    def dump_info(self) -> None:
         info_path = 'info.json'
         info = asdict(self.info)
         print(info)

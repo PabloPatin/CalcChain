@@ -6,7 +6,7 @@ from svn import SvnClient, data_structures
 
 
 class SvnTool(AbstractManager):
-    def __init__(self):
+    def __init__(self) -> None:
         self.svn_client = None
 
     def load_file_from_config(self, link: str, to_local_dir: str = '',
