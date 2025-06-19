@@ -2,26 +2,27 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from getpass import getuser
 from socket import gethostname
+from typing import Literal
 
 
 @dataclass
-class SvnSourceData:
+class Source:
+    type: Literal['exec', 'data', 'res_data']
+
+
+@dataclass
+class SvnSource(Source):
     url: str
     rev: int
     repo_uuid: str
-    type: str = 'svn'
+    export_type: str = 'svn'
 
 
 @dataclass
-class LocalSourceData:
+class LocalSource(Source):
+    # TODO: Мало информации о локальных источниках, не понятно зачем это надо?
     hostname: str = field(default_factory=gethostname)
-    type: str = 'local'
-
-
-@dataclass
-class ExecData:
-    filename: str
-    export: SvnSourceData | LocalSourceData = None
+    export_type: str = 'local'
 
 
 @dataclass
@@ -31,8 +32,11 @@ class GeneralData:
     hostname: str = field(default_factory=gethostname)
 
 
+HashSum = FilePath = str
+
+
 @dataclass
 class InfoRoot:
-    hash_sums: dict[str, str] = field(default_factory=dict)
-    exec: dict[str, ExecData] = field(default_factory=dict)
+    hash_sums: dict[FilePath, HashSum] = field(default_factory=dict)
+    sources: list[Source] = field(default_factory=list)
     general: GeneralData = field(default_factory=GeneralData)

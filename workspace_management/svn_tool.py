@@ -6,8 +6,7 @@ from svn import SvnClient, data_structures
 
 
 class SvnTool(AbstractManager):
-    def __init__(self, path_to_workspace: str):
-        super().__init__(path_to_workspace)
+    def __init__(self):
         self.svn_client = None
 
     def load_file_from_config(self, link: str, to_local_dir: str = '',
@@ -26,7 +25,7 @@ class SvnTool(AbstractManager):
         repo_link, rel_path = self.split_link(link)
         if not local_file_name:
             local_file_name = rel_path
-        local_path = os.path.join(self.work_path, to_local_dir, local_file_name)
+        local_path = os.path.join(to_local_dir, local_file_name)
         self.svn_client = SvnClient(repo_link)
         self.svn_client.export(rel_path, local_path, revision=revision)
         return self.svn_client.info(rel_path)

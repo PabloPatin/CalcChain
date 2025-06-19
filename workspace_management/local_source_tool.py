@@ -17,10 +17,8 @@ class LocalSourceTool(AbstractManager):
         :param local_file_name: Имя файла в рабочей области (если надо переименовать)
         :param kwargs: Прочие аргументы, которые могу быть в словаре с конфигурацией
         """
-        local_path = os.path.join(self.work_path, to_local_dir)
-        if local_file_name:
-            local_path = os.path.join(local_path, local_file_name)
-        print(path, local_path)
+        file_name = local_file_name or self.split_link(path)[1]
+        local_path = os.path.join(to_local_dir, file_name)
+
         shutil.copy2(path, local_path)
-        _, file_name = self.split_link(local_path)
         return {'file_name': file_name}
