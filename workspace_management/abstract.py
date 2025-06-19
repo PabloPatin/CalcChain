@@ -2,11 +2,6 @@ from abc import ABCMeta
 
 
 class AbstractManager(metaclass=ABCMeta):
-    _exec_rel_path = 'exec'
-
-    def __init__(self, path_to_workspace: str):
-        self.work_path = path_to_workspace
-
     def split_link(self, link: str) -> tuple[str, str]:
         """
         Делит ссылку на путь до объекта ие его название
