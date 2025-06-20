@@ -6,7 +6,7 @@ import unittest
 
 from svn import SvnClient
 from svn.exception import SvnError
-from workspace_management.svn_tool import SvnTool
+from workspace_management.connectors.svn_tool import SvnTool
 
 
 class TestSvnTool(unittest.TestCase):

@@ -7,10 +7,10 @@ from typing import Any
 
 import toml
 
+from workspace_management.connectors.local_source_tool import LocalSourceTool
+from workspace_management.connectors.svn_tool import SvnTool
 from .abstract import AbstractManager
-from .local_source_tool import LocalSourceTool
 from .structure_info_data import InfoRoot, SvnSource, LocalSource
-from .svn_tool import SvnTool
 
 
 class PathNotFoundError(OSError):
@@ -78,14 +78,6 @@ class WorkspaceManager(AbstractManager):
         else:
             return dictionary
 
-    def load_all_exec(self) -> None:
-        """
-        Загружает все исполняемые файлы описанные в конфигурации
-        """
-        for exec_name in self.try_get_config(self.configs, 'exec'):
-            self.load_exec(exec_name)
-        self.hash_all()
-
     def load_exec(self, exec_name: str) -> None:
         """
         Загружает в рабочее пространство исполняемый файл, указанный в конфигурации
@@ -102,6 +94,7 @@ class WorkspaceManager(AbstractManager):
             self.load_exec_from_local(local_config, self.__exec_rel_path)
         else:
             raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
+        self.hash_all()
 
     def load_exec_from_svn(self, svn_config: dict, to_local_dir: str) -> None:
         file_info = self.svn_tool.load_file_from_config(**svn_config, to_local_dir=to_local_dir)
