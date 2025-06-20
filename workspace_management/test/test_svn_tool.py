@@ -1,8 +1,8 @@
 import os
+import shutil
 import subprocess
 import time
 import unittest
-import shutil
 
 from svn import SvnClient
 from svn.exception import SvnError
@@ -17,7 +17,8 @@ class TestSvnTool(unittest.TestCase):
     TEST_SAPFIR_FILE = 'sapfir.exe.txt'
     TEST_SAPFIR_FILE_CONTENT = 'Сапфирозаменитель'
     TEST_WORKSPACE = 'test_workspace'
-    svn_tool = SvnTool(TEST_WORKSPACE)
+    os.chdir(TEST_WORKSPACE)
+    svn_tool = SvnTool()
 
     def __create_test_repo(self):
         os.mkdir(self.repo_path)

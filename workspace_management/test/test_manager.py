@@ -1,5 +1,6 @@
 import os
 import unittest
+
 from workspace_management import WorkspaceManager
 from workspace_management.manager import PathNotFoundError, IncorrectDirectoryError
 
@@ -34,6 +35,7 @@ class TestWorkspaceManager(unittest.TestCase):
             self.assertIsInstance(manager, WorkspaceManager)
         os.remove('some_dir/config.toml')
         os.rmdir('some_dir')
+
 
 if __name__ == '__main__':
     unittest.main()

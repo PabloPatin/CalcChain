@@ -1,8 +1,7 @@
 import os
-
+import shutil
 
 from workspace_management.abstract import AbstractManager
-import shutil
 
 
 class LocalSourceTool(AbstractManager):

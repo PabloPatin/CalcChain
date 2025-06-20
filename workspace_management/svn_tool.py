@@ -1,8 +1,7 @@
 import os.path
 
-from workspace_management.abstract import AbstractManager
-
 from svn import SvnClient, data_structures
+from workspace_management.abstract import AbstractManager
 
 
 class SvnTool(AbstractManager):
@@ -11,7 +10,7 @@ class SvnTool(AbstractManager):
 
     def load_file_from_config(self, link: str, to_local_dir: str = '',
                               revision: int | None = None, local_file_name: str | None = None,
-                              **kwargs) -> data_structures.Info: # noqa ARG002 ARG003
+                              **kwargs) -> data_structures.Info:  # noqa ARG002 ARG003
         """
         Метод загружает в рабочее пространство файл из репозитория
         :arg link: Ссылка на файл в репозитории
@@ -29,4 +28,3 @@ class SvnTool(AbstractManager):
         self.svn_client = SvnClient(repo_link)
         self.svn_client.export(rel_path, local_path, revision=revision)
         return self.svn_client.info(rel_path)
-

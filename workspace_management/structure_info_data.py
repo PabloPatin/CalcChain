@@ -1,5 +1,5 @@
-from datetime import datetime
 from dataclasses import dataclass, field
+from datetime import datetime
 from getpass import getuser
 from socket import gethostname
 from typing import Literal
