@@ -1,0 +1,34 @@
+target-version = "py312"
+
+extend-include = ["*.pyw"]
+
+select = [
+    "F", "E", "W", "UP", "PL", "ANN", "FA", "COM", "PERF",
+    "ARG", "PD", "C4", "PYI", "SIM", "Q", "BLE", "RUF",
+]
+
+#extend-select = ["ALL"]
+
+ignore = [
+    # -----------------------------------------------------------------
+    "D", # pydocstyle
+    "T20", # flake8-print
+    "ANN101", # flake8-annotations/missing-type-self
+    "ANN102", # flake8-annotations/missing-type-cls
+    "PD901", # pandas-vet/pandas-df-variable-name
+    "SIM108", # flake8-simplify/if-else-block-instead-of-if-exp
+    "RUF001", # Ruff-specific/ambiguous-unicode-character-string
+    "RUF002", # Ruff-specific/ambiguous-unicode-character-string
+    "RUF003", # Ruff-specific/ambiguous-unicode-character-comment
+    "PLR0913", # Pylint/too-many-arguments
+    # -----------------------------------------------------------------
+    "RUF100" # COMMENT TO CHECK NOQA INSTRUCTIONS
+    # -----------------------------------------------------------------
+]
+
+line-length = 99
+
+flake8-quotes.inline-quotes = "single"
+flake8-annotations.allow-star-arg-any = true
+flake8-annotations.suppress-dummy-args = true
+flake8-annotations.mypy-init-return = true

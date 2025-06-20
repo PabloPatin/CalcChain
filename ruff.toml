@@ -1,0 +1,6 @@
+extend = "ruff.common.toml"
+
+extend-exclude = [
+    '*/test/*',
+    '__init__.py'
+]
