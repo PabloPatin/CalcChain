@@ -1,8 +1,7 @@
-import pprint
-import unittest
 import os
 import subprocess
 import time
+import unittest
 
 from svn import SvnClient
 from svn.data_structures import Info, Depth, Action
@@ -139,21 +138,6 @@ class TestSvnClient(unittest.TestCase):
         self.svn.delete(self.TEST_DIR, message='delete test dir', force=True)
         # pprint.pp(data)
         self.assertEqual(self.branch_link, data.root)
-
-    # def test_checkout(self):
-    #     wc_path = os.path.join(self.WORK_PATH, 'curdir')
-    #     os.mkdir(wc_path)
-    #     self.svn.import_(self.test_dir_path, self.TEST_DIR, message='import test dir',
-    #                      depth=Depth.EMPTY)
-    #     self.svn.import_(self.test_file_path, f'{self.TEST_DIR}/{self.TEST_FILE}',
-    #                      message='import test file')
-    #     self.svn.checkout(wc_path)
-    #     self.svn.delete(self.TEST_DIR, message='delete test dir', force=True)
-    #     cond1 = os.path.exists(os.path.join(wc_path, self.TEST_DIR))
-    #     cond2 = os.path.exists(os.path.join(wc_path, self.TEST_DIR, self.TEST_FILE))
-    #     shutil.rmtree(wc_path)
-    #     self.assertTrue(cond1)
-    #     self.assertTrue(cond2)
 
     def tearDown(self):
         self.__remove_test_dir_and_file()

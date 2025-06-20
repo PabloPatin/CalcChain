@@ -1,5 +1,6 @@
 class SvnError(Exception):
     """Исключение, когда утилита svn CLI вернула код ошибки"""
+
     def __init__(self, cmd: str, return_code: int, stdout: str, stderr: str | None):
         super().__init__()
         self.cmd = cmd

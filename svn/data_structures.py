@@ -16,6 +16,7 @@ class Info(NamedTuple):
     commit_date: datetime
     commit_revision: int
 
+
 class Action(StrEnum):
     @classmethod
     def find_key(cls, value: str) -> StrEnum | None:
@@ -28,11 +29,13 @@ class Action(StrEnum):
     MODIFY = 'M'
     DELETE = 'D'
 
+
 class Depth(StrEnum):
-    EMPTY = 'empty'   # Только папка без содержимого
-    FILES = 'files'   # Папка и файлы, хранящиеся в ней
-    IMMEDIATES = 'immediates'    # Папка и все объекты непосредственно в ней находящиеся
-    INFINITY = 'infinity'    # Папка со всем содержимым
+    EMPTY = 'empty'  # Только папка без содержимого
+    FILES = 'files'  # Папка и файлы, хранящиеся в ней
+    IMMEDIATES = 'immediates'  # Папка и все объекты непосредственно в ней находящиеся
+    INFINITY = 'infinity'  # Папка со всем содержимым
+
 
 class LogPath(NamedTuple):
     prop_mods: bool
@@ -40,6 +43,7 @@ class LogPath(NamedTuple):
     kind: Literal['dir', 'file']
     action: StrEnum
     path: str
+
 
 class LogRecord(NamedTuple):
     xml: str
@@ -65,4 +69,3 @@ class StorageTree(NamedTuple):
     xml: str
     root: str
     nodes: tuple[StorageNode]
-

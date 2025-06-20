@@ -1,6 +1,6 @@
+import logging
 import os
 import subprocess
-import logging
 from collections.abc import Sequence
 
 from .config import LANG

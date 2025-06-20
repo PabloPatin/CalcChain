@@ -1,10 +1,10 @@
 import logging
-from datetime import datetime
 from collections.abc import Sequence
+from datetime import datetime
 from xml.etree import ElementTree
 
-from .data_structures import Info, LogRecord, LogPath, Action, StorageTree, StorageNode, Depth
 from .commander import Commander
+from .data_structures import Info, LogRecord, LogPath, Action, StorageTree, StorageNode, Depth
 from .exception import SvnError
 
 path = str
