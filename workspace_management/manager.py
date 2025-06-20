@@ -9,7 +9,6 @@ import toml
 
 from workspace_management.connectors.local_source_tool import LocalSourceTool
 from workspace_management.connectors.svn_tool import SvnTool
-from .abstract import AbstractManager
 from .structure_info_data import InfoRoot, SvnSource, LocalSource
 
 
@@ -25,7 +24,7 @@ class ConfigNotFoundError(Exception):
     pass
 
 
-class WorkspaceManager(AbstractManager):
+class WorkspaceManager:
     __config_name = 'config.toml'
     __exec_rel_path = 'exec'
 
@@ -78,26 +77,25 @@ class WorkspaceManager(AbstractManager):
         else:
             return dictionary
 
-    def load_exec(self, exec_name: str) -> None:
+    def load_exec(self) -> None:
         """
         Загружает в рабочее пространство исполняемый файл, указанный в конфигурации
         :param exec_name: Имя программы, указанное в конфигурационном файле
         """
         os.makedirs(self.__exec_rel_path, exist_ok=True)
-        exec_config = self.try_get_config(self.configs, 'exec', exec_name,
-                                          error_message=f'Не найдена конфигурация для {exec_name}')
-        svn_config = exec_config.get('svn')
-        local_config = exec_config.get('local')
-        if isinstance(svn_config, dict):
-            self.load_exec_from_svn(svn_config, self.__exec_rel_path)
-        elif isinstance(local_config, dict):
-            self.load_exec_from_local(local_config, self.__exec_rel_path)
+        exec_config = self.try_get_config(self.configs, 'exec',
+                                          error_message=f'Не найдена конфигурация для exec')
+        if exec_config['source_type'] == 'svn':
+            self.load_exec_from_svn(exec_config, to_local_dir=self.__exec_rel_path)
+        elif exec_config['source_type'] == 'local':
+            self.load_exec_from_local(exec_config, to_local_dir=self.__exec_rel_path)
         else:
-            raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
+            raise ConfigNotFoundError(f'Конфигурация для exec некорректна')
         self.hash_all()
 
     def load_exec_from_svn(self, svn_config: dict, to_local_dir: str) -> None:
-        file_info = self.svn_tool.load_file_from_config(**svn_config, to_local_dir=to_local_dir)
+        file_info = self.svn_tool.load_directory_from_config(**svn_config,
+                                                             local_path=to_local_dir)
         svn_config['revision'] = file_info.commit_revision
         svn_data = SvnSource(
                 url=file_info.url,
@@ -108,8 +106,8 @@ class WorkspaceManager(AbstractManager):
         self.info.sources.append(svn_data)
 
     def load_exec_from_local(self, local_config: dict, to_local_dir: str) -> None:
-        self.local_source_tool.load_file_from_config(**local_config,
-                                                     to_local_dir=to_local_dir)
+        self.local_source_tool.load_directory_from_config(**local_config,
+                                                          local_path=to_local_dir)
         self.info.sources.append(LocalSource(type='exec'))
 
     def hash_dir(self, dir_path: str) -> None:

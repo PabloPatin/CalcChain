@@ -10,7 +10,7 @@ def main() -> None:
 
     manager = WorkspaceManager(args.path_to_workdir)
     manager.read_toml()
-    manager.load_all_exec()
+    manager.load_exec()
     manager.dump_info()
     manager.dump_config()
 
