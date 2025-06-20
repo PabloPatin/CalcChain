@@ -223,7 +223,7 @@ class SvnClient(Commander):
                 path=path_.text,
                 )
 
-    def export(self, from_rel_path: path, to_path: path, revision: rev = None,
+    def export(self, from_rel_path: path | None, to_path: path, revision: rev = None,
                force: bool = False, depth: Depth = Depth.INFINITY) -> None:
         full_link = self.__form_abs_link(from_rel_path, revision)
         args = ['-q', '--depth', depth.value]
