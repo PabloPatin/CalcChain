@@ -1,9 +1,11 @@
 import hashlib
+import json
 import os
 import tomllib
-import json
 from dataclasses import asdict
 from typing import Any
+
+import toml
 
 from .abstract import AbstractManager
 from .local_source_tool import LocalSourceTool
@@ -28,6 +30,7 @@ class WorkspaceManager(AbstractManager):
     __exec_rel_path = 'exec'
 
     def __init__(self, path_to_workspace: str):
+        self.exec_config = None
         self.work_path = path_to_workspace
         self.__check_workspace_init()
         os.chdir(self.work_path)
@@ -52,6 +55,17 @@ class WorkspaceManager(AbstractManager):
         with open(self.__config_name, 'rb') as file:
             return tomllib.load(file)
 
+    def validate_config(self) -> None:
+        match self.configs:
+            case {
+                "data": _,
+                "res_data": _,
+                "exec": dict(exec_config)
+                }:
+                self.exec_config = exec_config
+            case _:
+                raise ConfigNotFoundError('Конфигурационный файл составлен некорректно')
+
     @staticmethod
     def try_get_config(dictionary: dict, *keys: str,
                        error_message: str = '') -> Any:  # noqa ANN401
@@ -65,6 +79,9 @@ class WorkspaceManager(AbstractManager):
             return dictionary
 
     def load_all_exec(self) -> None:
+        """
+        Загружает все исполняемые файлы описанные в конфигурации
+        """
         for exec_name in self.try_get_config(self.configs, 'exec'):
             self.load_exec(exec_name)
         self.hash_all()
@@ -76,17 +93,17 @@ class WorkspaceManager(AbstractManager):
         """
         os.makedirs(self.__exec_rel_path, exist_ok=True)
         exec_config = self.try_get_config(self.configs, 'exec', exec_name,
-                                   error_message=f'Не найдена конфигурация для {exec_name}')
+                                          error_message=f'Не найдена конфигурация для {exec_name}')
         svn_config = exec_config.get('svn')
         local_config = exec_config.get('local')
         if isinstance(svn_config, dict):
-            self.load_exec_from_svn(svn_config, self.__exec_rel_path, exec_name)
+            self.load_exec_from_svn(svn_config, self.__exec_rel_path)
         elif isinstance(local_config, dict):
-            self.load_exec_from_local(local_config, self.__exec_rel_path, exec_name)
+            self.load_exec_from_local(local_config, self.__exec_rel_path)
         else:
             raise ConfigNotFoundError(f'Конфигурация для {exec_name} некорректна')
 
-    def load_exec_from_svn(self, svn_config: dict, to_local_dir: str, exec_name: str) -> None:
+    def load_exec_from_svn(self, svn_config: dict, to_local_dir: str) -> None:
         file_info = self.svn_tool.load_file_from_config(**svn_config, to_local_dir=to_local_dir)
         svn_config['revision'] = file_info.commit_revision
         svn_data = SvnSource(
@@ -97,13 +114,16 @@ class WorkspaceManager(AbstractManager):
                 )
         self.info.sources.append(svn_data)
 
-    def load_exec_from_local(self, local_config: dict, to_local_dir: str, exec_name: str) -> None:
+    def load_exec_from_local(self, local_config: dict, to_local_dir: str) -> None:
         self.local_source_tool.load_file_from_config(**local_config,
-                                                                to_local_dir=to_local_dir)
+                                                     to_local_dir=to_local_dir)
         self.info.sources.append(LocalSource(type='exec'))
 
     def hash_dir(self, dir_path: str) -> None:
-        print(os.path.join(os.getcwd(), dir_path))
+        """
+        Хэширует все файлы в указанном каталоге рекурсивно и записывает их в info
+        :param dir_path: Относительный путь к каталогу для хэширования
+        """
         for dir_rel_path, sub_dirs, files in os.walk(dir_path):
             for filename in files:
                 file_path = os.path.join(dir_rel_path, filename)
@@ -111,6 +131,10 @@ class WorkspaceManager(AbstractManager):
                 self.info.hash_sums[file_path] = file_hash
 
     def hash_file(self, file_path: str) -> str:
+        """
+        :param file_path: Относительный путь к файлу для хэширования
+        :return: Возвращает хэш файла
+        """
         with open(file_path, 'rb') as file:
             hasher = hashlib.new('sha256')
             while True:
@@ -121,17 +145,17 @@ class WorkspaceManager(AbstractManager):
         return hasher.hexdigest()
 
     def hash_all(self) -> None:
+        """Хэширует все файлы в рабочей области"""
         self.hash_dir('.')
 
     def dump_config(self) -> None:
-        # TODO: непонятно, как выгружать в TOML
-        pass
+        # TODO: подумать о том, TOML или YAML использовать для конфигурации?
+        with open('config.lock.toml', 'w', encoding='utf-8') as file:
+            toml.dump(self.configs, file)
 
     def dump_info(self) -> None:
         info_path = 'info.json'
         info = asdict(self.info)
-        print(info)
         with open(info_path, 'w', encoding='utf-8') as file:
+            # toml.dump(info, file)
             json.dump(info, file, ensure_ascii=False, indent=4)
-
-
