@@ -224,9 +224,9 @@ class SvnClient(Commander):
                 )
 
     def export(self, from_rel_path: path, to_path: path, revision: rev = None,
-               force: bool = False) -> None:
+               force: bool = False, depth: Depth = Depth.INFINITY) -> None:
         full_link = self.__form_abs_link(from_rel_path, revision)
-        args = ['-q']
+        args = ['-q', '--depth', depth.value]
         args.append('--force') if force else None
         self.run_command('export', *args, full_link, to_path)
 
