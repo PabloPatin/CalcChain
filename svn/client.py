@@ -17,10 +17,10 @@ class SvnClient(Commander):
     """Класс SvnClient предназначен для выполнения команд SVN при помощи обращения к утилите
     SVN CLI с использованием различных параметров"""
 
-    def __init__(self, repo_link: str, username: str | None = None, password: str | None = None,
+    def __init__(self, url: str, username: str | None = None, password: str | None = None,
                  svn_filepath: str = 'svn', trust_cert: bool = False, env: dict | None = None):
         """
-        :arg repo_link: Ссылка на репозиторий
+        :arg url: Ссылка на репозиторий или папку в нём
         :param username: Имя пользователя (опционально)
         :param password: Пароль (опционально)
         :param svn_filepath: Путь к исполняемому файлу утилиты SVN CLI
@@ -28,25 +28,25 @@ class SvnClient(Commander):
         :param trust_cert: Не проверяет наличие сертификата у сервера если True
         :param env: Переменные среды для SVN CLI
         """
-        self.__repo_link = None
+        self.url = None
         self.__username = username
         self.__password = password
         self.__svn_filepath = svn_filepath
         self.__trust_cert = trust_cert
         self.__env = env
-        self.set_repo_link(repo_link)
+        self.set_url(url)
 
-    def set_repo_link(self, repo_link: str) -> None:
-        self.__repo_link = repo_link
+    def set_url(self, url: str) -> None:
+        self.url = self.__reformat_link(url)
         try:
             self.info()
         except SvnError as ex:
-            ex.add_note('Некорректная ссылка на репозиторий')
+            ex.add_note(f'Некорректная ссылка на репозиторий {self.url}')
             raise ex
 
     def run_command(self, subcommand: str, *args: str, split_lines: bool = False,
                     return_binary: bool = False, encoding: str | None = 'cp866',
-                    wd: path | None = None, join_stderr: bool = True) -> str | Sequence[
+                    wd: path | None = None, join_stderr: bool = False) -> str | Sequence[
         str] | bytes:
         """Запускает команду SVN CLI и возвращает её вывод
 
@@ -78,8 +78,8 @@ class SvnClient(Commander):
         return cmd
 
     def __form_abs_link(self, rel_path: path | None, revision: rev = None) -> path:
-        abs_path = f'{self.__repo_link}/{rel_path}' \
-            if rel_path else self.__repo_link  # noqa PTH118
+        abs_path = f'{self.url}/{rel_path}' \
+            if rel_path else self.url  # noqa PTH118
         if revision:
             abs_path += f'@{revision}'
         return self.__reformat_link(abs_path)
@@ -214,7 +214,7 @@ class SvnClient(Commander):
         prop_mods = attr['prop-mods'] == 'true'
         text_mods = attr['text-mods'] == 'true'
         kind = attr['kind']
-        action = Action.find_key(attr['action'])
+        action = Action(attr['action'])
         return LogPath(
                 prop_mods=prop_mods,
                 text_mods=text_mods,
@@ -283,4 +283,4 @@ class SvnClient(Commander):
                            author=author, date=date, size=size, kind=kind)
 
     def __repr__(self) -> str:
-        return f'<SVN {self.__repo_link}>'
+        return f'<SVN {self.url}>'
