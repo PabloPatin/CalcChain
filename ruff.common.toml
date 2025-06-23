@@ -1,9 +1,9 @@
-target-version = "py312"
+target-version = "py39"
 
 extend-include = ["*.pyw"]
 
 select = [
-    "F", "E", "W", "UP", "PL", "ANN", "FA", "COM", "PERF",
+    "F", "E", "W", "UP", "PL", "ANN", "FA", "COM", "PERF", "PTH",
     "ARG", "PD", "C4", "PYI", "SIM", "Q", "BLE", "RUF",
 ]
 
@@ -18,7 +18,6 @@ ignore = [
     "PD901", # pandas-vet/pandas-df-variable-name
     "SIM108", # flake8-simplify/if-else-block-instead-of-if-exp
     "RUF001", # Ruff-specific/ambiguous-unicode-character-string
-    "RUF002", # Ruff-specific/ambiguous-unicode-character-string
     "RUF003", # Ruff-specific/ambiguous-unicode-character-comment
     "PLR0913", # Pylint/too-many-arguments
     # -----------------------------------------------------------------
