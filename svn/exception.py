@@ -27,6 +27,7 @@ class SvnError(Exception):
     def __parse_error(self) -> ErrorInfo | None:
         match = re.search(r'svn: ?(E\d+): ?(.*)', self.stdout + self.stderr)
         errors = []
+        # TODO Подумать как упростить
         if match:
             groups = match.groups()
             for code in groups[::2]:
@@ -49,8 +50,8 @@ class SvnError(Exception):
             return None
 
     @property
-    def error_codes(self):
-        return [error.error_code for error in self.errors]
+    def error_codes(self) -> tuple[str]:
+        return tuple(error.error_code for error in self.errors)
 
     def __str__(self) -> str:
         beginning = f'Command failed with ({self.return_code}): {self.cmd}'

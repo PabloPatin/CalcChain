@@ -23,7 +23,7 @@ class SvnExportConfig(ExportConfig):
     no_repo_err_codes = ('E170013', 'E180001', 'E155007')
     no_node_err_code = ('E200009',)
 
-    def __init__(self, url: str, revision: str | int = 'HEAD', **kwargs):
+    def __init__(self, url: str, revision: str | int = 'HEAD', **__):
         super().__init__(source_type='svn')
         self.url = url
         self.revision = revision
@@ -42,7 +42,10 @@ class SvnExportConfig(ExportConfig):
                 raise ValidationError('\nurl задан некорректно в файле конфигурации\n'
                                       f'Объект по ссылке {self.url} не найден в репозитории')
 
-    def __match_svn_errors(self, error_codes: tuple[str, ...], match_codes: tuple[str, ...]):
+    def __match_svn_errors(self,
+                           error_codes: tuple[str, ...],
+                           match_codes: tuple[str, ...],
+                           ) -> bool:
         return any(code in match_codes for code in error_codes)
 
 
@@ -50,7 +53,7 @@ class SvnExportConfig(ExportConfig):
 class LocalExportConfig(ExportConfig):
     path: str
 
-    def __init__(self, path: str, **kwargs):
+    def __init__(self, path: str, **__):
         super().__init__(source_type='local')
         self.path = path
 
@@ -104,5 +107,5 @@ class Config:
                                   'укажите одно из корректных значений: '
                                   f'{", ".join(cls.__export_configs.keys())}')
 
-    def dict(self):
+    def dict(self) -> dict:
         return asdict(self)

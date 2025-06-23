@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from getpass import getuser
 from socket import gethostname
 from typing import Literal
@@ -26,8 +26,7 @@ class LocalSource(Source):
 
 @dataclass
 class GeneralData:
-    timestamp: str = field(
-            default_factory=lambda: datetime.now(timezone.utc).astimezone().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).astimezone().isoformat())
     username: str = field(default_factory=getuser)
     hostname: str = field(default_factory=gethostname)
 
