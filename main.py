@@ -1,18 +1,29 @@
 import argparse
+from argparse import Namespace
 
 from workspace_management import WorkspaceManager
 
 
 def main() -> None:
+    args = parse_args()
+
+    manager = WorkspaceManager(args.path_to_workdir)
+    init_workspace(manager)
+
+    manager.dump_info()
+    manager.dump_config()
+
+
+def init_workspace(manager: WorkspaceManager) -> None:
+    manager.read_toml_config()
+    manager.load_exec()
+
+
+def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument('path_to_workdir')
     args = parser.parse_args()
-
-    manager = WorkspaceManager(args.path_to_workdir)
-    manager.read_toml()
-    manager.load_exec()
-    manager.dump_info()
-    manager.dump_config()
+    return args
 
 
 if __name__ == '__main__':
