@@ -3,13 +3,15 @@ import json
 import os
 import tomllib
 from dataclasses import asdict
-from typing import Any
 
 import toml
 
 from workspace_management.connectors.local_source_tool import LocalSourceTool
 from workspace_management.connectors.svn_tool import SvnTool
+from workspace_management.validation.data_structures import SvnExportConfig, \
+    LocalExportConfig
 from .structure_info_data import InfoRoot, SvnSource, LocalSource
+from .validation.data_structures import Config
 
 
 class PathNotFoundError(OSError):
@@ -33,7 +35,7 @@ class WorkspaceManager:
         self.work_path = path_to_workspace
         self.__check_workspace_init()
         os.chdir(self.work_path)
-        self.configs = self.read_toml()
+        self.config = self.read_toml_config()
         self.info = InfoRoot()
         self.svn_tool = SvnTool()
         self.local_source_tool = LocalSourceTool()
@@ -42,40 +44,37 @@ class WorkspaceManager:
         if not os.path.exists(self.work_path):
             raise PathNotFoundError(f'Не найдена директория по пути {self.work_path}')
         workspace_content = os.listdir(self.work_path)
-        # if not all([path.lower().endswith('.toml') for path in workspace_content]):
-        #     raise IncorrectDirectoryError(
-        #             f'Директория должна содержать только файлы формата TOML')
         if workspace_content != [self.__config_name]:
             sep = '\n'
             raise IncorrectDirectoryError(f'Директория должна содержать только файл config.toml\n'
                                           f'Сейчас она содержит:\n{sep.join(workspace_content)}')
 
-    def read_toml(self) -> dict:
+    def read_toml_config(self) -> Config:
         with open(self.__config_name, 'rb') as file:
-            return tomllib.load(file)
+            return Config(**tomllib.load(file))
 
-    def validate_config(self) -> None:
-        match self.configs:
-            case {
-                "data": _,
-                "res_data": _,
-                "exec": dict(exec_config)
-                }:
-                self.exec_config = exec_config
-            case _:
-                raise ConfigNotFoundError('Конфигурационный файл составлен некорректно')
+    # def validate_config(self) -> None:
+    #     match self.configs:    # noqa pycharm
+    #         case {
+    #             'data': _,
+    #             'res_data': _,
+    #             'exec': dict(exec_config),
+    #             }:
+    #             self.exec_config = exec_config
+    #         case _:
+    #             raise ConfigNotFoundError('Конфигурационный файл составлен некорректно')
 
-    @staticmethod
-    def try_get_config(dictionary: dict, *keys: str,
-                       error_message: str = '') -> Any:  # noqa ANN401
-        try:
-            for key in keys:
-                dictionary = dictionary[key]
-        except KeyError:
-            print(dictionary)
-            raise ConfigNotFoundError(error_message)
-        else:
-            return dictionary
+    # @staticmethod
+    # def try_get_config(dictionary: dict, *keys: str,
+    #                    error_message: str = '') -> Any:  # noqa ANN401
+    #     try:
+    #         for key in keys:
+    #             dictionary = dictionary[key]
+    #     except KeyError:
+    #         print(dictionary)
+    #         raise ConfigNotFoundError(error_message)
+    #     else:
+    #         return dictionary
 
     def load_exec(self) -> None:
         """
@@ -83,20 +82,20 @@ class WorkspaceManager:
         :param exec_name: Имя программы, указанное в конфигурационном файле
         """
         os.makedirs(self.__exec_rel_path, exist_ok=True)
-        exec_config = self.try_get_config(self.configs, 'exec',
-                                          error_message=f'Не найдена конфигурация для exec')
-        if exec_config['source_type'] == 'svn':
+        exec_config = self.config.exec
+        if isinstance(exec_config, SvnExportConfig):
             self.load_exec_from_svn(exec_config, to_local_dir=self.__exec_rel_path)
-        elif exec_config['source_type'] == 'local':
+        elif isinstance(exec_config, LocalExportConfig):
             self.load_exec_from_local(exec_config, to_local_dir=self.__exec_rel_path)
         else:
-            raise ConfigNotFoundError(f'Конфигурация для exec некорректна')
+            raise ConfigNotFoundError('Конфигурация для exec некорректна')
         self.hash_all()
 
-    def load_exec_from_svn(self, svn_config: dict, to_local_dir: str) -> None:
-        file_info = self.svn_tool.load_directory_from_config(**svn_config,
+    def load_exec_from_svn(self, svn_config: SvnExportConfig, to_local_dir: str) -> None:
+        file_info = self.svn_tool.load_directory_from_config(url=svn_config.url,
+                                                             revision=svn_config.revision,
                                                              local_path=to_local_dir)
-        svn_config['revision'] = file_info.commit_revision
+        svn_config.revision = file_info.commit_revision
         svn_data = SvnSource(
                 url=file_info.url,
                 rev=file_info.commit_revision,
@@ -105,8 +104,8 @@ class WorkspaceManager:
                 )
         self.info.sources.append(svn_data)
 
-    def load_exec_from_local(self, local_config: dict, to_local_dir: str) -> None:
-        self.local_source_tool.load_directory_from_config(**local_config,
+    def load_exec_from_local(self, local_config: LocalExportConfig, to_local_dir: str) -> None:
+        self.local_source_tool.load_directory_from_config(path=local_config.path,
                                                           local_path=to_local_dir)
         self.info.sources.append(LocalSource(type='exec'))
 
@@ -140,9 +139,8 @@ class WorkspaceManager:
         self.hash_dir('.')
 
     def dump_config(self) -> None:
-        # TODO: подумать о том, TOML или YAML использовать для конфигурации?
         with open('config.lock.toml', 'w', encoding='utf-8') as file:
-            toml.dump(self.configs, file)
+            toml.dump(self.config.dict(), file)
 
     def dump_info(self) -> None:
         info_path = 'info.json'
