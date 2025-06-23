@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 from svn import SvnClient, data_structures
 from workspace_management.split_link import split_link
@@ -30,7 +31,7 @@ class SvnTool:
         return self.svn_client.info(rel_path)
 
     def load_directory_from_config(self, url: str, local_path: str | None = None,
-                                   revision: int | None = None,
+                                   revision: Literal['HEAD'] | int | None = None,
                                    **kwargs) -> data_structures.Info:  # noqa ARG002 ARG003
         """
         Метод загружает в рабочее пространство папку из репозитория
@@ -45,4 +46,4 @@ class SvnTool:
         self.svn_client = SvnClient(url)
         self.svn_client.export(from_rel_path=None, to_path=local_path, revision=revision,
                                force=True)
-        return self.svn_client.info(url)
+        return self.svn_client.info()
