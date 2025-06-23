@@ -18,13 +18,6 @@ class Info(NamedTuple):
 
 
 class Action(StrEnum):
-    @classmethod
-    def find_key(cls, value: str) -> StrEnum | None:
-        for sub in Action.__members__.values():
-            if sub.value == value:
-                return sub
-        return None
-
     ADD = 'A'
     MODIFY = 'M'
     DELETE = 'D'
