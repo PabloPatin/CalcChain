@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from getpass import getuser
 from socket import gethostname
 from typing import Literal
@@ -20,19 +20,20 @@ class SvnSource(Source):
 
 @dataclass
 class LocalSource(Source):
-    # TODO: Мало информации о локальных источниках, не понятно зачем это надо?
     hostname: str = field(default_factory=gethostname)
     export_type: str = 'local'
 
 
 @dataclass
 class GeneralData:
-    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    timestamp: str = field(
+            default_factory=lambda: datetime.now(timezone.utc).astimezone().isoformat())
     username: str = field(default_factory=getuser)
     hostname: str = field(default_factory=gethostname)
 
 
-HashSum = FilePath = str
+HashSum = str
+FilePath = str
 
 
 @dataclass
