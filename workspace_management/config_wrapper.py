@@ -21,7 +21,7 @@ class ConfigTypeError(ConfigValidationError):
     def __init__(self, configuration: str, _type: str, conf_type: type) -> None:
         super().__init__(
                 f'Не правильный тип конфигурации {configuration}: '
-                f'{conf_type}, должен быть {_type}'
+                f'{conf_type}, должен быть {_type}',
                 )
 
 
@@ -58,7 +58,7 @@ def _check_configs_types(configs: dict, annotations: dict) -> None:
             raise ConfigTypeError(key, _type, type(configs[key]))
 
 
-def _expand_config(configs: dict, annotations: dict):
+def _expand_config(configs: dict, annotations: dict) -> dict:
     for key, _type in annotations.items():
         if (
                 not isinstance(_type, UnionType)

@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable
 from collections.abc import Iterable, Mapping
 from itertools import filterfalse, tee
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
 
 
@@ -19,11 +19,11 @@ class UnknownMarkerError(Exception):
 
 def create_file_translation_map(
         *,
-        files: Iterable[Path],
+        files: Iterable[PurePath],
         rules: Mapping[str, str],
         additional_markers: Mapping[str, str],
         check_skipped_files: bool = False,
-        ) -> dict[Path, Path]:
+        ) -> dict[PurePath, PurePath]:
     translation_map, skipped_files = _create_translation_map(files, rules, additional_markers)
 
     if check_skipped_files and skipped_files:
@@ -35,10 +35,10 @@ def create_file_translation_map(
 
 
 def _create_translation_map(
-        files: Iterable[Path],
+        files: Iterable[PurePath],
         rules: Mapping[str, str],
         additional_markers: Mapping[str, str],
-        ) -> tuple[dict[Path, Path], list[Path]]:
+        ) -> tuple[dict[PurePath, PurePath], list[PurePath]]:
     translation_map = {}
     remaining_files = list(files)
 
@@ -52,9 +52,9 @@ def _create_translation_map(
 
 
 def _split_files_by_pattern_matching(
-        files: Iterable[Path],
+        files: Iterable[PurePath],
         pattern: str,
-        ) -> tuple[list[Path], list[Path]]:
+        ) -> tuple[list[PurePath], list[PurePath]]:
     def split_iterable(
             it: Iterable[Any],
             predicate: Callable[[Any], bool],
@@ -70,7 +70,7 @@ def _split_files_by_pattern_matching(
 
 def _gen_dst_file_path(
         dst_pattern: str,
-        matched_file: Path,
+        matched_file: PurePath,
         additional_markers: Mapping[str, str],
         ) -> Path:
     tokens = _tokenize_dst_pattern(dst_pattern)
@@ -88,7 +88,7 @@ def _tokenize_dst_pattern(dst_pattern: str) -> list[str]:
 
 def _substitute_markers(
         token: str,
-        matched_file: Path,
+        matched_file: PurePath,
         additional_markers: Mapping[str, str],
         ) -> str:
     def repl(match: re.Match) -> str:

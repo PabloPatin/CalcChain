@@ -26,32 +26,25 @@ class SvnError(Exception):
 
     def __parse_error(self) -> ErrorInfo | None:
         match = re.search(r'svn: ?(E\d+): ?(.*)', self.stdout + self.stderr)
-        errors = []
-        # TODO Подумать как упростить
         if match:
             groups = match.groups()
-            for code in groups[::2]:
-                for message in groups[1::2]:
-                    errors.append(ErrorInfo(code, message))
+            errors = [ErrorInfo(groups[i], groups[j]) for i, j in range(0, len(groups), 2)]
             return tuple(errors)  # noqa pycharm
         else:
             return None
 
     def __parse_warnings(self) -> tuple[WarningInfo] | None:
         match = re.search(r'svn: ?warning: ?(W\d+): ?(.*)', self.stdout + self.stderr)
-        warnings = []
         if match:
             groups = match.groups()
-            for code in groups[::2]:
-                for message in groups[1::2]:
-                    warnings.append(WarningInfo(code, message))
+            warnings = [WarningInfo(groups[i], groups[j]) for i, j in range(0, len(groups), 2)]
             return tuple(warnings)  # noqa pycharm
         else:
             return None
 
     @property
     def error_codes(self) -> tuple[str]:
-        return tuple(error.error_code for error in self.errors)
+        return tuple(error.error_code for error in self.errors)  # noqa pycharm
 
     def __str__(self) -> str:
         beginning = f'Command failed with ({self.return_code}): {self.cmd}'
