@@ -2,26 +2,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, UTC
 from getpass import getuser
 from socket import gethostname
-from typing import Literal
-
-
-@dataclass
-class Source:
-    type: Literal['exec', 'data', 'res_data']
-
-
-@dataclass
-class SvnSource(Source):
-    url: str
-    rev: int
-    repo_uuid: str
-    export_type: str = 'svn'
-
-
-@dataclass
-class LocalSource(Source):
-    hostname: str = field(default_factory=gethostname)
-    export_type: str = 'local'
 
 
 @dataclass
@@ -31,12 +11,8 @@ class GeneralData:
     hostname: str = field(default_factory=gethostname)
 
 
-HashSum = str
-FilePath = str
-
-
 @dataclass
-class InfoRoot:
-    hash_sums: dict[FilePath, HashSum] = field(default_factory=dict)
-    sources: list[Source] = field(default_factory=list)
+class Info:
+    hash_sums: dict[str, str] = field(default_factory=dict)
+    sources: list[dict] = field(default_factory=list)
     general: GeneralData = field(default_factory=GeneralData)

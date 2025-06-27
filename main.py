@@ -15,7 +15,7 @@ def main() -> None:
 
 
 def init_workspace(manager: WorkspaceManager) -> None:
-    manager.read_toml_config()
+    manager.read_config()
     manager.load_exec()
 
 
