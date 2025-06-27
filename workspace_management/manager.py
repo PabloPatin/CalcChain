@@ -9,13 +9,7 @@ import toml
 from .config_wrapper import config, ConfigInterface
 from .loaders import handle_source
 from .structure_info_data import Info
-
-exec_rules = {
-    'bin/libs/*.dat': '<parent>/tot/<name>',
-    'bin/*': '<name>',
-    '*.exe*': 'bin/<name>',
-    '*': '<name>',
-    }
+from .test_rules import DATA_RULES, EXEC_RULES
 
 
 @config
@@ -41,6 +35,7 @@ class WrongWorkspaceError(Exception):
 class WorkspaceManager:
     __config_file = Path('config.toml')
     __exec_dir = Path('exec')
+    __data_dir = Path('data')
 
     def __init__(self, ws_path: str | Path):
         self.work_path = Path(ws_path).resolve()
@@ -64,12 +59,27 @@ class WorkspaceManager:
         """
         Загружает в рабочее пространство исполняемый файл, указанный в конфигурации
         """
-        exec = self.work_path / self.__exec_dir
-        exec.mkdir(parents=True, exist_ok=True)
+        exec_path = self.work_path / self.__exec_dir
+        exec_path.mkdir(parents=True, exist_ok=True)
 
         loader = handle_source(self.config.exec)
-        loader.fetch_data(exec, rules=exec_rules)
+        loader.fetch_data(exec_path, rules=EXEC_RULES)
         self.info.sources.append(loader.info)
+        self.config.exec = loader.config
+        self.hash_all()
+
+    def load_data(self) -> None:
+        data_path = self.work_path / self.__data_dir
+        data_path.mkdir(parents=True, exist_ok=True)
+        tmp_config_data = []
+        for data_config in self.config.data:
+            loader = handle_source(data_config)
+            loader.fetch_data(data_path, rules=DATA_RULES)
+
+            self.info.sources.append(loader.info)
+            tmp_config_data.append(loader.config)
+
+        self.config.data = tmp_config_data
         self.hash_all()
 
     # def load_exec_from_svn(self, svn_config: SvnExportConfig, to_local_dir: str) -> None:
@@ -94,12 +104,12 @@ class WorkspaceManager:
         """
         Хэширует все файлы в указанном каталоге рекурсивно и записывает их в info
         """
-        dir_path = Path(dir_path)
+        dir_path = self.work_path / dir_path
         for path, dirs, files in dir_path.walk():
             for file in files:
                 file_path = path / file
                 file_hash = self.hash_file(file_path)
-                self.info.hash_sums[str(file_path)] = file_hash
+                self.info.hash_sums[str(file_path.relative_to(self.work_path))] = file_hash
 
     def hash_file(self, file: str | Path) -> str:
         file = Path(file)
@@ -118,6 +128,7 @@ class WorkspaceManager:
 
     def dump_config(self) -> None:
         config_lock = self.work_path / 'config.lock.toml'
+        print(self.config.to_dict())
         with config_lock.open('w', encoding='utf-8') as f:
             toml.dump(self.config.to_dict(), f)
 
