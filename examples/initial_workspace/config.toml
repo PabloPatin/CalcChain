@@ -1,15 +1,14 @@
-title = "Startup configurations"
-
 [exec]
-    
-    [exec.sapfir]
-    
-        [exec.sapfir.local]
-        path = "some_path"
+source_type = "svn"
+url = "file:///C:/Users/PALypatnikov/Desktop/Projects/CalcChain/examples/test_repo/exec"
+revision = 7
 
-    [exec.rc]
+[[data]]
+source_type = "local"
+path = "C:\\Users\\PALypatnikov\\Desktop\\Projects\\CalcChain\\examples\\test_local_storage\\data\\UNIT_NAME"
+rule_set = "DATARULES_1"
 
-        [exec.rc.svn]
-	link = "some_link"
-        revision = "HEAD"
-
+[[data]]
+source_type = "svn"
+url = "file:///C:/Users/PALypatnikov/Desktop/Projects/CalcChain/examples/test_repo/data/OTHER_UNIT_NAME"
+revision = "HEAD"
