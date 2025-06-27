@@ -1,0 +1,34 @@
+from abc import ABCMeta, abstractmethod
+from pathlib import Path
+
+from workspace_management.config_wrapper import ConfigInterface
+
+
+class LoaderNotFoundError(Exception):
+    pass
+
+
+class BaseLoader[T](metaclass=ABCMeta):
+    _type: str = None
+    _config_cls: type[T] = None
+
+    def __init__(self, configs: dict):
+        self.config: T | ConfigInterface = self._config_cls(configs)
+
+    @classmethod
+    def can_handle_source(cls, configs: dict) -> bool:
+        return configs.get('source_type') == cls._type
+
+    @property
+    @abstractmethod
+    def info(self) -> dict:
+        pass
+
+    @abstractmethod
+    def fetch_data(self, dst_dir: str | Path, *, rules: dict[str, str]) -> None:
+        pass
+
+    @property
+    @abstractmethod
+    def src_files(self) -> list[Path]:
+        pass
