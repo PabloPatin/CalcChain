@@ -56,12 +56,9 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
         return self.config.to_dict() | {'repo_uuid': self._connector.info().repository_uuid}
 
     @property
-    def src_files(self) -> list[Path]:
-        files = []
+    def src_files(self) -> list[PurePath]:
         file_tree = self._connector.list(recursive=True, revision=self.config.revision)
-        for node in file_tree.nodes:
-            if node.kind == 'file':
-                files.append(PurePath(node.rel_path))
+        files = [PurePath(node.rel_path) for node in file_tree.nodes if node.kind == 'file']
         return files
 
     def fetch_data(self, dst_dir: str | Path, *, rules: dict[str, str]) -> None:

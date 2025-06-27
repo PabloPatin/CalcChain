@@ -38,11 +38,12 @@ class LocalLoader(BaseLoader[LocalLoaderConfig]):
                 )
 
         for src_file, dst_file in file_translation_map.items():
+            src_path = str(Path(self.config.path) / src_file)
             dst_path = Path(dst_dir) / dst_file
             if not Path(dst_path).exists():
                 location = Path(dst_path).parent
                 location.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src_file, dst_path)
+                shutil.copy2(src_path, dst_path)
 
 
 if __name__ == '__main__':
