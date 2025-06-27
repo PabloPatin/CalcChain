@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Sequence
 from datetime import datetime
+from pathlib import Path
 from xml.etree import ElementTree
 
 from .commander import Commander
@@ -273,7 +274,7 @@ class SvnClient(Commander):
         xml = ElementTree.tostring(node, encoding='UTF-8').decode()
         rel_path = node.find('name').text
         kind = node.attrib['kind']
-        name = rel_path.split('/')[-1]
+        name = Path(rel_path).name
         commit = node.find('commit')
         revision = int(commit.attrib['revision'])
         author = commit.find('author').text
