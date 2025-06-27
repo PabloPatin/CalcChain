@@ -10,13 +10,13 @@ def main() -> None:
     manager = WorkspaceManager(args.path_to_workdir)
     init_workspace(manager)
 
-    manager.dump_info()
-    manager.dump_config()
-
 
 def init_workspace(manager: WorkspaceManager) -> None:
     manager.read_config()
     manager.load_exec()
+    manager.load_data()
+    manager.dump_info()
+    manager.dump_config()
 
 
 def parse_args() -> Namespace:
