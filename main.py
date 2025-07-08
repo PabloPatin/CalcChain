@@ -8,8 +8,13 @@ def main() -> None:
     args = parse_args()
     match args.command:
         case 'init-ws':
-            manager = WorkspaceManager(args.path)
+            manager = WorkspaceManager(args.path, check_init=True)
             init_workspace(manager)
+        case 'check-ws':
+            manager = WorkspaceManager(args.path)
+            check_files(manager)
+        case _:
+            print(parser.print_help())
 
 
 def init_workspace(manager: WorkspaceManager) -> None:
@@ -21,14 +26,27 @@ def init_workspace(manager: WorkspaceManager) -> None:
     manager.dump_info()
 
 
+def check_files(manager: WorkspaceManager) -> None:
+    info = manager.load_info()
+    changed_files = manager.check_hashes(info.hash_sums)
+    for file in changed_files:
+        print(file)
+
+
 def parse_args() -> Namespace:
-    parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command', help='Доступные команды')
+
     initial_parser = subparsers.add_parser('init-ws', help='Инициализатор рабочей области')
-    initial_parser.add_argument('--path', type=str)
+    initial_parser.add_argument('-p', '--path', type=str)
+
+    hash_check_parser = subparsers.add_parser('check-ws', help='Проверка изменения файлов')
+    hash_check_parser.add_argument('-p', '--path', type=str)
+    hash_check_parser.add_argument('--skip-files', nargs='+', type=str)
+
     args = parser.parse_args()
     return args
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
     main()
