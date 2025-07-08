@@ -28,7 +28,7 @@ class SvnError(Exception):
         match = re.search(r'svn: ?(E\d+): ?(.*)', self.stdout + self.stderr)
         if match:
             groups = match.groups()
-            errors = [ErrorInfo(groups[i], groups[j]) for i, j in range(0, len(groups), 2)]
+            errors = [ErrorInfo(groups[i - 1], groups[i]) for i in range(1, len(groups), 2)]
             return tuple(errors)  # noqa pycharm
         else:
             return None
@@ -37,7 +37,8 @@ class SvnError(Exception):
         match = re.search(r'svn: ?warning: ?(W\d+): ?(.*)', self.stdout + self.stderr)
         if match:
             groups = match.groups()
-            warnings = [WarningInfo(groups[i], groups[j]) for i, j in range(0, len(groups), 2)]
+            warnings = [WarningInfo(groups[i - 1], groups[i]) for i in
+                        range(1, len(groups), 2)]
             return tuple(warnings)  # noqa pycharm
         else:
             return None

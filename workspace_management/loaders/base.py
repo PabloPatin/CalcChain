@@ -4,7 +4,11 @@ from pathlib import Path
 from workspace_management.config_wrapper import ConfigInterface
 
 
-class LoaderNotFoundError(Exception):
+class LoaderError(Exception):
+    pass
+
+
+class LoaderNotFoundError(LoaderError):
     pass
 
 

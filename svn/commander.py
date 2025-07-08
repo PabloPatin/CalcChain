@@ -13,7 +13,7 @@ class Commander:
     def external_command(
             self, cmd: str | Sequence[str], split_lines: bool = False, return_binary: bool = False,
             environment: dict | None = None, wd: str | None = None,
-            join_stderr: bool = True, encoding: str | None = None) -> str | list[str] | bytes:
+            join_stderr: bool = False, encoding: str | None = None) -> str | list[str] | bytes:
         """Выполнение команд в консоли и обработка ошибок
 
         :arg cmd: Команда со всеми её аргументами

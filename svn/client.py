@@ -6,7 +6,6 @@ from xml.etree import ElementTree
 
 from .commander import Commander
 from .data_structures import Info, LogRecord, LogPath, Action, StorageTree, StorageNode, Depth
-from .exception import SvnError
 
 path = str
 rev = int | str | None
@@ -39,11 +38,7 @@ class SvnClient(Commander):
 
     def set_url(self, url: str) -> None:
         self.url = self.__reformat_link(url)
-        try:
-            self.info()
-        except SvnError as ex:
-            ex.add_note(f'Некорректная ссылка на репозиторий {self.url}')
-            raise ex
+        self.info()
 
     def run_command(self, subcommand: str, *args: str, split_lines: bool = False,
                     return_binary: bool = False, encoding: str | None = 'cp866',
