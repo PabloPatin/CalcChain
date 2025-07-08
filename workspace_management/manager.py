@@ -120,21 +120,21 @@ class WorkspaceManager:
     def hash_ws_files(self) -> None:
         self.hash_dir('.')
 
-    def dump_config(self) -> None:
+    def lock_config(self) -> None:
         config_lock = self.work_path / self.__config_lock_file
         with config_lock.open('w', encoding='utf-8') as f:
             tomlkit.dump(self.config.to_dict(), f)
 
-    def dump_info(self) -> None:
-        info_path = self.work_path / self.__info_file
-        with info_path.open('w', encoding='utf-8') as file:
-            json.dump(asdict(self.info), file, ensure_ascii=False, indent=4)
-
-    def load_info(self) -> Info:
+    def load_ws_info(self) -> Info:
         info_path = self.work_path / self.__info_file
         with info_path.open('r', encoding='utf-8') as file:
             self.info = dataclass_from_dict(json.load(file), Info)
         return self.info
+
+    def save_ws_info(self) -> None:
+        info_path = self.work_path / self.__info_file
+        with info_path.open('w', encoding='utf-8') as file:
+            json.dump(asdict(self.info), file, ensure_ascii=False, indent=4)
 
     def check_hashes(self, hashes: dict[str, str]) -> list[Path]:
         changed_files = [

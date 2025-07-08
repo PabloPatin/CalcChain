@@ -21,13 +21,13 @@ def init_workspace(manager: WorkspaceManager) -> None:
     manager.read_config()
     manager.load_exec()
     manager.load_data()
-    manager.dump_config()
+    manager.lock_config()
     manager.hash_ws_files()
-    manager.dump_info()
+    manager.save_ws_info()
 
 
 def check_files(manager: WorkspaceManager) -> None:
-    info = manager.load_info()
+    info = manager.load_ws_info()
     changed_files = manager.check_hashes(info.hash_sums)
     if changed_files:
         print('Файлы изменены:')
