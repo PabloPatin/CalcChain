@@ -4,9 +4,9 @@ from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 
-from workspace_management.config_wrapper import config
 from workspace_management.loaders.base import BaseLoader, LoaderError
 from workspace_management.mapping import create_file_translation_map
+from workspace_management.simple_config import config
 
 
 def raise_error(method: Callable) -> Callable:

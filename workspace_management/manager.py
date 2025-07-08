@@ -6,9 +6,9 @@ from pathlib import Path
 
 import tomlkit
 
-from .config_wrapper import config, ConfigInterface, ConfigUnion
+from .info_data import Info, dataclass_from_dict
 from .loaders import find_loader
-from .structure_info_data import Info, dataclass_from_dict
+from .simple_config import config, ConfigInterface, ConfigUnion
 from .test_rules import RULES
 
 
@@ -136,10 +136,17 @@ class WorkspaceManager:
         with info_path.open('w', encoding='utf-8') as file:
             json.dump(asdict(self.info), file, ensure_ascii=False, indent=4)
 
-    def check_hashes(self, hashes: dict[str, str]) -> list[Path]:
+    def check_hashes(
+            self,
+            hashes: dict[str, str],
+            ignore: list[str] | None = None
+            ) -> list[Path]:
+        if ignore is None:
+            ignore = list()
         changed_files = [
             Path(file)
             for file, file_hash in hashes.items()
             if self.hash_file(file) != file_hash
+               and not any(Path(file).is_relative_to(Path(path)) for path in ignore)
             ]
         return changed_files

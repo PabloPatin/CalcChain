@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 
-from workspace_management.config_wrapper import ConfigInterface
+from workspace_management.simple_config import ConfigInterface
 
 
 class LoaderError(Exception):
