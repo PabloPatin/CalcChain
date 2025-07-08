@@ -11,14 +11,14 @@ class ConfigValidationError(Exception):
 
 
 class LostConfigsError(ConfigValidationError):
-    def __init__(self, lost_configs: set) -> None:
+    def __init__(self, lost_configs: set[str]) -> None:
         super().__init__(f'Не найдены конфигурации: {lost_configs}')
 
 
 class ConfigTypeError(ConfigValidationError):
     def __init__(self, configuration: str, _type: str, conf_type: type) -> None:
         super().__init__(
-                f'Не правильный тип конфигурации {configuration}: '
+                f'Неправильный тип конфигурации {configuration}: '
                 f'{conf_type}, должен быть {_type}',
                 )
 

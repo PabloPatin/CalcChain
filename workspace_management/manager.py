@@ -7,7 +7,7 @@ from pathlib import Path
 import tomlkit
 
 from .config_wrapper import config, ConfigInterface, ConfigUnion
-from .loaders import handle_source
+from .loaders import find_loader
 from .structure_info_data import Info, dataclass_from_dict
 from .test_rules import RULES
 
@@ -26,7 +26,7 @@ class Config:
 
 class WorkspaceNotFoundError(OSError):
     def __init__(self, path: Path):
-        super().__init__(f'Не найдена директория по пути {path.resolve()}')
+        super().__init__(f'Не найдена директория по пути "{path.resolve()}"')
 
 
 class WrongWorkspaceError(Exception):
@@ -65,13 +65,10 @@ class WorkspaceManager:
             return Config(tomllib.load(f))
 
     def load_exec(self) -> None:
-        """
-        Загружает в рабочее пространство исполняемый файл, указанный в конфигурации
-        """
         exec_path = self.work_path / self.__exec_dir
         exec_path.mkdir(parents=True, exist_ok=True)
 
-        loader_cls = handle_source(self.config.exec)
+        loader_cls = find_loader(self.config.exec)
         self.config.exec = ConfigUnion(
                 self.config.exec,
                 source=loader_cls.config_cls,  # noqa pycharm
@@ -87,7 +84,7 @@ class WorkspaceManager:
         data_path.mkdir(parents=True, exist_ok=True)
         tmp_config_data = []
         for data_config_dict in self.config.data:
-            loader_cls = handle_source(data_config_dict)
+            loader_cls = find_loader(data_config_dict)
             data_config = ConfigUnion(
                     data_config_dict,
                     source=loader_cls.config_cls,  # noqa pycharm
