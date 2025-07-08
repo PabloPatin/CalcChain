@@ -139,10 +139,10 @@ class WorkspaceManager:
     def check_hashes(
             self,
             hashes: dict[str, str],
-            ignore: list[str] | None = None
+            ignore: list[str] | None = None,
             ) -> list[Path]:
         if ignore is None:
-            ignore = list()
+            ignore = []
         changed_files = [
             Path(file)
             for file, file_hash in hashes.items()

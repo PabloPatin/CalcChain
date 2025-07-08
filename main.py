@@ -18,13 +18,16 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
             dest='command',
             title='Команды программы',
             required=True,
-            metavar='{init-ws, check-ws}'
+            metavar='{init-ws, check-ws}',
             )
 
     subparsers.add_parser(
             'init-ws', aliases=['initialise-workspace'],
             help='Создать рабочую область',
-            parents=[parent_parser]
+            description='Принимает путь к пустой директории с файлом config.toml. '
+                        'Загружает исполняемые данные и исходные файлы '
+                        'в соответствии с конфигурацией.',
+            parents=[parent_parser],
             )
 
     hash_check_parser = subparsers.add_parser(
@@ -39,7 +42,7 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
             nargs='*',
             help='Пути в рабочей области, которые не надо проверять',
             type=str,
-            metavar='PATH'
+            metavar='PATH',
             )
 
     args = parser.parse_args()
