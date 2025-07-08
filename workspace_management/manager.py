@@ -19,7 +19,7 @@ class RulesConfig:
 
 @config
 class Config:
-    data_rules_path: str
+    rules_file: str
     exec: dict | ConfigInterface | ConfigUnion
     data: list[dict | ConfigInterface | ConfigUnion]
 
