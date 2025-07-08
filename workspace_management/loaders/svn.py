@@ -13,7 +13,7 @@ class ValidationError(Exception):
 
 @config
 class SvnLoaderConfig:
-    source_type: str
+    type: str
     url: str
     revision: str | int = 'HEAD'
 

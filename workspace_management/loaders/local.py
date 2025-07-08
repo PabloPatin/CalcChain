@@ -9,7 +9,7 @@ from workspace_management.mapping import create_file_translation_map
 
 @config
 class LocalLoaderConfig:
-    source_type: str
+    type: str
     path: str
 
 
