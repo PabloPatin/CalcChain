@@ -1,111 +1,140 @@
-from __future__ import annotations
-
-import fnmatch
 import re
-from collections.abc import Callable
 from collections.abc import Iterable, Mapping
-from itertools import filterfalse, tee
-from pathlib import Path, PurePath
-from typing import Any
+from pathlib import Path
+from typing import NoReturn
 
 
-class SkippedFilesError(Exception):
-    pass
-
-
-class UnknownMarkerError(Exception):
+class TranslationMapError(Exception):
     pass
 
 
 def create_file_translation_map(
         *,
-        files: Iterable[PurePath],
-        rules: Mapping[str, str],
+        files: Iterable[Path],
+        rules: Iterable[list[str, str]],
         additional_markers: Mapping[str, str],
         check_skipped_files: bool = False,
-        ) -> dict[PurePath, PurePath]:
+        ) -> dict[Path, Path]:
     translation_map, skipped_files = _create_translation_map(files, rules, additional_markers)
 
     if check_skipped_files and skipped_files:
         skipped_files = [str(file) for file in skipped_files]
         error_message = f'some files not covered by translation rules ({skipped_files})'
-        raise SkippedFilesError(error_message)
+        raise TranslationMapError(error_message)
 
     return translation_map
 
 
 def _create_translation_map(
-        files: Iterable[PurePath],
-        rules: Mapping[str, str],
+        files: Iterable[Path],
+        rules: Iterable[list[str, str]],
         additional_markers: Mapping[str, str],
-        ) -> tuple[dict[PurePath, PurePath], list[PurePath]]:
+        ) -> tuple[dict[Path, Path], list[Path]]:
     translation_map = {}
     remaining_files = list(files)
 
-    for src_pattern, dst_pattern in rules.items():
-        matches, remaining_files = _split_files_by_pattern_matching(remaining_files, src_pattern)
-        for matched_file in matches:
-            dst_file = _gen_dst_file_path(dst_pattern, matched_file, additional_markers)
+    for src_pattern, dst_pattern in rules:
+        src_regex = _compile_src_pattern(src_pattern)
+        matches, remaining_files = _split_files_by_pattern_matching(remaining_files, src_regex)
+        for matched_file, regex_match in matches:
+            dst_file = _gen_dst_file_path(
+                    dst_pattern,
+                    matched_file,
+                    regex_match,
+                    additional_markers,
+                    )
             translation_map[matched_file] = dst_file
 
     return translation_map, remaining_files
 
 
+def _compile_src_pattern(src_pattern: str) -> re.Pattern:
+    try:
+        return re.compile(src_pattern)
+    except re.error:
+        error_message = f'wrong regular expression "{src_pattern}"'
+        raise TranslationMapError(error_message)
+
+
 def _split_files_by_pattern_matching(
-        files: Iterable[PurePath],
-        pattern: str,
-        ) -> tuple[list[PurePath], list[PurePath]]:
-    def split_iterable(
-            it: Iterable[Any],
-            predicate: Callable[[Any], bool],
-            ) -> tuple[list[Any], list[Any]]:
-        it1, it2 = tee(it)
-        return list(filter(predicate, it1)), list(filterfalse(predicate, it2))
+        files: Iterable[Path],
+        regex: re.Pattern,
+        ) -> tuple[list[tuple[Path, re.Match]], list[Path]]:
+    matches = []
+    remaining_files = []
 
-    def is_match(file: Path) -> bool:
-        return fnmatch.fnmatchcase(file.as_posix(), pattern)
+    for file in files:
+        match = regex.fullmatch(file.as_posix())
+        if match:
+            matches.append((file, match))
+        else:
+            remaining_files.append(file)
 
-    return split_iterable(files, is_match)
+    return matches, remaining_files
 
 
 def _gen_dst_file_path(
         dst_pattern: str,
-        matched_file: PurePath,
+        matched_file: Path,
+        regex_match: re.Match,
         additional_markers: Mapping[str, str],
         ) -> Path:
-    tokens = _tokenize_dst_pattern(dst_pattern)
-    tokens = [_substitute_markers(token, matched_file, additional_markers)
-              for token in tokens]
-    return Path().joinpath(*tokens)
-
-
-def _tokenize_dst_pattern(dst_pattern: str) -> list[str]:
-    tokens = re.split('(<.*?>)', dst_pattern)
-    tokens = [token.strip(r'\/') for token in tokens]
-    tokens = [token for token in tokens if token]
-    return tokens
+    dst_file_path = _substitute_markers(
+            dst_pattern,
+            matched_file,
+            regex_match,
+            additional_markers,
+            )
+    return Path(dst_file_path)
 
 
 def _substitute_markers(
-        token: str,
-        matched_file: PurePath,
+        dst_pattern: str,
+        matched_file: Path,
+        regex_match: re.Match,
         additional_markers: Mapping[str, str],
         ) -> str:
+    def raise_error(error_message: str) -> NoReturn:
+        rule_desc = f'(rule "{regex_match.re.pattern}": "{dst_pattern}")'
+        full_error_message = f'{error_message} {rule_desc}'
+        raise TranslationMapError(full_error_message)
+
+    def _parse_marker_key(key: str) -> tuple[str, str]:
+        match = re.fullmatch(r'(\w+):(\w+)', key)
+        if not match:
+            error_message = f'unable to parse marker "{key}"'
+            raise_error(error_message)
+        return match[1], match[2]
+
     def repl(match: re.Match) -> str:
         key = match[1]
 
-        if key == 'path':
+        if not key:
             return str(matched_file)
-
-        if key == 'name':
-            return matched_file.name
-
-        if key == 'parent':
-            return str(matched_file.parent)
 
         if key in additional_markers:
             return additional_markers[key]
 
-        raise UnknownMarkerError(key)
+        provider, prop = _parse_marker_key(key)
 
-    return re.sub('^<(.*)>$', repl, token)
+        if provider == 'path':
+            try:
+                return str(getattr(matched_file, prop))
+            except AttributeError:
+                error_message = f'unknown path attribute "{prop}"'
+                raise_error(error_message)
+
+        if provider == 'capt':
+            group_index = int(prop) if prop.isnumeric() else prop
+            try:
+                if group_index == 0:
+                    raise IndexError
+                return regex_match.group(group_index)
+            except IndexError:
+                error_message = f'wrong capture group "{group_index}"'
+                raise_error(error_message)
+
+        error_message = f'unknown marker "{key}"'
+        raise_error(error_message)
+
+    return re.sub('<(.*?)>', repl, dst_pattern)

@@ -61,12 +61,12 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
         files = [PurePath(node.rel_path) for node in file_tree.nodes if node.kind == 'file']
         return files
 
-    def fetch_data(self, dst_dir: str | Path, *, rules: dict[str, str]) -> None:
+    def fetch_data(self, dst_dir: str | Path, *, rules: list[str, str]) -> None:
         files = self.src_files
         file_translation_map = create_file_translation_map(
                 files=files,
                 rules=rules,
-                additional_markers={'root_dir': PurePath(self.config.url).name},
+                additional_markers={'source:desc': PurePath(self.config.url).name},
                 check_skipped_files=True,
                 )
 

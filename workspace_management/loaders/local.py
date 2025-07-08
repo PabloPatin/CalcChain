@@ -28,12 +28,12 @@ class LocalLoader(BaseLoader[LocalLoaderConfig]):
         files = [file.relative_to(target_dir.resolve()) for file in files]
         return files
 
-    def fetch_data(self, dst_dir: str | Path, *, rules: dict[str, str]) -> None:
+    def fetch_data(self, dst_dir: str | Path, *, rules: list[str, str]) -> None:
         files = self.src_files
         file_translation_map = create_file_translation_map(
                 files=files,
                 rules=rules,
-                additional_markers={'root_dir': Path(self.config.path).name},
+                additional_markers={'source:desc': Path(self.config.path).name},
                 check_skipped_files=True,
                 )
 
