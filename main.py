@@ -6,9 +6,10 @@ from workspace_management import WorkspaceManager
 
 def main() -> None:
     args = parse_args()
-
-    manager = WorkspaceManager(args.path_to_workdir)
-    init_workspace(manager)
+    match args.command:
+        case 'init-ws':
+            manager = WorkspaceManager(args.path)
+            init_workspace(manager)
 
 
 def init_workspace(manager: WorkspaceManager) -> None:
@@ -22,11 +23,9 @@ def init_workspace(manager: WorkspaceManager) -> None:
 
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="command", help="Доступные команды")
-
-    parser_init_ws = subparsers.add_parser("init_workspace")
-    parser.a
-    parser.add_argument('--path', type=str)
+    subparsers = parser.add_subparsers(dest='command', help='Доступные команды')
+    initial_parser = subparsers.add_parser('init-ws', help='Инициализатор рабочей области')
+    initial_parser.add_argument('--path', type=str)
     args = parser.parse_args()
     return args
 
