@@ -12,12 +12,15 @@ class BaseLoader[T](metaclass=ABCMeta):
     _type: str = None
     _config_cls: type[T] = None
 
-    def __init__(self, configs: dict):
-        self.config: T | ConfigInterface = self._config_cls(configs)
+    def __init__(self, configs: dict | T):
+        if isinstance(configs, self._config_cls):
+            self.config: T | ConfigInterface = configs
+        else:
+            self.config: T | ConfigInterface = self._config_cls(configs)
 
     @classmethod
     def can_handle_source(cls, configs: dict) -> bool:
-        return configs.get('source_type') == cls._type
+        return configs.get('type') == cls._type
 
     @property
     @abstractmethod
@@ -32,3 +35,8 @@ class BaseLoader[T](metaclass=ABCMeta):
     @abstractmethod
     def src_files(self) -> list[Path]:
         pass
+
+    @classmethod
+    @property
+    def config_cls(cls) -> type[ConfigInterface]:
+        return cls._config_cls

@@ -3,9 +3,9 @@ from .local import LocalLoader
 from .svn import SvnLoader
 
 
-def handle_source(source_config: dict) -> BaseLoader:
+def handle_source(source_config: dict) -> type[BaseLoader]:
     available_loaders = BaseLoader.__subclasses__()
     for loader_class in available_loaders:
         if loader_class.can_handle_source(source_config):
-            return loader_class(source_config)
+            return loader_class
     raise LoaderNotFoundError

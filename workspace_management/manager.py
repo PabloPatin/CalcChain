@@ -6,16 +6,22 @@ from pathlib import Path
 
 import toml
 
-from .config_wrapper import config, ConfigInterface
+from .config_wrapper import config, ConfigInterface, ConfigUnion
 from .loaders import handle_source
 from .structure_info_data import Info
-from .test_rules import DATA_RULES, EXEC_RULES
+from .test_rules import RULES
+
+
+@config
+class RulesConfig:
+    rule_set: str
 
 
 @config
 class Config:
-    exec: dict | ConfigInterface
-    data: list[dict | ConfigInterface]
+    data_rules_path: str
+    exec: dict | ConfigInterface | ConfigUnion
+    data: list[dict | ConfigInterface | ConfigUnion]
 
 
 class WorkspaceNotFoundError(OSError):
@@ -62,48 +68,37 @@ class WorkspaceManager:
         exec_path = self.work_path / self.__exec_dir
         exec_path.mkdir(parents=True, exist_ok=True)
 
-        loader = handle_source(self.config.exec)
-        loader.fetch_data(exec_path, rules=EXEC_RULES)
+        loader_cls = handle_source(self.config.exec)
+        self.config.exec = ConfigUnion(
+                self.config.exec,
+                rules=RulesConfig,
+                source=loader_cls.config_cls,  # noqa pycharm
+                )
+        loader = loader_cls(self.config.exec.source)
+
+        loader.fetch_data(exec_path, rules=RULES[self.config.exec.rule_set])
         self.info.sources.append(loader.info)
-        self.config.exec = loader.config
-        self.hash_all()
 
     def load_data(self) -> None:
         data_path = self.work_path / self.__data_dir
         data_path.mkdir(parents=True, exist_ok=True)
         tmp_config_data = []
-        for data_config in self.config.data:
-            loader = handle_source(data_config)
-            loader.fetch_data(data_path, rules=DATA_RULES)
+        for data_config_dict in self.config.data:
+            loader_cls = handle_source(data_config_dict)
+            data_config = ConfigUnion(
+                    data_config_dict,
+                    rules=RulesConfig,
+                    source=loader_cls.config_cls,  # noqa pycharm
+                    )
+            loader = loader_cls(data_config.source)
+            loader.fetch_data(data_path, rules=RULES[data_config.rule_set])
 
             self.info.sources.append(loader.info)
-            tmp_config_data.append(loader.config)
+            tmp_config_data.append(data_config)
 
         self.config.data = tmp_config_data
-        self.hash_all()
-
-    # def load_exec_from_svn(self, svn_config: SvnExportConfig, to_local_dir: str) -> None:
-    #     file_info = self.svn_tool.load_directory_from_config(url=svn_config.url,
-    #                                                          revision=svn_config.revision,
-    #                                                          local_path=to_local_dir)
-    #     svn_config.revision = file_info.commit_revision
-    #     svn_data = SvnSource(
-    #             url=file_info.url,
-    #             rev=file_info.commit_revision,
-    #             repo_uuid=file_info.repository_uuid,
-    #             type='exec',
-    #             )
-    #     self.info.sources.append(svn_data)
-    #
-    # def load_exec_from_local(self, local_config: LocalExportConfig, to_local_dir: str) -> None:
-    #     self.local_source_tool.load_directory_from_config(path=local_config.path,
-    #                                                       local_path=to_local_dir)
-    #     self.info.sources.append(LocalSource(type='exec'))
 
     def hash_dir(self, dir_path: str | Path) -> None:
-        """
-        Хэширует все файлы в указанном каталоге рекурсивно и записывает их в info
-        """
         dir_path = self.work_path / dir_path
         for path, dirs, files in dir_path.walk():
             for file in files:
@@ -122,13 +117,11 @@ class WorkspaceManager:
                 hasher.update(chunk)
         return hasher.hexdigest()
 
-    def hash_all(self) -> None:
-        """Хэширует все файлы в рабочей области"""
+    def hash_ws_files(self) -> None:
         self.hash_dir('.')
 
     def dump_config(self) -> None:
         config_lock = self.work_path / 'config.lock.toml'
-        print(self.config.to_dict())
         with config_lock.open('w', encoding='utf-8') as f:
             toml.dump(self.config.to_dict(), f)
 

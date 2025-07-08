@@ -15,13 +15,18 @@ def init_workspace(manager: WorkspaceManager) -> None:
     manager.read_config()
     manager.load_exec()
     manager.load_data()
-    manager.dump_info()
     manager.dump_config()
+    manager.hash_ws_files()
+    manager.dump_info()
 
 
 def parse_args() -> Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument('path_to_workdir')
+    subparsers = parser.add_subparsers(dest="command", help="Доступные команды")
+
+    parser_init_ws = subparsers.add_parser("init_workspace")
+    parser.a
+    parser.add_argument('--path', type=str)
     args = parser.parse_args()
     return args
 
