@@ -11,4 +11,5 @@ pyinstaller==6.11.1
     packaging==24.2
   pywin32-ctypes==0.2.3
   setuptools==75.6.0
-toml==0.10.2
+# toml==0.10.2
+tomlkit==0.13.3
