@@ -29,6 +29,8 @@ def init_workspace(manager: WorkspaceManager) -> None:
 def check_files(manager: WorkspaceManager) -> None:
     info = manager.load_info()
     changed_files = manager.check_hashes(info.hash_sums)
+    if changed_files:
+        print('Файлы изменены:')
     for file in changed_files:
         print(file)
 
