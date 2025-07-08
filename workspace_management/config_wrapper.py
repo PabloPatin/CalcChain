@@ -1,11 +1,9 @@
-import warnings
 from abc import ABCMeta, abstractmethod
-from collections.abc import KeysView
-from dataclasses import dataclass, asdict
+from collections.abc import KeysView, Callable
+from dataclasses import dataclass
 from functools import wraps, WRAPPER_ASSIGNMENTS
-from os import GenericAlias
-from types import UnionType
-from typing import get_origin
+from types import UnionType, GenericAlias
+from typing import get_origin, Any
 
 
 class ConfigValidationError(Exception):
@@ -25,48 +23,11 @@ class ConfigTypeError(ConfigValidationError):
                 )
 
 
-class ExcessParamsWarning(Warning):
-    pass
-
-
-def _drop_excess_configs(configs: dict, annotations: dict) -> dict:
-    if other_keys := configs.keys() - annotations.keys():
-        warnings.warn(
-                f'В файле конфигурации заданы лишние параметры {other_keys}',
-                ExcessParamsWarning,
+class ExcessParamsError(ConfigValidationError):
+    def __init__(self, excess_keys: set[str]) -> None:
+        super().__init__(
+                f'В файле конфигурации заданы лишние параметры {excess_keys}',
                 )
-
-    for key in other_keys:
-        configs.pop(key)
-
-    return configs
-
-
-def _check_needed_configs(configs: dict, annotations: dict, defaults: KeysView[str]) -> None:
-    lost_keys = {
-        key for key, value in annotations.items()
-        if key not in configs.keys() | defaults
-        }
-    if lost_keys:
-        raise LostConfigsError(lost_keys)
-
-
-def _check_configs_types(configs: dict, annotations: dict) -> None:
-    for key, _type in annotations.items():
-        _type = get_origin(_type) if isinstance(_type, GenericAlias) else _type
-        if key in configs and not isinstance(configs[key], _type):
-            raise ConfigTypeError(key, _type, type(configs[key]))
-
-
-def _expand_config(configs: dict, annotations: dict) -> dict:
-    for key, _type in annotations.items():
-        if (
-                not isinstance(_type, UnionType)
-                and not isinstance(_type, GenericAlias)
-                and issubclass(_type, ConfigInterface)
-        ):
-            configs[key] = _type(configs[key])
-    return configs
 
 
 class ConfigInterface(metaclass=ABCMeta):
@@ -79,38 +40,121 @@ class ConfigInterface(metaclass=ABCMeta):
         pass
 
 
-def config[T](config_cls: type[T]) -> type[ConfigInterface] | type[T]:
-    config_cls = dataclass(config_cls)
-
-    @wraps(config_cls,
-           assigned=(*WRAPPER_ASSIGNMENTS, '__dataclass_fields__', '__dataclass_params__'),
-           updated=())
-    class ConfigWrapper(config_cls, ConfigInterface):
-        def __init__(self, configs: dict):
-            # TODO: сделать функции методами
-            configs = _drop_excess_configs(configs, config_cls.__annotations__)
-
-            _check_needed_configs(configs, config_cls.__annotations__, vars(config_cls).keys())
-
-            _check_configs_types(configs, config_cls.__annotations__)
-
-            configs = _expand_config(configs, config_cls.__annotations__)
-
-            config_cls.__init__(self, **configs)
-
-        def to_dict(self: type[T]) -> dict:
-            return asdict(self)
-
-    return ConfigWrapper
+def asdict(data: Any) -> dict | list:  # noqa ANN401
+    if isinstance(data, ConfigInterface):
+        return data.to_dict()
+    if isinstance(data, dict):
+        return {key: asdict(value) for key, value in data.items()}
+    elif isinstance(data, list | tuple | set):
+        return [asdict(item) for item in data]
+    else:
+        return data
 
 
-if __name__ == '__main__':
-    @config
-    class Data:
-        a: int
-        b: str
-        c: float = 1.8
+def _split_excess_configs(configs: dict, annotations: dict,
+                          raise_error: bool = True) -> tuple[dict, dict]:
+    if (other_keys := configs.keys() - annotations.keys()) and raise_error:
+        raise ExcessParamsError(other_keys)
+
+    others = {key: configs.pop(key) for key in other_keys}
+
+    return configs, others
 
 
-    d = Data({'a': 1, 'b': 'lol', 'c': 1.9, 'd': 2.1})
-    print(d)
+def config[T](cls: type[T] | None = None, partial: bool = False) -> (
+        type[T] | type[ConfigInterface] | Callable
+):
+    def decorator(config_cls: type[T]) -> type[T] | type[ConfigInterface]:
+        config_cls = dataclass(config_cls)
+
+        def _check_needed_configs(configs: dict, annotations: dict,
+                                  defaults: KeysView[str]) -> None:
+            lost_keys = {
+                key for key, value in annotations.items()
+                if key not in configs.keys() | defaults
+                }
+            if lost_keys:
+                raise LostConfigsError(lost_keys)
+
+        def _check_configs_types(configs: dict, annotations: dict) -> None:
+            for key, _type in annotations.items():
+                _type = get_origin(_type) if isinstance(_type, GenericAlias) else _type
+                if key in configs and not isinstance(configs[key], _type):
+                    raise ConfigTypeError(key, _type, type(configs[key]))
+
+        def _expand_config(configs: dict, annotations: dict) -> dict:
+            for key, _type in annotations.items():
+                if (
+                        not isinstance(_type, UnionType)
+                        and not isinstance(_type, GenericAlias)
+                        and issubclass(_type, ConfigInterface)
+                ):
+                    configs[key] = _type(configs[key])
+            return configs
+
+        @wraps(config_cls,
+               assigned=(*WRAPPER_ASSIGNMENTS, '__dataclass_fields__', '__dataclass_params__'),
+               updated=())
+        class ConfigWrapper(config_cls, ConfigInterface):
+            def __init__(self, configs: dict, _allow_extra: bool = partial):
+                configs, extra_configs = _split_excess_configs(
+                        configs,
+                        config_cls.__annotations__,
+                        raise_error=not _allow_extra,
+                        )
+
+                _check_needed_configs(configs, config_cls.__annotations__, vars(config_cls).keys())
+
+                configs = _expand_config(configs, config_cls.__annotations__)
+
+                _check_configs_types(configs, config_cls.__annotations__)
+
+                config_cls.__init__(self, **configs)
+                if partial:
+                    self.extra_configs = extra_configs
+
+            def to_dict(self: type[T]) -> dict:
+                return asdict(self.__dict__)
+
+        return ConfigWrapper
+
+    if cls is None:
+        return decorator
+    else:
+        return decorator(cls)
+
+
+class ConfigUnion(ConfigInterface):
+    def __init__(self, configs: dict, **config_classes: type[ConfigInterface]):
+        self.configs = {}
+        remain = configs
+        for attr, config_cls in config_classes.items():
+            found, remain = _split_excess_configs(
+                    remain,
+                    config_cls.__annotations__,
+                    raise_error=False,
+                    )
+            self.configs[attr] = config_cls(found)
+        if remain:
+            raise ExcessParamsError(set(remain.keys()))
+
+    def __getattribute__(self, item: str):  # noqa ANN204
+        try:
+            return object.__getattribute__(self, item)
+        except AttributeError:
+            pass
+        for config_name in self.configs:
+            if item == config_name:
+                return self.configs[config_name]
+        for config_values in self.configs.values():
+            try:
+                return config_values.__getattribute__(item)
+            except AttributeError:
+                pass
+        raise AttributeError
+
+    def to_dict(self) -> dict:
+        data = {}
+        for conf in self.configs.values():
+            data |= conf.to_dict()
+        return data
