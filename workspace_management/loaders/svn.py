@@ -51,19 +51,19 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
     @raise_error
     def __init__(self, configs: dict) -> None:
         super().__init__(configs)
-        self._connector = SvnClient(self.config.url)
-        self.config.revision = self._connector.info(
+        self._client = SvnClient(self.config.url)
+        self.config.revision = self._client.info(
                 revision=self.config.revision,
                 ).entry_revision
 
     @property
     def info(self) -> dict:
-        return self.config.to_dict() | {'repo_uuid': self._connector.info().repository_uuid}
+        return self.config.to_dict() | {'repo_uuid': self._client.info().repository_uuid}
 
     @property
     @raise_error
     def src_files(self) -> list[PurePath]:
-        file_tree = self._connector.list(recursive=True, revision=self.config.revision)
+        file_tree = self._client.list(recursive=True, revision=self.config.revision)
         files = [PurePath(node.rel_path) for node in file_tree.nodes if node.kind == 'file']
         return files
 
@@ -86,7 +86,7 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
         if dst_path.exists():
             raise LoaderError(f'Невозможно перезаписать файл {dst_path}')
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        self._connector.export(
+        self._client.export(
                 PurePath(src_file).as_posix(),
                 str(dst_path),
                 revision=self.config.revision,
