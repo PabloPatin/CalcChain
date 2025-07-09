@@ -32,7 +32,11 @@ class LocalLoader(BaseLoader[LocalLoaderConfig]):
 
     @property
     def info(self) -> dict:
-        return self.config.to_dict() | {'hostname': socket.gethostname()}
+        return (
+                self.config.to_dict() |
+                {'hostname': socket.gethostname(),
+                 'versionable': False}
+        )
 
     @property
     @raise_error
@@ -45,7 +49,10 @@ class LocalLoader(BaseLoader[LocalLoaderConfig]):
         return files
 
     @raise_error
-    def fetch_data(self, dst_dir: str | Path, *, rules: list[str, str]) -> None:
+    def fetch_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
+        if rules is None:
+            rules = [['.*', '<>']]
+
         file_translation_map = create_file_translation_map(
                 files=self.src_files,
                 rules=rules,

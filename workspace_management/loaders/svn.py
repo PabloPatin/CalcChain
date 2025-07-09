@@ -58,7 +58,11 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
 
     @property
     def info(self) -> dict:
-        return self.config.to_dict() | {'repo_uuid': self._client.info().repository_uuid}
+        return (
+                self.config.to_dict() |
+                {'repo_uuid': self._client.info().repository_uuid,
+                 'versionable': True}
+        )
 
     @property
     @raise_error
@@ -68,7 +72,10 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
         return files
 
     @raise_error
-    def fetch_data(self, dst_dir: str | Path, *, rules: list[str, str]) -> None:
+    def fetch_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
+        if rules is None:
+            rules = [['.*', '<>']]
+
         files = self.src_files
         file_translation_map = create_file_translation_map(
                 files=files,
