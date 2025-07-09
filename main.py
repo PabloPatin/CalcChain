@@ -49,10 +49,6 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
     return args
 
 
-def init_workspace(manager: WorkspaceManager) -> None:
-
-
-
 def check_files(manager: WorkspaceManager, ignore: list[str] | None = None) -> None:
     info = manager.load_ws_info()
     changed_files = manager.check_hashes(info.hash_sums, ignore=ignore)

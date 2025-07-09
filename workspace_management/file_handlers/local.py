@@ -1,10 +1,12 @@
 import shutil
 import socket
+from abc import ABCMeta
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 
-from workspace_management.loaders.base import BaseLoader, LoaderError
+from workspace_management.file_handlers.base import BaseHandler, BaseRecorder
+from workspace_management.file_handlers.base import BaseLoader, LoaderError
 from workspace_management.mapping import create_file_translation_map
 from workspace_management.simple_config import config
 
@@ -26,17 +28,26 @@ class LocalLoaderConfig:
     path: str
 
 
-class LocalLoader(BaseLoader[LocalLoaderConfig]):
+@config
+class LocalRecorderConfig:
+    type: str
+    path: str
+
+
+class BaseLocalHandler(BaseHandler, metaclass=ABCMeta):
     _type = 'local'
-    _config_cls = LocalLoaderConfig
+
+    @property
+    def is_versionable(self) -> bool:
+        return False
 
     @property
     def info(self) -> dict:
-        return (
-                self.config.to_dict() |
-                {'hostname': socket.gethostname(),
-                 'versionable': False}
-        )
+        return {'hostname': socket.gethostname()} | super().info
+
+
+class LocalLoader(BaseLocalHandler, BaseLoader):
+    _config_cls = LocalLoaderConfig
 
     @property
     @raise_error
@@ -71,3 +82,9 @@ class LocalLoader(BaseLoader[LocalLoaderConfig]):
             raise LoaderError(f'Невозможно перезаписать файл {dst_path}')
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src_file, dst_path)
+
+    class LocalRecorder(BaseLocalHandler, BaseRecorder):
+        _config_cls = LocalRecorderConfig
+
+        def send_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
+            pass

@@ -1,10 +1,12 @@
+from abc import ABCMeta
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path, PurePath
 
 from svn import SvnClient, SvnError
 from svn.data_structures import Depth
-from workspace_management.loaders.base import BaseLoader, LoaderError
+from workspace_management.file_handlers.base import BaseLoader, LoaderError, BaseHandler, \
+    BaseRecorder
 from workspace_management.mapping import create_file_translation_map
 from workspace_management.simple_config import config
 
@@ -44,25 +46,38 @@ class SvnLoaderConfig:
     revision: str | int = 'HEAD'
 
 
-class SvnLoader(BaseLoader[SvnLoaderConfig]):
+@config
+class SvnRecorderConfig:
+    type: str
+    url: str
+
+
+class BaseSvnHandler(BaseHandler, metaclass=ABCMeta):
     _type = 'svn'
-    _config_cls = SvnLoaderConfig
+
+    @property
+    def is_versionable(self) -> bool:
+        return True
 
     @raise_error
     def __init__(self, configs: dict) -> None:
         super().__init__(configs)
         self._client = SvnClient(self.config.url)
-        self.config.revision = self._client.info(
-                revision=self.config.revision,
-                ).entry_revision
 
     @property
     def info(self) -> dict:
-        return (
-                self.config.to_dict() |
-                {'repo_uuid': self._client.info().repository_uuid,
-                 'versionable': True}
-        )
+        return {'repo_uuid': self._client.info().repository_uuid} | super().info
+
+
+class SvnLoader(BaseSvnHandler, BaseLoader):
+    _config_cls = SvnLoaderConfig
+
+    @raise_error
+    def __init__(self, configs: dict) -> None:
+        super().__init__(configs)
+        self.config.revision = self._client.info(
+                revision=self.config.revision,
+                ).entry_revision
 
     @property
     @raise_error
@@ -72,7 +87,7 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
         return files
 
     @raise_error
-    def fetch_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
+    def fetch_data(self, dst_dir: str | PurePath, *, rules: list | None = None) -> None:
         if rules is None:
             rules = [['.*', '<>']]
 
@@ -98,3 +113,10 @@ class SvnLoader(BaseLoader[SvnLoaderConfig]):
                 str(dst_path),
                 revision=self.config.revision,
                 depth=Depth.EMPTY)
+
+
+class SvnRecorder(BaseSvnHandler, BaseRecorder):
+    _config_cls = SvnRecorderConfig
+
+    def send_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
+        pass

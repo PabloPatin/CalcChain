@@ -6,8 +6,8 @@ from pathlib import Path
 
 import tomlkit
 
+from .file_handlers import find_loader
 from .info_data import Info, dataclass_from_dict
-from .loaders import find_loader
 from .simple_config import config, ConfigInterface, ConfigUnion
 from .test_rules import LOADER_RULES
 
@@ -38,11 +38,13 @@ class WrongWorkspaceError(Exception):
 
 
 class NotVersionedSourceError(Exception):
+    pass
 
 
 class WorkspaceManager:
     __config_file = Path('config.toml')
     __config_lock_file = Path('config.lock.toml')
+    __record_config_file = Path('record_config.toml')
     __info_file = Path('info.json')
 
     # __exec_dir = Path('exec')
@@ -73,7 +75,7 @@ class WorkspaceManager:
     def read_toml_config(
             self,
             config_file: str | Path,
-            config_cls: type[ConfigInterface] | None = None
+            config_cls: type[ConfigInterface] | None = None,
             ) -> dict | ConfigInterface:
         config_file = self.work_path / config_file
         with config_file.open('rb') as f:
@@ -163,7 +165,12 @@ class WorkspaceManager:
             ]
         return changed_files
 
-    def check_non_versionable_source(self, sources: list[dict]):
+    def check_non_versionable_source(self, sources: list[dict]) -> list[dict]:
         return list(filter(lambda source: not source['versionable'], sources))
 
-
+    def record_results(self):
+        self.load_ws_info()
+        if self.check_non_versionable_source(self.info.sources):
+            raise NotVersionedSourceError('Не все исходные данные версированны')
+        if self.check_hashes(self.info.hash_sums):
+            raise
