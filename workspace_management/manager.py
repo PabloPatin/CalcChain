@@ -9,7 +9,7 @@ import tomlkit
 from .info_data import Info, dataclass_from_dict
 from .loaders import find_loader
 from .simple_config import config, ConfigInterface, ConfigUnion
-from .test_rules import RULES
+from .test_rules import LOADER_RULES
 
 
 @config
@@ -18,8 +18,7 @@ class RulesConfig:
 
 
 @config
-class Config:
-    rules_file: str
+class InitialConfig:
     exec: dict | ConfigInterface | ConfigUnion
     data: list[dict | ConfigInterface | ConfigUnion]
 
@@ -38,50 +37,63 @@ class WrongWorkspaceError(Exception):
                 )
 
 
+class NotVersionedSourceError(Exception):
+
+
 class WorkspaceManager:
     __config_file = Path('config.toml')
     __config_lock_file = Path('config.lock.toml')
     __info_file = Path('info.json')
-    __exec_dir = Path('exec')
-    __data_dir = Path('data')
 
-    def __init__(self, ws_path: str | Path, check_init: bool = False):
+    # __exec_dir = Path('exec')
+    # __data_dir = Path('data')
+
+    def __init__(self, ws_path: str | Path):
         self.work_path = Path(ws_path).resolve()
-        if check_init:
-            self.__check_ws_initial()
-        self.config = self.read_config()
         self.info = Info()
+        self.config = None
 
-    def __check_ws_initial(self) -> None:
+    def initialize_ws(self):
+        self._check_ws_initial()
+        self.config = self.read_toml_config(self.__config_file, InitialConfig)
+
+        self.load_exec()
+        self.load_data()
+        self.lock_config()
+        self.hash_ws_files()
+        self.save_ws_info()
+
+    def _check_ws_initial(self) -> None:
         if not self.work_path.is_dir():
             raise WorkspaceNotFoundError(self.work_path)
         ws_content = [path.name for path in self.work_path.iterdir()]
         if ws_content != [self.__config_file.name]:
             raise WrongWorkspaceError(ws_content)
 
-    def read_config(self) -> Config | ConfigInterface:
-        config_file = self.work_path / self.__config_file
+    def read_toml_config(
+            self,
+            config_file: str | Path,
+            config_cls: type[ConfigInterface] | None = None
+            ) -> dict | ConfigInterface:
+        config_file = self.work_path / config_file
         with config_file.open('rb') as f:
-            return Config(tomllib.load(f))
+            return config_cls(tomllib.load(f)) if config_cls else tomllib.load(f)
 
     def load_exec(self) -> None:
-        exec_path = self.work_path / self.__exec_dir
-        exec_path.mkdir(parents=True, exist_ok=True)
+        # exec_path = self.work_path / self.__exec_dir
+        # exec_path.mkdir(parents=True, exist_ok=True)
 
         loader_cls = find_loader(self.config.exec)
-        self.config.exec = ConfigUnion(
-                self.config.exec,
-                source=loader_cls.config_cls,  # noqa pycharm
-                rules=RulesConfig,
-                )
-        loader = loader_cls(self.config.exec.source)
 
-        loader.fetch_data(exec_path, rules=RULES[self.config.exec.rule_set])
+        loader = loader_cls(self.config.exec)
+        self.config.exec = loader.config
+
+        loader.fetch_data(self.work_path)
         self.info.sources.append(loader.info)
 
     def load_data(self) -> None:
-        data_path = self.work_path / self.__data_dir
-        data_path.mkdir(parents=True, exist_ok=True)
+        # data_path = self.work_path / self.__data_dir
+        # data_path.mkdir(parents=True, exist_ok=True)
         tmp_config_data = []
         for data_config_dict in self.config.data:
             loader_cls = find_loader(data_config_dict)
@@ -91,7 +103,7 @@ class WorkspaceManager:
                     rules=RulesConfig,
                     )
             loader = loader_cls(data_config.source)
-            loader.fetch_data(data_path, rules=RULES[data_config.rule_set])
+            loader.fetch_data(self.work_path, rules=LOADER_RULES[data_config.rule_set])
 
             self.info.sources.append(loader.info)
             tmp_config_data.append(data_config)
@@ -150,3 +162,8 @@ class WorkspaceManager:
                and not any(Path(file).is_relative_to(Path(path)) for path in ignore)
             ]
         return changed_files
+
+    def check_non_versionable_source(self, sources: list[dict]):
+        return list(filter(lambda source: not source['versionable'], sources))
+
+

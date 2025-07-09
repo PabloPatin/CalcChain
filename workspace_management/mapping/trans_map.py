@@ -1,6 +1,6 @@
 import re
 from collections.abc import Iterable, Mapping
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import NoReturn
 
 
@@ -10,7 +10,7 @@ class TranslationMapError(Exception):
 
 def create_file_translation_map(
         *,
-        files: Iterable[Path],
+        files: Iterable[PurePath],
         rules: Iterable[list[str, str]],
         additional_markers: Mapping[str, str],
         check_skipped_files: bool = False,
@@ -26,7 +26,7 @@ def create_file_translation_map(
 
 
 def _create_translation_map(
-        files: Iterable[Path],
+        files: Iterable[PurePath],
         rules: Iterable[list[str, str]],
         additional_markers: Mapping[str, str],
         ) -> tuple[dict[Path, Path], list[Path]]:

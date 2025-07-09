@@ -50,12 +50,7 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
 
 
 def init_workspace(manager: WorkspaceManager) -> None:
-    manager.read_config()
-    manager.load_exec()
-    manager.load_data()
-    manager.lock_config()
-    manager.hash_ws_files()
-    manager.save_ws_info()
+
 
 
 def check_files(manager: WorkspaceManager, ignore: list[str] | None = None) -> None:
@@ -72,15 +67,14 @@ if __name__ == '__main__':
             prog='calc_manager',
             description='Среда для запуска расчётных скриптов',
             )
-
     args = parse_args(parser)
+
+    manager = WorkspaceManager(args.path)
 
     match args.command:
         case 'init-ws':
-            manager = WorkspaceManager(args.path, check_init=True)
-            init_workspace(manager)
+            manager.initialize_ws()
         case 'check-ws':
-            manager = WorkspaceManager(args.path)
             check_files(manager, args.ignore)
         case _:
             print(parser.print_help())

@@ -32,7 +32,7 @@ class BaseLoader[T](metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def fetch_data(self, dst_dir: str | Path, *, rules: dict[str, str]) -> None:
+    def fetch_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
         pass
 
     @property
