@@ -1,15 +1,17 @@
 import hashlib
 import json
+import tempfile
 import tomllib
+from copy import deepcopy
 from dataclasses import asdict
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import tomlkit
 
-from .file_handlers import find_loader
+from .file_handlers import find_loader, find_recorder
 from .info_data import Info, dataclass_from_dict
 from .simple_config import config, ConfigInterface, ConfigUnion
-from .test_rules import LOADER_RULES
+from .test_rules import LOADER_RULES, RECORDER_RULES
 
 
 @config
@@ -19,8 +21,13 @@ class RulesConfig:
 
 @config
 class InitialConfig:
-    exec: dict | ConfigInterface | ConfigUnion
-    data: list[dict | ConfigInterface | ConfigUnion]
+    exec: dict | ConfigInterface
+    data: list[dict | ConfigInterface]
+
+
+@config
+class RecordingConfig:
+    result: dict | ConfigInterface
 
 
 class WorkspaceNotFoundError(OSError):
@@ -37,7 +44,11 @@ class WrongWorkspaceError(Exception):
                 )
 
 
-class NotVersionedSourceError(Exception):
+class RecordingError(Exception):
+    pass
+
+
+class LoadingError(Exception):
     pass
 
 
@@ -47,23 +58,34 @@ class WorkspaceManager:
     __record_config_file = Path('record_config.toml')
     __info_file = Path('info.json')
 
-    # __exec_dir = Path('exec')
-    # __data_dir = Path('data')
-
-    def __init__(self, ws_path: str | Path):
+    def __init__(self, ws_path: str | Path, dry_run: bool = False):
+        self._dry_run = dry_run
         self.work_path = Path(ws_path).resolve()
         self.info = Info()
         self.config = None
 
-    def initialize_ws(self):
+    def initialize_ws(self) -> None:
+        if self._dry_run:
+            return self._dry_load()
+
         self._check_ws_initial()
         self.config = self.read_toml_config(self.__config_file, InitialConfig)
 
-        self.load_exec()
-        self.load_data()
+        self.config.exec = self.load_exec()
+        self.config.data = self.load_data()
+
         self.lock_config()
         self.hash_ws_files()
         self.save_ws_info()
+        return None
+
+    def _dry_load(self) -> None:
+        self.config = self.read_toml_config(self.__config_file, InitialConfig)
+        temp_dir = tempfile.TemporaryDirectory()
+        temp_path = Path(temp_dir.name).resolve()
+        self.config.exec = self.load_exec(dst_path=temp_path)
+        self.config.data = self.load_data(dst_path=temp_path)
+        temp_dir.cleanup()
 
     def _check_ws_initial(self) -> None:
         if not self.work_path.is_dir():
@@ -81,36 +103,65 @@ class WorkspaceManager:
         with config_file.open('rb') as f:
             return config_cls(tomllib.load(f)) if config_cls else tomllib.load(f)
 
-    def load_exec(self) -> None:
-        # exec_path = self.work_path / self.__exec_dir
-        # exec_path.mkdir(parents=True, exist_ok=True)
+    def load_exec(
+            self,
+            dst_path: str | Path | None = None,
+            config: dict | None = None,
+            ) -> ConfigInterface:
+        if not dst_path:
+            dst_path = self.work_path
+        elif not PurePath(dst_path).is_absolute():
+            dst_path = self.work_path / dst_path
+            dst_path.mkdir(parents=True, exist_ok=True)
+        if not dst_path.is_relative_to(self.work_path) and not self._dry_run:
+            raise LoadingError('Неверно указана директория для сохранения исполняемых файлов. '
+                               'Укажите папку внутри рабочего пространства!')
 
-        loader_cls = find_loader(self.config.exec)
+        if not config:
+            config = deepcopy(self.config.exec)
 
-        loader = loader_cls(self.config.exec)
-        self.config.exec = loader.config
+        loader_cls = find_loader(config)
+        loader = loader_cls(configs=config)
+        loader.fetch_data(dst_path)
 
-        loader.fetch_data(self.work_path)
+        config = loader.config
         self.info.sources.append(loader.info)
+        return config
 
-    def load_data(self) -> None:
-        # data_path = self.work_path / self.__data_dir
-        # data_path.mkdir(parents=True, exist_ok=True)
-        tmp_config_data = []
-        for data_config_dict in self.config.data:
+    def load_data(
+            self,
+            dst_path: str | Path | None = None,
+            config: dict | None = None,
+            ) -> list[ConfigInterface]:
+        if not dst_path:
+            dst_path = self.work_path
+        elif not PurePath(dst_path).is_absolute():
+            dst_path = self.work_path / dst_path
+            dst_path.mkdir(parents=True, exist_ok=True)
+        if not dst_path.is_relative_to(self.work_path) and not self._dry_run:
+            raise LoadingError('Неверно указана директория для сохранения файлов данных. '
+                               'Укажите папку внутри рабочего пространства!')
+
+        if not config:
+            config = deepcopy(self.config.data)
+
+        data_configs = []
+        for data_config_dict in config:
             loader_cls = find_loader(data_config_dict)
             data_config = ConfigUnion(
                     data_config_dict,
                     source=loader_cls.config_cls,  # noqa pycharm
                     rules=RulesConfig,
                     )
-            loader = loader_cls(data_config.source)
-            loader.fetch_data(self.work_path, rules=LOADER_RULES[data_config.rule_set])
 
+            loader = loader_cls(configs=data_config.source)
+            loader.fetch_data(dst_path, rules=LOADER_RULES[data_config.rule_set])
+
+            data_config.source = loader.config
+            data_configs.append(data_config)
             self.info.sources.append(loader.info)
-            tmp_config_data.append(data_config)
 
-        self.config.data = tmp_config_data
+        return data_configs
 
     def hash_dir(self, dir_path: str | Path) -> None:
         dir_path = self.work_path / dir_path
@@ -139,16 +190,16 @@ class WorkspaceManager:
         with config_lock.open('w', encoding='utf-8') as f:
             tomlkit.dump(self.config.to_dict(), f)
 
+    def save_ws_info(self) -> None:
+        info_path = self.work_path / self.__info_file
+        with info_path.open('w', encoding='utf-8') as file:
+            json.dump(asdict(self.info), file, ensure_ascii=False, indent=4)
+
     def load_ws_info(self) -> Info:
         info_path = self.work_path / self.__info_file
         with info_path.open('r', encoding='utf-8') as file:
             self.info = dataclass_from_dict(json.load(file), Info)
         return self.info
-
-    def save_ws_info(self) -> None:
-        info_path = self.work_path / self.__info_file
-        with info_path.open('w', encoding='utf-8') as file:
-            json.dump(asdict(self.info), file, ensure_ascii=False, indent=4)
 
     def check_hashes(
             self,
@@ -165,12 +216,67 @@ class WorkspaceManager:
             ]
         return changed_files
 
-    def check_non_versionable_source(self, sources: list[dict]) -> list[dict]:
+    def _check_non_versionable_sources(self, sources: list[dict]) -> list[dict]:
         return list(filter(lambda source: not source['versionable'], sources))
 
-    def record_results(self):
+    def record_results(self) -> None:
+        self.config = self.read_toml_config(self.__record_config_file, RecordingConfig)
+
+        if self._dry_run:
+            self._dry_save()
+            return
+
+        self.config.record = self.save_results(config=self.config.result)  # noqa pycharm
+
+    def _dry_save(self) -> None:
+        temp_dir = tempfile.TemporaryDirectory()
+        temp_path = Path(temp_dir.name).resolve()
+
+        recorder_cls = find_recorder(self.config.result)
+        if recorder_cls.is_versionable:
+            self.check_results()
+
+        config = {'type': 'local', 'path': str(temp_path),
+                  'rule_set': self.config.result['rule_set']}
+        self.save_results(config=config)
+
+        temp_dir.cleanup()
+
+    def check_results(self) -> None:
         self.load_ws_info()
-        if self.check_non_versionable_source(self.info.sources):
-            raise NotVersionedSourceError('Не все исходные данные версированны')
+        if self._check_non_versionable_sources(self.info.sources):
+            raise RecordingError('Не все исходные данные версированы')
         if self.check_hashes(self.info.hash_sums):
-            raise
+            raise RecordingError('Файлы источников были изменены')
+
+    def save_results(
+            self,
+            src_path: str | Path | None = None,
+            config: dict | None = None,
+            ) -> ConfigInterface:
+        if not src_path:
+            src_path = self.work_path
+        elif not PurePath(src_path).is_absolute():
+            src_path = self.work_path / src_path
+            src_path.mkdir(parents=True, exist_ok=True)
+        if not src_path.is_relative_to(self.work_path):
+            raise RecordingError('Неверно указана директория с файлами результатов. '
+                                 'Укажите папку внутри рабочего пространства!')
+
+        if not config:
+            config = deepcopy(self.config.result)
+
+        recorder_cls = find_recorder(config)
+        if recorder_cls.is_versionable:
+            self.check_results()
+
+        config = ConfigUnion(
+                config,  # noqa pycharm
+                receiver=recorder_cls.config_cls,  # noqa pycharm
+                rules=RulesConfig,
+                )
+        recorder = recorder_cls(src_dir=src_path, configs=config.receiver)
+        config.receiver = recorder.config
+
+        recorder.send_data(rules=RECORDER_RULES[config.rule_set])
+        return config

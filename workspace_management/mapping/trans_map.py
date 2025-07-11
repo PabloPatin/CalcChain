@@ -11,7 +11,7 @@ class TranslationMapError(Exception):
 def create_file_translation_map(
         *,
         files: Iterable[PurePath],
-        rules: Iterable[list[str, str]],
+        rules: Iterable[list[str, str]],  # noqa pycharm
         additional_markers: Mapping[str, str],
         check_skipped_files: bool = False,
         ) -> dict[Path, Path]:
@@ -27,7 +27,7 @@ def create_file_translation_map(
 
 def _create_translation_map(
         files: Iterable[PurePath],
-        rules: Iterable[list[str, str]],
+        rules: Iterable[list[str, str]],  # noqa pycharm
         additional_markers: Mapping[str, str],
         ) -> tuple[dict[Path, Path], list[Path]]:
     translation_map = {}

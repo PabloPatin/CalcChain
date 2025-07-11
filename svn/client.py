@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree
 
-from .commander import Commander
+from .commander import Commander, SvnError
 from .data_structures import Info, LogRecord, LogPath, Action, StorageTree, StorageNode, Depth
 
 path = str
@@ -17,8 +17,9 @@ class SvnClient(Commander):
     """Класс SvnClient предназначен для выполнения команд SVN при помощи обращения к утилите
     SVN CLI с использованием различных параметров"""
 
-    def __init__(self, url: str, username: str | None = None, password: str | None = None,
-                 svn_filepath: str = 'svn', trust_cert: bool = False, env: dict | None = None):
+    def __init__(self, url: str, *, username: str | None = None, password: str | None = None,
+                 svn_filepath: str = 'svn', trust_cert: bool = False, env: dict | None = None,
+                 check_exists: bool = True):
         """
         :arg url: Ссылка на репозиторий или папку в нём
         :param username: Имя пользователя (опционально)
@@ -34,11 +35,12 @@ class SvnClient(Commander):
         self.__svn_filepath = svn_filepath
         self.__trust_cert = trust_cert
         self.__env = env
-        self.set_url(url)
+        self.set_url(url, check_exists=check_exists)
 
-    def set_url(self, url: str) -> None:
+    def set_url(self, url: str, *, check_exists: bool = False) -> None:
         self.url = self.__reformat_link(url)
-        self.info()
+        if check_exists:
+            self.info()
 
     def run_command(self, subcommand: str, *args: str, split_lines: bool = False,
                     return_binary: bool = False, encoding: str | None = 'cp866',
@@ -234,14 +236,18 @@ class SvnClient(Commander):
         args.append('--force') if force else None
         self.run_command('import', '-m', message, *args, from_path, full_link)
 
-    def mkdir(self, rel_path: path, message: str = '', parents: bool = False,
-              encoding: str = 'utf-8') -> None:
+    def mkdir(self, rel_path: path | None = None, message: str = '', *, parents: bool = False,
+              encoding: str = 'utf-8', exist_ok: bool = False) -> None:
         full_link = self.__form_abs_link(rel_path)
         args = ['-q', '--encoding', encoding]
         args.append('--parents') if parents else None
-        self.run_command('mkdir', '-m', message, *args, full_link)
+        try:
+            self.run_command('mkdir', '-m', message, *args, full_link)
+        except SvnError as err:
+            if not (exist_ok and 'E160020' in err.error_codes):
+                raise err
 
-    def delete(self, rel_path: path, message: str = '', force: bool = False) -> None:
+    def delete(self, rel_path: path | None = None, message: str = '', force: bool = False) -> None:
         full_link = self.__form_abs_link(rel_path)
         args = ['-q']
         args.append('--force') if force else None

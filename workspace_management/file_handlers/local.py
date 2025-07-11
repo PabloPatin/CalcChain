@@ -5,9 +5,9 @@ from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 
-from workspace_management.file_handlers.base import BaseHandler, BaseRecorder
+from workspace_management.file_handlers.base import BaseFileHandler, BaseRecorder, RecorderError
 from workspace_management.file_handlers.base import BaseLoader, LoaderError
-from workspace_management.mapping import create_file_translation_map
+from workspace_management.mapping.search_files import get_files_in_dir
 from workspace_management.simple_config import config
 
 
@@ -34,7 +34,7 @@ class LocalRecorderConfig:
     path: str
 
 
-class BaseLocalHandler(BaseHandler, metaclass=ABCMeta):
+class BaseLocalHandler(BaseFileHandler, metaclass=ABCMeta):
     _type = 'local'
 
     @property
@@ -53,28 +53,29 @@ class LocalLoader(BaseLocalHandler, BaseLoader):
     @raise_error
     def src_files(self) -> list[Path]:
         target_dir = Path(self.config.path).resolve()
-        if not target_dir.is_dir():
-            raise FileNotFoundError(f'Не найдена директория {target_dir}')
-        files = [file for file in target_dir.rglob('*') if file.is_file()]
-        files = [file.relative_to(target_dir.resolve()) for file in files]
+        files = get_files_in_dir(target_dir, base_dir=target_dir)
         return files
 
     @raise_error
-    def fetch_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
-        if rules is None:
-            rules = [['.*', '<>']]
-
-        file_translation_map = create_file_translation_map(
-                files=self.src_files,
+    def fetch_data(
+            self,
+            dst_dir: str | Path,
+            *,
+            rules: list | None = None,
+            check_skipped: bool = True,
+            ) -> dict[Path, Path]:
+        file_translation_map = self._create_file_translation_map(
                 rules=rules,
                 additional_markers={'source:desc': Path(self.config.path).name},
-                check_skipped_files=True,
+                check_skipped=check_skipped,
                 )
 
         for src_file, dst_file in file_translation_map.items():
             src_path = Path(self.config.path) / src_file
             dst_path = Path(dst_dir) / dst_file
             self._fetch_file(src_path, dst_path)
+
+        return file_translation_map
 
     def _fetch_file(self, src_file: str | Path, dst_path: str | Path) -> None:
         dst_path = Path(dst_path)
@@ -83,8 +84,31 @@ class LocalLoader(BaseLocalHandler, BaseLoader):
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src_file, dst_path)
 
-    class LocalRecorder(BaseLocalHandler, BaseRecorder):
-        _config_cls = LocalRecorderConfig
 
-        def send_data(self, dst_dir: str | Path, *, rules: list | None = None) -> None:
-            pass
+class LocalRecorder(BaseLocalHandler, BaseRecorder):
+    _config_cls = LocalRecorderConfig
+
+    @raise_error
+    def send_data(
+            self,
+            *,
+            rules: list,
+            ) -> dict[Path, Path]:
+        file_translation_map = self._create_file_translation_map(rules)
+
+        dst_dir = Path(self.config.path)
+        self._check_dst_dir(dst_dir)
+
+        for src_file, dst_file in file_translation_map.items():
+            src_path = self.src_dir / src_file
+            dst_path = dst_dir / dst_file
+            if dst_path.exists():
+                raise LoaderError(f'Невозможно перезаписать файл {dst_path}')
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_path, dst_path)
+
+        return file_translation_map
+
+    def _check_dst_dir(self, dst_dir: Path) -> None:
+        if any(dst_dir.iterdir()):
+            raise RecorderError('Папка для выгрузки не пуста')

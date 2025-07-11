@@ -14,6 +14,12 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
             required=True,
             )
 
+    parent_parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Запустить без внесения изменений',
+            )
+
     subparsers = parser.add_subparsers(
             dest='command',
             title='Команды программы',
@@ -37,12 +43,19 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
                         'и находит файлы, которые были изменены.',
             parents=[parent_parser],
             )
+
     hash_check_parser.add_argument(
             '--ignore',
             nargs='*',
             help='Пути в рабочей области, которые не надо проверять',
             type=str,
             metavar='PATH',
+            )
+
+    hash_check_parser = subparsers.add_parser(
+            'save-results',
+            help='Сохранить результаты работы рассчётного кода',
+            parents=[parent_parser],
             )
 
     args = parser.parse_args()
@@ -65,12 +78,14 @@ if __name__ == '__main__':
             )
     args = parse_args(parser)
 
-    manager = WorkspaceManager(args.path)
+    manager = WorkspaceManager(args.path, dry_run=args.dry_run)
 
     match args.command:
         case 'init-ws':
             manager.initialize_ws()
         case 'check-ws':
             check_files(manager, args.ignore)
+        case 'save-results':
+            manager.record_results()
         case _:
             print(parser.print_help())
