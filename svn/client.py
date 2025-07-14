@@ -4,8 +4,9 @@ from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree
 
-from .commander import Commander, SvnError
+from .commander import Commander
 from .data_structures import Info, LogRecord, LogPath, Action, StorageTree, StorageNode, Depth
+from .exception import SvnError
 
 path = str
 rev = int | str | None
@@ -43,7 +44,7 @@ class SvnClient(Commander):
             self.info()
 
     def run_command(self, subcommand: str, *args: str, split_lines: bool = False,
-                    return_binary: bool = False, encoding: str | None = 'cp866',
+                    return_binary: bool = False, encoding: str | None = 'cp1251',
                     wd: path | None = None, join_stderr: bool = False) -> str | Sequence[
         str] | bytes:
         """Запускает команду SVN CLI и возвращает её вывод
@@ -58,9 +59,19 @@ class SvnClient(Commander):
         :return: Результат выполнения команды
         """
         cmd = self.__form_cmd(subcommand, *args)
-        return self.external_command(cmd, environment=self.__env, split_lines=split_lines,
-                                     return_binary=return_binary, encoding=encoding,
-                                     wd=wd, join_stderr=join_stderr)
+        output = self.external_command(cmd, environment=self.__env, split_lines=split_lines,
+                                       return_binary=return_binary, encoding=encoding,
+                                       wd=wd, join_stderr=join_stderr)
+        if output.return_code != 0:
+            raise SvnError(
+                    ' '.join(cmd),
+                    return_code=output.return_code,
+                    stdout=output.stdout,
+                    stderr=output.stderr,
+                    url=self.url,
+                    )
+
+        return output.stdout
 
     def __form_cmd(self, subcommand: str, *args: str) -> list[str]:
         cmd = [self.__svn_filepath, subcommand, '--non-interactive']
