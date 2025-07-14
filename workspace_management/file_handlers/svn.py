@@ -4,20 +4,20 @@ from abc import ABCMeta
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path, PurePath
-from typing import override
 
 from svn import SvnClient, SvnError
 from svn.data_structures import Depth
-from workspace_management.file_handlers.base import BaseLoader, LoaderError, BaseFileHandler, \
-    BaseRecorder, RecorderError
+from workspace_management.file_handlers.base import BaseLoader, FileHandlerError, \
+    BaseFileHandler, BaseRecorder, AuthorizationError
 from workspace_management.simple_config import config
 
 
 def raise_error(method: Callable) -> Callable:
-    wrong_repo_err_codes = ('E170013', 'E180001', 'E155007')
+    wrong_repo_err_codes = ('E180001', 'E155007', 'E731001')
     wrong_node_err_codes = ('E200009',)
     wrong_revision_err_codes = ('E160006',)
-    cannot_rewrite_file = ('E160020',)
+    cannot_rewrite_file_err_codes = ('E160020',)
+    cannot_get_credentials_err_codes = ('E170001',)
 
     def match_error_codes(
             error_codes: tuple[str, ...],
@@ -31,20 +31,26 @@ def raise_error(method: Callable) -> Callable:
             return method(*_, **__)
         except SvnError as err:
             if match_error_codes(err.error_codes, wrong_repo_err_codes):
-                raise LoaderError(
+                raise FileHandlerError(
                         f'\nРепозиторий не найден\n{err.stderr}',
                         )
             elif match_error_codes(err.error_codes, wrong_node_err_codes):
-                raise LoaderError(
+                raise FileHandlerError(
                         f'\nФайл в репозитории не найден\n{err.stderr}',
                         )
             elif match_error_codes(err.error_codes, wrong_revision_err_codes):
-                raise LoaderError(
+                raise FileHandlerError(
                         f'\nНеверно указана ревизия\n{err.stderr}',
                         )
-            elif match_error_codes(err.error_codes, cannot_rewrite_file):
-                raise LoaderError(
+            elif match_error_codes(err.error_codes, cannot_rewrite_file_err_codes):
+                raise FileHandlerError(
                         f'\nНевозможно перезаписать файл\n{err.stderr}',
+                        )
+            elif match_error_codes(err.error_codes, cannot_get_credentials_err_codes):
+                raise AuthorizationError(
+                        _type=BaseSvnHandler._type,  # noqa pycharm
+                        source_address=err.url,
+                        auth_parameters=['username', 'password'],
                         )
             return None
 
@@ -72,9 +78,14 @@ class BaseSvnHandler(BaseFileHandler, metaclass=ABCMeta):
         return True
 
     @raise_error
-    def __init__(self, configs: dict) -> None:
-        super().__init__(configs)
-        self._client = SvnClient(self.config.url)
+    def __init__(self, configs: dict, **__) -> None:
+        BaseFileHandler.__init__(self, configs, **__)
+        self._auth_data = self._credentials.get(self.config.url, {})
+        self._client = SvnClient(
+                self.config.url,
+                username=self._auth_data.get('username'),
+                password=self._auth_data.get('password'),
+                )
 
     @property
     def info(self) -> dict:
@@ -85,8 +96,8 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
     _config_cls = SvnLoaderConfig
 
     @raise_error
-    def __init__(self, configs: dict) -> None:
-        super().__init__(configs)
+    def __init__(self, configs: dict, **__) -> None:
+        BaseSvnHandler.__init__(self, configs, **__)
         self.config.revision = self._client.info(
                 revision=self.config.revision,
                 ).entry_revision
@@ -119,7 +130,7 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
     def _fetch_file(self, src_file: str | PurePath, dst_path: str | Path) -> None:
         dst_path = Path(dst_path)
         if dst_path.exists():
-            raise LoaderError(f'Невозможно перезаписать файл {dst_path}')
+            raise FileHandlerError(f'Невозможно перезаписать файл {dst_path}')
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         self._client.export(
                 PurePath(src_file).as_posix(),
@@ -131,14 +142,14 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
 class SvnRecorder(BaseRecorder, BaseSvnHandler):
     _config_cls = SvnRecorderConfig
 
-    @override
     def __init__(
             self,
             configs: dict,
             *,
             src_dir: str | Path,
+            **__,
             ) -> None:
-        BaseRecorder.__init__(self, configs, src_dir=src_dir)
+        BaseRecorder.__init__(self, configs, src_dir=src_dir, **__)
         self._client = SvnClient(self.config.url, check_exists=False)
 
     @raise_error
@@ -163,7 +174,7 @@ class SvnRecorder(BaseRecorder, BaseSvnHandler):
             src_path = self.src_dir / src_file
             dst_path = dst_dir / dst_file
             if dst_path.exists():
-                raise LoaderError(f'Невозможно перезаписать файл {dst_file}')
+                raise FileHandlerError(f'Невозможно перезаписать файл {dst_file}')
             dst_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src_path, dst_path)
         return temp_dir
@@ -171,4 +182,4 @@ class SvnRecorder(BaseRecorder, BaseSvnHandler):
     def _check_dst_dir(self, dst_dir: str | None = None) -> None:
         self._client.mkdir(rel_path=dst_dir, exist_ok=True)
         if self._client.list(rel_path=dst_dir, recursive=True).nodes:
-            raise RecorderError('Папка для выгрузки не пуста')
+            raise FileHandlerError('Папка для выгрузки не пуста')

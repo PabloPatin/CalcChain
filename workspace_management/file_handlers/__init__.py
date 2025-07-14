@@ -1,4 +1,5 @@
-from .base import BaseLoader, LoaderError, LoaderNotFoundError, BaseRecorder, RecorderNotFoundError
+from .base import (BaseLoader, BaseRecorder, FileHandlerError, FileHandlerNotFoundError,
+                   RecorderNotFoundError, LoaderNotFoundError)
 from .local import LocalLoader
 from .svn import SvnLoader
 

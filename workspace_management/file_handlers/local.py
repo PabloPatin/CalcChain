@@ -5,8 +5,8 @@ from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 
-from workspace_management.file_handlers.base import BaseFileHandler, BaseRecorder, RecorderError
-from workspace_management.file_handlers.base import BaseLoader, LoaderError
+from workspace_management.file_handlers.base import BaseFileHandler, BaseRecorder, BaseLoader, \
+    FileHandlerError
 from workspace_management.mapping.search_files import get_files_in_dir
 from workspace_management.simple_config import config
 
@@ -17,7 +17,7 @@ def raise_error(method: Callable) -> Callable:
         try:
             return method(*_, **__)
         except OSError as err:
-            raise LoaderError(err.__repr__())
+            raise FileHandlerError(err.__repr__())
 
     return wrapper
 
@@ -80,7 +80,7 @@ class LocalLoader(BaseLocalHandler, BaseLoader):
     def _fetch_file(self, src_file: str | Path, dst_path: str | Path) -> None:
         dst_path = Path(dst_path)
         if dst_path.exists():
-            raise LoaderError(f'Невозможно перезаписать файл {dst_path}')
+            raise FileHandlerError(f'Невозможно перезаписать файл {dst_path}')
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src_file, dst_path)
 
@@ -103,7 +103,7 @@ class LocalRecorder(BaseLocalHandler, BaseRecorder):
             src_path = self.src_dir / src_file
             dst_path = dst_dir / dst_file
             if dst_path.exists():
-                raise LoaderError(f'Невозможно перезаписать файл {dst_path}')
+                raise FileHandlerError(f'Невозможно перезаписать файл {dst_path}')
             dst_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src_path, dst_path)
 
@@ -111,4 +111,4 @@ class LocalRecorder(BaseLocalHandler, BaseRecorder):
 
     def _check_dst_dir(self, dst_dir: Path) -> None:
         if any(dst_dir.iterdir()):
-            raise RecorderError('Папка для выгрузки не пуста')
+            raise FileHandlerError('Папка для выгрузки не пуста')

@@ -2,13 +2,17 @@ import hashlib
 import json
 import tempfile
 import tomllib
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict
+from functools import wraps
 from pathlib import Path, PurePath
+from typing import TypeVar, Iterable
 
 import tomlkit
 
 from .file_handlers import find_loader, find_recorder
+from .file_handlers.base import AuthorizationError
 from .info_data import Info, dataclass_from_dict
 from .simple_config import config, ConfigInterface, ConfigUnion
 from .test_rules import LOADER_RULES, RECORDER_RULES
@@ -52,17 +56,59 @@ class LoadingError(Exception):
     pass
 
 
+Type = TypeVar('Type', bound=str)
+SourceAddress = TypeVar('SourceAddress', bound=str)
+AuthParam = TypeVar('AuthParam', bound=str)
+
+
 class WorkspaceManager:
     __config_file = Path('config.toml')
     __config_lock_file = Path('config.lock.toml')
     __record_config_file = Path('record_config.toml')
     __info_file = Path('info.json')
 
-    def __init__(self, ws_path: str | Path, dry_run: bool = False):
+    def __init__(
+            self,
+            ws_path: str | Path,
+            dry_run: bool = False,
+            auth_callback: Callable[
+                               [Type, SourceAddress, Iterable[AuthParam]],
+                               dict[AuthParam, str],
+                           ] | None = None,
+            ):
         self._dry_run = dry_run
+        self._auth_callback = auth_callback
+        self._auth_cache = {}
         self.work_path = Path(ws_path).resolve()
         self.info = Info()
         self.config = None
+
+    @staticmethod
+    def authorize(func: Callable) -> Callable:
+        @wraps(func)
+        def callback_handler(self, *_, **__) -> ...:  # noqa ANN001
+            try:
+                return func(self, *_, **__)
+            except AuthorizationError as err:
+                if not self._auth_callback:
+                    err.add_note('Передайте auth_callback, возвращающий соответствующие значения '
+                                 f'для указанного ресурса типа {err.type} в WorkspaceManager!')
+                    raise err
+                auth_params = self._auth_callback(
+                        err.type,
+                        err.source_address,
+                        err.required_parameters,
+                        )
+                self._auth_cache[err.source_address] = auth_params
+                return func(self, *_, **__)
+
+        return callback_handler
+
+    def set_credentials(self, credentials: dict[SourceAddress, dict[AuthParam, str]]) -> None:
+        self._auth_cache = credentials
+
+    def get_credentials(self) -> dict[SourceAddress, dict[AuthParam, str]]:
+        return self._auth_cache
 
     def initialize_ws(self) -> None:
         if self._dry_run:
@@ -103,6 +149,7 @@ class WorkspaceManager:
         with config_file.open('rb') as f:
             return config_cls(tomllib.load(f)) if config_cls else tomllib.load(f)
 
+    @authorize
     def load_exec(
             self,
             dst_path: str | Path | None = None,
@@ -128,6 +175,7 @@ class WorkspaceManager:
         self.info.sources.append(loader.info)
         return config
 
+    @authorize
     def load_data(
             self,
             dst_path: str | Path | None = None,
@@ -154,7 +202,7 @@ class WorkspaceManager:
                     rules=RulesConfig,
                     )
 
-            loader = loader_cls(configs=data_config.source)
+            loader = loader_cls(configs=data_config.source, credentials=self._auth_cache)
             loader.fetch_data(dst_path, rules=LOADER_RULES[data_config.rule_set])
 
             data_config.source = loader.config
@@ -249,6 +297,7 @@ class WorkspaceManager:
         if self.check_hashes(self.info.hash_sums):
             raise RecordingError('Файлы источников были изменены')
 
+    @authorize
     def save_results(
             self,
             src_path: str | Path | None = None,
@@ -275,7 +324,11 @@ class WorkspaceManager:
                 receiver=recorder_cls.config_cls,  # noqa pycharm
                 rules=RulesConfig,
                 )
-        recorder = recorder_cls(src_dir=src_path, configs=config.receiver)
+        recorder = recorder_cls(
+                src_dir=src_path,
+                configs=config.receiver,
+                credentials=self._auth_cache,
+                )
         config.receiver = recorder.config
 
         recorder.send_data(rules=RECORDER_RULES[config.rule_set])

@@ -1,31 +1,54 @@
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
+from typing import Iterable
 
 from workspace_management.mapping import get_files_in_dir, create_file_translation_map
 from workspace_management.simple_config import ConfigInterface
 
 
-class LoaderError(Exception):
+class FileHandlerError(Exception):
     pass
 
 
-class LoaderNotFoundError(LoaderError):
+class FileHandlerNotFoundError(FileHandlerError):
     pass
 
 
-class RecorderError(Exception):
+class LoaderNotFoundError(FileHandlerNotFoundError):
     pass
 
 
-class RecorderNotFoundError(RecorderError):
+class RecorderNotFoundError(FileHandlerNotFoundError):
     pass
+
+
+class AuthorizationError(FileHandlerError):
+    def __init__(self, _type: str, *, auth_parameters: Iterable[str], source_address: str):
+        super().__init__(f'Ошибка авторизации для ресурса {source_address}. '
+                         f'Не указаны параметры {auth_parameters}.')
+        self._type = _type
+        self._auth_parameters = auth_parameters
+        self._source_address = source_address
+
+    @property
+    def type(self) -> str:
+        return self._type
+
+    @property
+    def source_address(self) -> str:
+        return self._source_address
+
+    @property
+    def required_parameters(self) -> Iterable[str]:
+        return self._auth_parameters
 
 
 class BaseFileHandler(metaclass=ABCMeta):
     _type: str = None
     _config_cls: type[ConfigInterface] = None
 
-    def __init__(self, configs: dict | ConfigInterface):
+    def __init__(self, configs: dict | ConfigInterface, *, credentials: dict | None = None):
+        self._credentials = credentials or {}
         self.config = configs \
             if isinstance(configs, self._config_cls) \
             else self._config_cls(configs)
@@ -89,8 +112,9 @@ class BaseRecorder(BaseFileHandler, metaclass=ABCMeta):
             configs: dict | ConfigInterface,
             *,
             src_dir: str | Path,
+            credentials: dict | None = None,
             ):
-        BaseFileHandler.__init__(self, configs)
+        BaseFileHandler.__init__(self, configs, credentials=credentials)
         self.src_dir = Path(src_dir).resolve()
 
     @property

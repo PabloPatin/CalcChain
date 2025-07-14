@@ -1,7 +1,17 @@
 import argparse
 from argparse import Namespace
+from typing import Iterable
 
 from workspace_management import WorkspaceManager
+
+
+def cmd_auth_callback(
+        _: str,
+        __: str,
+        required_params: Iterable[str],
+        ) -> dict[str, str]:
+    auth_params = {param: input(f'{param}: ') for param in required_params}
+    return auth_params
 
 
 def parse_args(parser: argparse.ArgumentParser) -> Namespace:
@@ -18,6 +28,7 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
             '--dry-run',
             action='store_true',
             help='Запустить без внесения изменений',
+            required=False,
             )
 
     subparsers = parser.add_subparsers(
@@ -50,11 +61,12 @@ def parse_args(parser: argparse.ArgumentParser) -> Namespace:
             help='Пути в рабочей области, которые не надо проверять',
             type=str,
             metavar='PATH',
+            required=False,
             )
 
-    hash_check_parser = subparsers.add_parser(
+    subparsers.add_parser(
             'save-results',
-            help='Сохранить результаты работы рассчётного кода',
+            help='Сохранить результаты работы расчётного кода',
             parents=[parent_parser],
             )
 
@@ -78,7 +90,7 @@ if __name__ == '__main__':
             )
     args = parse_args(parser)
 
-    manager = WorkspaceManager(args.path, dry_run=args.dry_run)
+    manager = WorkspaceManager(args.path, dry_run=args.dry_run, auth_callback=cmd_auth_callback)
 
     match args.command:
         case 'init-ws':
