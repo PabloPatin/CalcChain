@@ -37,7 +37,7 @@ class SvnClient(Commander):
         :param trust_cert: Не проверяет наличие сертификата у сервера если True
         :param env: Переменные среды для SVN CLI
         """
-        self.url = None
+        self._url = None
         self.__username = username
         self.__password = password
         self.__svn_filepath = str(svn_filepath)
@@ -45,8 +45,12 @@ class SvnClient(Commander):
         self._trust_cert = trust_cert
         self.set_url(url, check_exists=check_exists)
 
+    @property
+    def url(self):
+        return self._url
+
     def set_url(self, url: str, *, check_exists: bool = False) -> None:
-        self.url = self._reformat_link(url)
+        self._url = self._reformat_link(url)
         if check_exists:
             self.info()
 
