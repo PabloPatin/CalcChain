@@ -1,6 +1,6 @@
 import argparse
 from argparse import Namespace
-from typing import Iterable
+from collections.abc import Iterable
 
 from workspace_management import WorkspaceManager
 
