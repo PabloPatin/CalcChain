@@ -27,6 +27,7 @@ class SvnClient(Commander):
             trust_cert: bool = False,
             env: dict | None = None,
             check_exists: bool = True,
+            encoding: str = 'cp1251',
             ):
         """
         :arg url: Ссылка на репозиторий или папку в нём
@@ -42,6 +43,7 @@ class SvnClient(Commander):
         self.__password = password
         self.__svn_filepath = str(svn_filepath)
         self.__env = env
+        self._encoding = encoding
         self._trust_cert = trust_cert
         self.set_url(url, check_exists=check_exists)
 
@@ -89,11 +91,13 @@ class SvnClient(Commander):
                 )
 
         if output.return_code != 0:
+            stdout = output.stdout.decode() if return_binary else output.stdout
+            stderr = output.stderr.decode() if return_binary else output.stderr
             raise SvnError(
                     ' '.join(cmd),
                     return_code=output.return_code,
-                    stdout=output.stdout,
-                    stderr=output.stderr,
+                    stdout=stdout,
+                    stderr=stderr,
                     url=self.url,
                     )
 
@@ -175,12 +179,12 @@ class SvnClient(Commander):
             from_datetime: datetime | None = None,
             to_datetime: datetime | None = None,
             changelist: bool = False,
-            ) -> tuple[LogRecord]:
+            ) -> tuple[LogRecord, ...]:
         full_link = self._form_abs_link(path)
         args = self.__form_log_args(full_link, stop_on_copy, limit, revision, from_revision,
                                     to_revision, from_datetime, to_datetime, changelist)
-        result = self.run_command('log', '--xml', *args, full_link)
-        return self.__parse_log_result(result)
+        result = self.run_command('log', '--xml', *args, return_binary=True)
+        return self.__parse_log_result(result.decode())
 
     def __form_log_args(
             self,
@@ -209,6 +213,7 @@ class SvnClient(Commander):
             args += ['--stop-on-copy']
         if changelist is True:
             args += ['--verbose']
+        args.append(full_link)
         return args
 
     def __convert_datetime_to_rev(self, timestamp: datetime) -> str | None:
@@ -231,23 +236,24 @@ class SvnClient(Commander):
                 self.__convert_datetime_to_rev(from_datetime)
         )
         revision_range[1] = (
-                from_revision or
-                self.__convert_datetime_to_rev(from_datetime) or
+                to_revision or
+                self.__convert_datetime_to_rev(to_datetime) or
                 'HEAD'
         )
         return tuple(revision_range)
 
-    def __parse_log_result(self, result: str) -> tuple[LogRecord]:
+    def __parse_log_result(self, result: str) -> tuple[LogRecord, ...]:
         root = ElementTree.fromstring(result)
         logs = tuple(self.__parse_log(log) for log in root.findall('logentry'))
-        return logs  # noqa PyCharm
+        return logs
 
     def __parse_log(self, log: ElementTree) -> LogRecord:
-        xml = ElementTree.tostring(log, encoding='UTF-8').decode()
+        xml = ElementTree.tostring(log, encoding=self._encoding).decode(self._encoding)
         revision = log.attrib['revision']
         author = log.find('author').text
         timestamp = log.find('date').text
         msg = log.find('msg')
+        msg = msg.text if msg is not None else None
         paths = log.find('paths')
         if paths is not None:
             paths = tuple(self.__parse_log_path(path) for path in paths.findall('path'))
@@ -257,7 +263,7 @@ class SvnClient(Commander):
                 revision=revision,
                 author=author,
                 date=datetime.fromisoformat(timestamp),
-                msg=msg.text if msg is not None else None,
+                msg=msg,
                 paths=paths,
                 )
 
@@ -296,9 +302,10 @@ class SvnClient(Commander):
             message: str = '',
             *,
             force: bool = False,
-            encoding: str = 'utf-8',
+            encoding: str | None = None,
             depth: Depth = Depth.INFINITY,
             ) -> None:
+        encoding = encoding or self._encoding
         full_link = self._form_abs_link(to_path)
         args = ['-q', '--encoding', encoding, '--depth', depth.value]
         args.append('--force') if force else None
@@ -310,9 +317,10 @@ class SvnClient(Commander):
             message: str = '',
             *,
             parents: bool = False,
-            encoding: str = 'utf-8',
+            encoding: str | None = None,
             exist_ok: bool = False,
             ) -> None:
+        encoding = encoding or self._encoding
         full_link = self._form_abs_link(path)
         args = ['-q', '--encoding', encoding]
         args.append('--parents') if parents else None
@@ -328,9 +336,11 @@ class SvnClient(Commander):
             message: str = '',
             *,
             force: bool = False,
+            encoding: str | None = None,
             ) -> None:
+        encoding = encoding or self._encoding
         full_link = self._form_abs_link(path)
-        args = ['-q']
+        args = ['-q', '--encoding', encoding]
         args.append('--force') if force else None
         self.run_command('delete', '-m', message, *args, full_link)
 
@@ -352,7 +362,7 @@ class SvnClient(Commander):
         return StorageTree(xml=result, root=list_path, nodes=nodes)
 
     def __parse_list_node(self, node: ElementTree) -> StorageNode:
-        xml = ElementTree.tostring(node, encoding='UTF-8').decode()
+        xml = ElementTree.tostring(node, encoding=self._encoding).decode()
         rel_path = node.find('name').text
         kind = node.attrib['kind']
         name = Path(rel_path).name
