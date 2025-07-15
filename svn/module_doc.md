@@ -182,7 +182,7 @@ b'file content'
     - Action.DELETE - Удаление.
 * `path`: Путь к файлу или папке.
 
-```python
+```python3
 >> > client = SvnClient('svn://example/repo/content_folder')
 >> > log_records = client.log()
 # Получение истории изменений корневой папки репозитория
@@ -216,7 +216,7 @@ datetime.datetime(1970, 1, 1, 3, 0)
     * Depth.FILES - экспорт только файлов из папки.
     * Depth.EMPTY - экспорт файла или пустой папки.
 
-```python
+```python3
 >> > client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для репозитория 'content_folder'
 >> > client.export(to_path='/path/to/export')
@@ -235,14 +235,13 @@ datetime.datetime(1970, 1, 1, 3, 0)
 * `message`: Сообщение коммита.
 * `encoding`: Кодировка сообщения коммита.
 
-```python
+```python3
 >> > client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для репозитория 'content_folder'
 >> > client.import_(from_path='/path/to/import', to_path='some_file.txt')
 # Импорт файла '/path/to/import' в папку 'content_folder/some_file.txt'
 >> > client.import_(from_path='/path/to/import', to_path='new_folder',
-                    ...
-message = 'Импорт папки без подпапок', depth = Depth.FILES)
+                    message='Импорт папки без подпапок', depth=Depth.FILES)
 # Импорт с сообщением коммита
 ```
 
@@ -256,7 +255,7 @@ message = 'Импорт папки без подпапок', depth = Depth.FILES
 * `parents`: Флаг, указывающий, что необходимо создавать родительские папки, если они не существуют.
 * `exist_ok`: Флаг, указывающий, что необходимо игнорировать ошибку, если папка уже существует.
 
-```python
+```python3
 >> > client = SvnClient('svn://example/repo/content_folder')
 >> > client.mkdir(message='Создание папки content_folder', exist_ok=True)
 # Ничего не произойдёт, если папка уже существует
@@ -273,7 +272,7 @@ message = 'Импорт папки без подпапок', depth = Depth.FILES
 * `message`: Сообщение коммита.
 * `force`: Флаг, указывающий, что необходимо принудительно удалить папку, даже если она не пустая.
 
-```python
+```python3
 >> > client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для репозитория 'content_folder'
 >> > client.delete(path='file.txt')  # Удаление файла 'file.txt' в 'content_folder'
@@ -307,7 +306,7 @@ message = 'Импорт папки без подпапок', depth = Depth.FILES
 * `date`: Дата последнего коммита, затронувшего узел в
   формате [datetime](https://docs.python.org/3/library/datetime.html).
 
-```python
+```python3
 >> > client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для папки 'content_folder' в репозитории
 >> > content = client.list(recursive=True)  # Просмотр всех объектов рекурсивно
