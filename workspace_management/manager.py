@@ -7,7 +7,8 @@ from copy import deepcopy
 from dataclasses import asdict
 from functools import wraps
 from pathlib import Path, PurePath
-from typing import TypeVar, Iterable
+from typing import TypeVar
+from collections.abc import Iterable
 
 import tomlkit
 

@@ -61,4 +61,4 @@ class StorageNode(NamedTuple):
 class StorageTree(NamedTuple):
     xml: str
     root: str
-    nodes: tuple[StorageNode]
+    nodes: tuple[StorageNode, ...]

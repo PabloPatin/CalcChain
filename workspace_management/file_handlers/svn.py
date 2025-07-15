@@ -13,7 +13,7 @@ from workspace_management.simple_config import config
 
 
 def raise_error(method: Callable) -> Callable:
-    wrong_repo_err_codes = ('E180001', 'E155007', 'E731001')
+    wrong_repo_err_codes = ('E180001', 'E155007', 'E731001', 'E730061')
     wrong_node_err_codes = ('E200009',)
     wrong_revision_err_codes = ('E160006',)
     cannot_rewrite_file_err_codes = ('E160020',)
@@ -133,10 +133,11 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
             raise FileHandlerError(f'Невозможно перезаписать файл {dst_path}')
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         self._client.export(
-                PurePath(src_file).as_posix(),
-                str(dst_path),
+                src_file,
+                dst_path,
                 revision=self.config.revision,
-                depth=Depth.EMPTY)
+                depth=Depth.EMPTY
+                )
 
 
 class SvnRecorder(BaseRecorder, BaseSvnHandler):
@@ -180,6 +181,6 @@ class SvnRecorder(BaseRecorder, BaseSvnHandler):
         return temp_dir
 
     def _check_dst_dir(self, dst_dir: str | None = None) -> None:
-        self._client.mkdir(rel_path=dst_dir, exist_ok=True)
-        if self._client.list(rel_path=dst_dir, recursive=True).nodes:
+        self._client.mkdir(dst_dir, exist_ok=True)
+        if self._client.list(dst_dir, recursive=True).nodes:
             raise FileHandlerError('Папка для выгрузки не пуста')

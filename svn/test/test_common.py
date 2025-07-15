@@ -45,6 +45,7 @@ class TestSvnClient(unittest.TestCase):
         if not os.path.exists(self.repo_path):
             self.__create_test_repo()
         self.__create_test_dir_and_file()
+        # print(self.branch_link)
         self.svn = SvnClient(self.branch_link)
 
     def test_info_out(self):

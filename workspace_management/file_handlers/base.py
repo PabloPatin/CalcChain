@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable
 
 from workspace_management.mapping import get_files_in_dir, create_file_translation_map
 from workspace_management.simple_config import ConfigInterface
