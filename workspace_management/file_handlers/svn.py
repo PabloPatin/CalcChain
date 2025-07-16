@@ -115,10 +115,12 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
             dst_dir: str | PurePath,
             *,
             rules: list | None = None,
+            ensure_all_files: bool = False,
             ) -> dict[Path, Path]:
         file_translation_map = self._create_file_translation_map(
                 rules=rules,
                 additional_markers={'source:desc': PurePath(self.config.url).name},
+                check_skipped=ensure_all_files,
                 )
 
         for src_file, dst_file in file_translation_map.items():
@@ -136,7 +138,7 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
                 src_file,
                 dst_path,
                 revision=self.config.revision,
-                depth=Depth.EMPTY
+                depth=Depth.EMPTY,
                 )
 
 
@@ -158,8 +160,12 @@ class SvnRecorder(BaseRecorder, BaseSvnHandler):
             self,
             *,
             rules: list | None = None,
+            ensure_all_files: bool = False,
             ) -> dict[Path, Path]:
-        file_translation_map = self._create_file_translation_map(rules)
+        file_translation_map = self._create_file_translation_map(
+                rules,
+                check_skipped=ensure_all_files
+                )
 
         self._check_dst_dir()
         temp_dir = self._prepare_temp_dir(file_translation_map)

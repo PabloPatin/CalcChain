@@ -62,12 +62,12 @@ class LocalLoader(BaseLocalHandler, BaseLoader):
             dst_dir: str | Path,
             *,
             rules: list | None = None,
-            check_skipped: bool = True,
+            ensure_all_files: bool = False,
             ) -> dict[Path, Path]:
         file_translation_map = self._create_file_translation_map(
                 rules=rules,
                 additional_markers={'source:desc': Path(self.config.path).name},
-                check_skipped=check_skipped,
+                check_skipped=ensure_all_files,
                 )
 
         for src_file, dst_file in file_translation_map.items():
@@ -93,8 +93,12 @@ class LocalRecorder(BaseLocalHandler, BaseRecorder):
             self,
             *,
             rules: list,
+            ensure_all_files: bool = False,
             ) -> dict[Path, Path]:
-        file_translation_map = self._create_file_translation_map(rules)
+        file_translation_map = self._create_file_translation_map(
+                rules,
+                check_skipped=ensure_all_files
+                )
 
         dst_dir = Path(self.config.path)
         self._check_dst_dir(dst_dir)

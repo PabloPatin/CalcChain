@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from pathlib import Path
 from collections.abc import Iterable
+from pathlib import Path
 
 from workspace_management.mapping import get_files_in_dir, create_file_translation_map
 from workspace_management.simple_config import ConfigInterface
@@ -102,6 +102,7 @@ class BaseLoader(BaseFileHandler, metaclass=ABCMeta):
             dst_dir: str | Path,
             *,
             rules: list | None = None,
+            ensure_all_files: bool = True,
             ) -> None:
         pass
 
@@ -126,6 +127,7 @@ class BaseRecorder(BaseFileHandler, metaclass=ABCMeta):
             rules: list,
             *,
             additional_markers: dict[str, str] | None = None,
+            check_skipped: bool = True,
             ) -> dict[Path, Path]:
         additional_markers = additional_markers or {}
 
@@ -133,11 +135,16 @@ class BaseRecorder(BaseFileHandler, metaclass=ABCMeta):
                 files=self.local_files,
                 rules=rules,
                 additional_markers=additional_markers,
-                check_skipped_files=False,
+                check_skipped_files=check_skipped,
                 )
 
     @abstractmethod
-    def send_data(self, *, rules: list | None = None) -> dict[Path, Path]:
+    def send_data(
+            self,
+            *,
+            rules: list | None = None,
+            ensure_all_files: bool = False
+            ) -> dict[Path, Path]:
         pass
 
     @abstractmethod
