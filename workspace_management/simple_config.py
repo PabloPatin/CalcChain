@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import KeysView, Callable
+from copy import copy
 from dataclasses import dataclass
 from functools import wraps, WRAPPER_ASSIGNMENTS
 from types import UnionType, GenericAlias
@@ -107,11 +108,16 @@ def config[T](cls: type[T] | None = None, partial: bool = False) -> (
                 _check_configs_types(configs, config_cls.__annotations__)
 
                 config_cls.__init__(self, **configs)
-                if partial:
-                    self.extra_configs = extra_configs
+                self.__extra_configs__ = extra_configs if partial else {}
 
             def to_dict(self: type[T]) -> dict:
-                return asdict(self.__dict__)
+                data = copy(self.__dict__)
+                data.pop('__extra_configs__')
+                return asdict(data)
+
+            @property
+            def extra_configs(self) -> dict:
+                return self.__extra_configs__
 
         return ConfigWrapper
 
