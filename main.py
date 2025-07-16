@@ -6,10 +6,11 @@ from workspace_management import WorkspaceManager
 
 
 def cmd_auth_callback(
-        _: str,
-        __: str,
+        type: str,
+        source_address: str,
         required_params: Iterable[str],
         ) -> dict[str, str]:
+    print(f'Connecting to {type}...\n{source_address}')
     auth_params = {param: input(f'{param}: ') for param in required_params}
     return auth_params
 

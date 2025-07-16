@@ -8,7 +8,7 @@ from .commander import Commander
 from .data_structures import Info, LogRecord, LogPath, Action, StorageTree, StorageNode, Depth
 from .exception import SvnError
 
-Rev = int | str | None
+type Rev = int | str | None
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class SvnClient(Commander):
         self.set_url(url, check_exists=check_exists)
 
     @property
-    def url(self):
+    def url(self) -> str:
         return self._url
 
     def set_url(self, url: str, *, check_exists: bool = False) -> None:
