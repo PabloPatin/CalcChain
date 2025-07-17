@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterable
 from pathlib import Path
 
 from workspace_management.mapping import get_files_in_dir, create_file_translation_map
@@ -22,33 +21,19 @@ class RecorderNotFoundError(FileHandlerNotFoundError):
     pass
 
 
-class AuthorizationError(FileHandlerError):
-    def __init__(self, _type: str, *, auth_parameters: Iterable[str], source_address: str):
-        super().__init__(f'Ошибка авторизации для ресурса {source_address}. '
-                         f'Не указаны параметры {auth_parameters}.')
-        self._type = _type
-        self._auth_parameters = auth_parameters
-        self._source_address = source_address
-
-    @property
-    def type(self) -> str:
-        return self._type
-
-    @property
-    def source_address(self) -> str:
-        return self._source_address
-
-    @property
-    def required_parameters(self) -> Iterable[str]:
-        return self._auth_parameters
-
-
 class BaseFileHandler(metaclass=ABCMeta):
     _type: str = None
     _config_cls: type[ConfigInterface] = None
 
-    def __init__(self, configs: dict | ConfigInterface, *, credentials: dict | None = None):
+    def __init__(
+            self,
+            configs: dict | ConfigInterface,
+            *,
+            credentials: dict | None = None,
+            try_save_credentials: bool = False,
+            ):
         self._credentials = credentials or {}
+        self.try_save_credentials = try_save_credentials
         self.config = configs \
             if isinstance(configs, self._config_cls) \
             else self._config_cls(configs)
@@ -62,6 +47,9 @@ class BaseFileHandler(metaclass=ABCMeta):
     @abstractmethod
     def is_versionable(cls) -> bool:
         pass
+
+    def set_credentials(self, credentials: dict) -> None:
+        self._credentials.update(credentials)
 
     @property
     def info(self) -> dict:
@@ -113,9 +101,9 @@ class BaseRecorder(BaseFileHandler, metaclass=ABCMeta):
             configs: dict | ConfigInterface,
             *,
             src_dir: str | Path,
-            credentials: dict | None = None,
+            **__,
             ):
-        BaseFileHandler.__init__(self, configs, credentials=credentials)
+        BaseFileHandler.__init__(self, configs, **__)
         self.src_dir = Path(src_dir).resolve()
 
     @property
@@ -143,7 +131,7 @@ class BaseRecorder(BaseFileHandler, metaclass=ABCMeta):
             self,
             *,
             rules: list | None = None,
-            ensure_all_files: bool = False
+            ensure_all_files: bool = False,
             ) -> dict[Path, Path]:
         pass
 
