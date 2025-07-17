@@ -111,7 +111,7 @@ def parse_credentials(data: list[list[str]]) -> dict[SourceAddress, dict[AuthPar
         source_address = auth_params.pop(0)
         params = []
         for param in auth_params:
-            match = re.fullmatch(r'(\w+)=(\w+)', param)
+            match = re.fullmatch(r'(\w+?)=(.+)', param)
             if not match:
                 raise WrongArgumentError(
                         f'Неверный параметр авторизации "{param}"\n'
