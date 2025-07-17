@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import KeysView, Callable
-from copy import copy
+from copy import copy, deepcopy
 from dataclasses import dataclass
 from functools import wraps, WRAPPER_ASSIGNMENTS
 from types import UnionType, GenericAlias
@@ -100,6 +100,7 @@ def config[T](cls: type[T] | None = None, partial: bool = False) -> (
                updated=())
         class ConfigWrapper(config_cls, ConfigInterface):
             def __init__(self, configs: dict, _allow_extra: bool = partial):
+                configs = deepcopy(configs)
                 configs, extra_configs = _split_excess_configs(configs, config_cls.__annotations__)
                 if extra_configs and not _allow_extra:
                     raise ExcessParamsError(set(extra_configs.keys()))
@@ -130,7 +131,7 @@ def config[T](cls: type[T] | None = None, partial: bool = False) -> (
 class ConfigUnion(ConfigInterface):
     def __init__(self, configs: dict, **config_classes: type[ConfigInterface]):
         self.configs = {}
-        remain = configs
+        remain = deepcopy(configs)
         for attr, config_cls in config_classes.items():
             found, remain = _split_excess_configs(remain, config_cls.__annotations__)
             self.configs[attr] = config_cls(found)
@@ -151,6 +152,16 @@ class ConfigUnion(ConfigInterface):
             except AttributeError:
                 pass
         raise AttributeError
+
+    def __setattr__(self, key: str, value: Any) -> None:
+        if key == 'configs':
+            object.__setattr__(self, key, value)
+        for sub_config in self.configs.values():
+            if key in sub_config.to_dict():
+                sub_config.__setattr__(key, value)
+                break
+        else:
+            object.__setattr__(self, key, value)
 
     def to_dict(self) -> dict:
         data = {}

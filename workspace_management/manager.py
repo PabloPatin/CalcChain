@@ -3,17 +3,16 @@ import json
 import tempfile
 import tomllib
 from collections.abc import Callable
-from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import asdict
 from functools import wraps
 from pathlib import Path, PurePath
-from typing import Any
+from typing import Any, NewType
 
 import tomlkit
 
 from .file_handlers import find_loader, find_recorder
-from .file_handlers.base import AuthorizationError
+from .file_handlers.auth import AuthorizationError
 from .info_data import Info, dataclass_from_dict
 from .simple_config import config, ConfigInterface, ConfigUnion
 
@@ -28,11 +27,12 @@ class DefaultRules:
 class RuleSet:
     rules: list
     ensure_all_files: bool = False
+    description: str = ''
 
 
 @config
 class RulesConfig:
-    rule_set: str
+    rule_set: str = None
 
 
 @config
@@ -42,7 +42,7 @@ class InitialConfig:
 
 
 @config
-class RecordingConfig:
+class RecorderConfig:
     result: dict | ConfigInterface
 
 
@@ -61,7 +61,7 @@ class WrongWorkspaceError(Exception):
 
 
 class RuleSetNotFoundError(KeyError):
-    def __init__(self, name):
+    def __init__(self, name: str):
         super().__init__(f'Не найден набор правил {name}')
 
 
@@ -73,9 +73,9 @@ class LoadingError(Exception):
     pass
 
 
-type Type = str
-type SourceAddress = str
-type AuthParam = str
+SourceAddress = NewType('SourceAddress', str)
+AuthParam = NewType('AuthParam', str)
+type Credentials = dict[AuthParam, str]
 
 
 class WorkspaceManager:
@@ -89,14 +89,13 @@ class WorkspaceManager:
             self,
             ws_path: str | Path,
             dry_run: bool = False,
-            auth_callback: Callable[
-                               [Type, SourceAddress, Iterable[AuthParam]],
-                               dict[AuthParam, str],
-                           ] | None = None,
+            auth_callback: Callable[[SourceAddress, list[AuthParam]], Credentials] | None = None,
+            try_save_credentials: bool = False,
             ):
         self._dry_run = dry_run
         self._auth_callback = auth_callback
         self._auth_cache = {}
+        self.try_save_credentials = try_save_credentials
         self.work_path = Path(ws_path).resolve()
         self.info = Info()
         self.config = None
@@ -112,14 +111,14 @@ class WorkspaceManager:
             except AuthorizationError as err:
                 if not self._auth_callback:
                     err.add_note('Передайте auth_callback, возвращающий соответствующие значения '
-                                 f'для указанного ресурса типа {err.type} в WorkspaceManager!')
+                                 'для указанного ресурса в WorkspaceManager!')
                     raise err
                 auth_params = self._auth_callback(
-                        err.type,
                         err.source_address,
                         err.required_parameters,
                         )
-                self._auth_cache[err.source_address] = auth_params
+
+                self.set_credentials({err.source_address: auth_params})
                 return func(self, *_, **__)
 
         return callback_handler
@@ -192,7 +191,12 @@ class WorkspaceManager:
             config = deepcopy(self.config.exec)
 
         loader_cls = find_loader(config)
-        loader = loader_cls(configs=config)
+
+        loader = loader_cls(
+                configs=config,
+                credentials=self._auth_cache,
+                try_save_credentials=self.try_save_credentials,
+                )
         loader.fetch_data(dst_path)
 
         config = loader.config
@@ -220,28 +224,32 @@ class WorkspaceManager:
         data_configs = []
         for data_config_dict in config:
             loader_cls = find_loader(data_config_dict)
+
             data_config = ConfigUnion(
                     data_config_dict,
                     source=loader_cls.config_cls,  # noqa pycharm
                     rules=RulesConfig,
                     )
-
-            loader = loader_cls(configs=data_config.source, credentials=self._auth_cache)
-            rule_set = self.get_rule_set(
-                    data_config.rule_set or self.default_rules.default_data_rules
+            loader = loader_cls(
+                    configs=data_config.source,
+                    credentials=self._auth_cache,
+                    try_save_credentials=self.try_save_credentials,
                     )
+
+            data_config.rule_set = data_config.rule_set or self.default_rules.default_data_rules
+            rule_set = self.get_rule_set(data_config.rule_set)
             loader.fetch_data(
                     dst_path,
                     rules=rule_set.rules,
-                    ensure_all_files=rule_set.ensure_all_files)
+                    ensure_all_files=rule_set.ensure_all_files
+                    )
 
             data_config.source = loader.config
             data_configs.append(data_config)
             self.info.sources.append(loader.info)
-
         return data_configs
 
-    def load_ws_rules(self):
+    def load_ws_rules(self) -> None:
         rules_path = self.work_path / self.__rules_file
         with rules_path.open('r', encoding='utf-8') as file:
             rules = json.load(file)
@@ -253,7 +261,7 @@ class WorkspaceManager:
     def add_rule_set(self, name: str, rule_set: dict) -> None:
         self.rule_sets[name] = RuleSet(rule_set)
 
-    def get_rule_set(self, name):
+    def get_rule_set(self, name: str) -> RuleSet:
         if rule_set := self.rule_sets.get(name):
             return rule_set
         else:
@@ -315,15 +323,15 @@ class WorkspaceManager:
     def _check_non_versionable_sources(self, sources: list[dict]) -> list[dict]:
         return list(filter(lambda source: not source['versionable'], sources))
 
-    def record_results(self, dry_run: bool = False) -> None:
-        self.config = self.read_toml_config(self.__recorder_config_file, RecordingConfig)
+    def record_results(self, *, dry_run: bool = False, force: bool = False) -> None:
+        self.config = self.read_toml_config(self.__recorder_config_file, RecorderConfig)
         self.load_ws_rules()
 
         if self._dry_run or dry_run:
             self._dry_save()
             return
 
-        self.config.record = self.save_results(config=self.config.result)  # noqa pycharm
+        self.config.record = self.save_results(force=force)
 
     def _dry_save(self) -> None:
         temp_dir = tempfile.TemporaryDirectory()
@@ -337,7 +345,7 @@ class WorkspaceManager:
             'type': 'local',
             'path': str(temp_path),
             'rule_set': self.config.result.get('rule_set')
-                        or self.default_rules.default_result_rules
+                        or self.default_rules.default_result_rules,
             }
         self.save_results(config=config)
 
@@ -355,6 +363,7 @@ class WorkspaceManager:
             self,
             src_path: str | Path | None = None,
             config: dict | None = None,
+            force: bool = False,
             ) -> ConfigInterface:
         if not src_path:
             src_path = self.work_path
@@ -369,7 +378,8 @@ class WorkspaceManager:
             config = deepcopy(self.config.result)
 
         recorder_cls = find_recorder(config)
-        if recorder_cls.is_versionable:
+
+        if recorder_cls.is_versionable and not force:
             self.check_results()
 
         config = ConfigUnion(
@@ -381,11 +391,13 @@ class WorkspaceManager:
                 src_dir=src_path,
                 configs=config.receiver,
                 credentials=self._auth_cache,
+                try_save_credentials=self.try_save_credentials,
                 )
         config.receiver = recorder.config
-        rule_set = self.get_rule_set(config.rule_set or self.default_rules.default_result_rules)
+        config.rule_set = config.rule_set or self.default_rules.default_result_rules
+        rule_set = self.get_rule_set(config.rule_set)
         recorder.send_data(
                 rules=rule_set.rules,
-                ensure_all_files=rule_set.ensure_all_files
+                ensure_all_files=rule_set.ensure_all_files,
                 )
         return config

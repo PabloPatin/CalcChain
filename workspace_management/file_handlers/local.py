@@ -5,10 +5,9 @@ from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 
-from workspace_management.file_handlers.base import BaseFileHandler, BaseRecorder, BaseLoader, \
-    FileHandlerError
 from workspace_management.mapping.search_files import get_files_in_dir
 from workspace_management.simple_config import config
+from .base import BaseFileHandler, BaseRecorder, BaseLoader, FileHandlerError
 
 
 def raise_error(method: Callable) -> Callable:
@@ -97,7 +96,7 @@ class LocalRecorder(BaseLocalHandler, BaseRecorder):
             ) -> dict[Path, Path]:
         file_translation_map = self._create_file_translation_map(
                 rules,
-                check_skipped=ensure_all_files
+                check_skipped=ensure_all_files,
                 )
 
         dst_dir = Path(self.config.path)

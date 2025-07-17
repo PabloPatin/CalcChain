@@ -6,10 +6,9 @@ from functools import wraps
 from pathlib import Path, PurePath
 
 from svn import SvnClient, SvnError
-from svn.data_structures import Depth
-from workspace_management.file_handlers.base import BaseLoader, FileHandlerError, \
-    BaseFileHandler, BaseRecorder, AuthorizationError
 from workspace_management.simple_config import config
+from .auth import AuthorizationError
+from .base import BaseLoader, FileHandlerError, BaseFileHandler, BaseRecorder
 
 
 def raise_error(method: Callable) -> Callable:
@@ -18,6 +17,7 @@ def raise_error(method: Callable) -> Callable:
     wrong_revision_err_codes = ('E160006',)
     cannot_rewrite_file_err_codes = ('E160020',)
     cannot_get_credentials_err_codes = ('E170001',)
+    destination_directory_exists = ('E155000',)
 
     def match_error_codes(
             error_codes: tuple[str, ...],
@@ -29,6 +29,8 @@ def raise_error(method: Callable) -> Callable:
     def wrapper(*_, **__) -> ...:
         try:
             return method(*_, **__)
+        except OSError as err:
+            raise FileHandlerError(err.__repr__())
         except SvnError as err:
             if match_error_codes(err.error_codes, wrong_repo_err_codes):
                 raise FileHandlerError(
@@ -46,11 +48,14 @@ def raise_error(method: Callable) -> Callable:
                 raise FileHandlerError(
                         f'\nНевозможно перезаписать файл\n{err.stderr}',
                         )
+            elif match_error_codes(err.error_codes, destination_directory_exists):
+                raise FileHandlerError(
+                        f'\nПапка назначения уже существует\n{err.stderr}',
+                        )
             elif match_error_codes(err.error_codes, cannot_get_credentials_err_codes):
                 raise AuthorizationError(
-                        _type=BaseSvnHandler._type,  # noqa pycharm
                         source_address=err.url,
-                        auth_parameters=['username', 'password'],
+                        auth_parameters=['username', 'password']
                         )
             return None
 
@@ -60,52 +65,71 @@ def raise_error(method: Callable) -> Callable:
 @config
 class SvnLoaderConfig:
     type: str
-    url: str
+    repo_url: str
+    path: str | PurePath = ''
     revision: str | int = 'HEAD'
 
 
 @config
 class SvnRecorderConfig:
     type: str
-    url: str
+    repo_url: str
+    path: str | PurePath = ''
 
 
 class BaseSvnHandler(BaseFileHandler, metaclass=ABCMeta):
     _type = 'svn'
+    _repo_info_cache = {}
+
+    @raise_error
+    def __init__(self, configs: dict, check_exists: bool = False, **__) -> None:
+        BaseFileHandler.__init__(self, configs, **__)
+
+        self._auth_data = self._find_credentials()
+        self._client = SvnClient(
+                self.config.repo_url,
+                username=self._auth_data.get('username'),
+                password=self._auth_data.get('password'),
+                check_exists=check_exists,
+                cache_auth=self.try_save_credentials,
+                )
+
+        if not self.config.repo_url in self._repo_info_cache:
+            self._repo_info_cache[self.config.repo_url] = self._client.info()
 
     @property
     def is_versionable(self) -> bool:
         return True
 
-    @raise_error
-    def __init__(self, configs: dict, **__) -> None:
-        BaseFileHandler.__init__(self, configs, **__)
-        self._auth_data = self._credentials.get(self.config.url, {})
-        self._client = SvnClient(
-                self.config.url,
-                username=self._auth_data.get('username'),
-                password=self._auth_data.get('password'),
-                )
-
     @property
     def info(self) -> dict:
-        return {'repo_uuid': self._client.info().repository_uuid} | super().info
+        return ({'repo_uuid': self._repo_info_cache[self.config.repo_url].repository_uuid}
+                | super().info)
+
+    def _find_credentials(self) -> dict:
+        for url in sorted(self._credentials.keys(), key=lambda _: len(_)):
+            if self.config.repo_url.startswith(url):
+                return self._credentials[url]
+        return {}
 
 
 class SvnLoader(BaseSvnHandler, BaseLoader):
     _config_cls = SvnLoaderConfig
 
-    @raise_error
     def __init__(self, configs: dict, **__) -> None:
         BaseSvnHandler.__init__(self, configs, **__)
-        self.config.revision = self._client.info(
-                revision=self.config.revision,
-                ).entry_revision
+        self.config.revision = self.config.revision \
+            if self.config.revision != 'HEAD' \
+            else self._repo_info_cache[self.config.repo_url].entry_revision
 
     @property
     @raise_error
     def src_files(self) -> list[PurePath]:
-        file_tree = self._client.list(recursive=True, revision=self.config.revision)
+        file_tree = self._client.list(
+                path=self.config.path,
+                recursive=True,
+                revision=self.config.revision
+                )
         files = [PurePath(node.rel_path) for node in file_tree.nodes if node.kind == 'file']
         return files
 
@@ -117,29 +141,34 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
             rules: list | None = None,
             ensure_all_files: bool = False,
             ) -> dict[Path, Path]:
+
+        temp_dir = tempfile.TemporaryDirectory()
+        src_dir = Path(temp_dir.name).resolve()
+
+        self._client.export(self.config.path, src_dir, force=True)
+
         file_translation_map = self._create_file_translation_map(
                 rules=rules,
-                additional_markers={'source:desc': PurePath(self.config.url).name},
+                additional_markers={
+                    'source:desc': PurePath(self.config.path or self.config.repo_url).name
+                    },
                 check_skipped=ensure_all_files,
                 )
 
         for src_file, dst_file in file_translation_map.items():
+            src_path = src_dir / src_file
             dst_path = Path(dst_dir) / dst_file
-            self._fetch_file(src_file, dst_path)
+            self._fetch_file(src_path, dst_path)
 
+        temp_dir.cleanup()
         return file_translation_map
 
-    def _fetch_file(self, src_file: str | PurePath, dst_path: str | Path) -> None:
+    def _fetch_file(self, src_path: str | PurePath, dst_path: str | Path) -> None:
         dst_path = Path(dst_path)
         if dst_path.exists():
             raise FileHandlerError(f'Невозможно перезаписать файл {dst_path}')
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        self._client.export(
-                src_file,
-                dst_path,
-                revision=self.config.revision,
-                depth=Depth.EMPTY,
-                )
+        shutil.copy2(src_path, dst_path)
 
 
 class SvnRecorder(BaseRecorder, BaseSvnHandler):
@@ -153,7 +182,7 @@ class SvnRecorder(BaseRecorder, BaseSvnHandler):
             **__,
             ) -> None:
         BaseRecorder.__init__(self, configs, src_dir=src_dir, **__)
-        self._client = SvnClient(self.config.url, check_exists=False)
+        BaseSvnHandler.__init__(self, configs, check_exists=False, **__)
 
     @raise_error
     def send_data(
@@ -164,27 +193,25 @@ class SvnRecorder(BaseRecorder, BaseSvnHandler):
             ) -> dict[Path, Path]:
         file_translation_map = self._create_file_translation_map(
                 rules,
-                check_skipped=ensure_all_files
+                check_skipped=ensure_all_files,
                 )
 
-        self._check_dst_dir()
-        temp_dir = self._prepare_temp_dir(file_translation_map)
-        self._client.import_(temp_dir.name, '')
-        temp_dir.cleanup()
+        self._check_dst_dir(self.config.path)
 
-        return file_translation_map
-
-    def _prepare_temp_dir(self, trans_map: dict[Path, Path]) -> tempfile.TemporaryDirectory:
         temp_dir = tempfile.TemporaryDirectory()
         dst_dir = Path(temp_dir.name).resolve()
-        for src_file, dst_file in trans_map.items():
+
+        for src_file, dst_file in file_translation_map.items():
             src_path = self.src_dir / src_file
             dst_path = dst_dir / dst_file
             if dst_path.exists():
                 raise FileHandlerError(f'Невозможно перезаписать файл {dst_file}')
             dst_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src_path, dst_path)
-        return temp_dir
+        self._client.import_(temp_dir.name, self.config.path)
+
+        temp_dir.cleanup()
+        return file_translation_map
 
     def _check_dst_dir(self, dst_dir: str | None = None) -> None:
         self._client.mkdir(dst_dir, exist_ok=True)

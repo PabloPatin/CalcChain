@@ -25,6 +25,7 @@ class SvnClient(Commander):
             password: str | None = None,
             svn_filepath: str | Path = 'svn',
             trust_cert: bool = False,
+            cache_auth: bool = False,
             env: dict | None = None,
             check_exists: bool = True,
             encoding: str = 'cp1251',
@@ -45,6 +46,7 @@ class SvnClient(Commander):
         self.__env = env
         self._encoding = encoding
         self._trust_cert = trust_cert
+        self._cache_auth = cache_auth
         self.set_url(url, check_exists=check_exists)
 
     @property
@@ -111,6 +113,7 @@ class SvnClient(Commander):
         if self.__username and self.__password:
             cmd += ['--username', self.__username]
             cmd += ['--password', self.__password]
+        if not self._cache_auth:
             cmd += ['--no-auth-cache']
 
         cmd += list(args)
