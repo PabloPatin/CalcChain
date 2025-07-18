@@ -81,7 +81,7 @@ type Credentials = dict[AuthParam, str]
 class WorkspaceManager:
     __config_file = Path('config.toml')
     __config_lock_file = Path('config.lock.toml')
-    __recorder_config_file = Path('recorder_config.toml')
+    __recorder_config_file = Path('commit_config.toml')
     __info_file = Path('info.json')
     __rules_file = Path('rules.json')
 
@@ -323,7 +323,7 @@ class WorkspaceManager:
     def _check_non_versionable_sources(self, sources: list[dict]) -> list[dict]:
         return list(filter(lambda source: not source['versionable'], sources))
 
-    def record_results(self, *, dry_run: bool = False, force: bool = False) -> None:
+    def record_results(self, *, dry_run: bool = False) -> None:
         self.config = self.read_toml_config(self.__recorder_config_file, RecorderConfig)
         self.load_ws_rules()
 
@@ -331,7 +331,7 @@ class WorkspaceManager:
             self._dry_save()
             return
 
-        self.config.record = self.save_results(force=force)
+        self.config.record = self.save_results()
 
     def _dry_save(self) -> None:
         temp_dir = tempfile.TemporaryDirectory()
@@ -363,7 +363,6 @@ class WorkspaceManager:
             self,
             src_path: str | Path | None = None,
             config: dict | None = None,
-            force: bool = False,
             ) -> ConfigInterface:
         if not src_path:
             src_path = self.work_path
@@ -379,7 +378,7 @@ class WorkspaceManager:
 
         recorder_cls = find_recorder(config)
 
-        if recorder_cls.is_versionable and not force:
+        if recorder_cls.is_versionable:
             self.check_results()
 
         config = ConfigUnion(

@@ -86,12 +86,6 @@ def parse_args(main_parser: argparse.ArgumentParser) -> Namespace:
             help='Сохранить результаты работы расчётного кода',
             parents=[parent_parser],
             )
-    save_results_parser.add_argument(
-            '--force',
-            action='store_true',
-            help='Пропустить проверки исходных данных и версируемости источников',
-            required=False,
-            )
 
     return main_parser.parse_args()
 
@@ -141,11 +135,13 @@ if __name__ == '__main__':
             if args.credentials:
                 manager.set_credentials(parse_credentials(args.credentials))
             manager.initialize_ws()
+            print("Инициализация рабочего пространства прошла успешно!")
         case 'check-ws':
             check_files(manager, args.ignore)
         case 'save-results':
             if args.credentials:
                 manager.set_credentials(parse_credentials(args.credentials))
-            manager.record_results(force=args.force)
+            manager.record_results()
+            print("Выгрузка результатов прошла успешно!")
         case _:
             print(parser.print_help())
