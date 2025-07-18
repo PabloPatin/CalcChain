@@ -53,7 +53,7 @@ def parse_args(main_parser: argparse.ArgumentParser) -> Namespace:
             dest='command',
             title='Команды программы',
             required=True,
-            metavar='{init-ws, check-ws}',
+            metavar='{init-ws, check-ws, save-results}',
             )
 
     subparsers.add_parser(
