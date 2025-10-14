@@ -1,6 +1,6 @@
 extend = "ruff.common.toml"
 
-extend-ignore = [
+lint.extend-ignore = [
     "RUF002" # Ruff-specific/ambiguous-unicode-character-string
 ]
 
