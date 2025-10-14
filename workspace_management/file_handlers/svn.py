@@ -4,6 +4,7 @@ from abc import ABCMeta
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path, PurePath
+from typing import ClassVar
 
 from svn import SvnClient, SvnError
 from workspace_management.simple_config import config
@@ -55,7 +56,7 @@ def raise_error(method: Callable) -> Callable:
             elif match_error_codes(err.error_codes, cannot_get_credentials_err_codes):
                 raise AuthorizationError(
                         source_address=err.url,
-                        auth_parameters=['username', 'password']
+                        auth_parameters=['username', 'password'],
                         )
             return None
 
@@ -79,7 +80,7 @@ class SvnRecorderConfig:
 
 class BaseSvnHandler(BaseFileHandler, metaclass=ABCMeta):
     _type = 'svn'
-    _repo_info_cache = {}
+    _repo_info_cache: ClassVar = {}
 
     @raise_error
     def __init__(self, configs: dict, check_exists: bool = False, **__) -> None:
@@ -94,7 +95,7 @@ class BaseSvnHandler(BaseFileHandler, metaclass=ABCMeta):
                 cache_auth=self.try_save_credentials,
                 )
 
-        if not self.config.repo_url in self._repo_info_cache:
+        if self.config.repo_url not in self._repo_info_cache:
             self._repo_info_cache[self.config.repo_url] = self._client.info()
 
     @property
@@ -128,7 +129,7 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
         file_tree = self._client.list(
                 path=self.config.path,
                 recursive=True,
-                revision=self.config.revision
+                revision=self.config.revision,
                 )
         files = [PurePath(node.rel_path) for node in file_tree.nodes if node.kind == 'file']
         return files
@@ -150,7 +151,7 @@ class SvnLoader(BaseSvnHandler, BaseLoader):
         file_translation_map = self._create_file_translation_map(
                 rules=rules,
                 additional_markers={
-                    'source:desc': PurePath(self.config.path or self.config.repo_url).name
+                    'source:desc': PurePath(self.config.path or self.config.repo_url).name,
                     },
                 check_skipped=ensure_all_files,
                 )

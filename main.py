@@ -5,7 +5,6 @@ from argparse import Namespace
 from workspace_management import WorkspaceManager
 from workspace_management.manager import AuthParam, SourceAddress
 
-
 class WrongArgumentError(Exception):
     pass
 
@@ -81,7 +80,8 @@ def parse_args(main_parser: argparse.ArgumentParser) -> Namespace:
             required=False,
             )
 
-    save_results_parser = subparsers.add_parser(
+    # save_results_parser = subparsers.add_parser(
+    subparsers.add_parser(
             'save-results',
             help='Сохранить результаты работы расчётного кода',
             parents=[parent_parser],
@@ -109,7 +109,7 @@ def parse_credentials(data: list[list[str]]) -> dict[SourceAddress, dict[AuthPar
             if not match:
                 raise WrongArgumentError(
                         f'Неверный параметр авторизации "{param}"\n'
-                        'Параметры авторизации должны быть заданы в следующем виде: param=value'
+                        'Параметры авторизации должны быть заданы в следующем виде: param=value',
                         )
             params.append((match[1], match[2]))
         credentials[source_address] = dict(params)
@@ -135,13 +135,13 @@ if __name__ == '__main__':
             if args.credentials:
                 manager.set_credentials(parse_credentials(args.credentials))
             manager.initialize_ws()
-            print("Инициализация рабочего пространства прошла успешно!")
+            print('Инициализация рабочего пространства прошла успешно!')
         case 'check-ws':
             check_files(manager, args.ignore)
         case 'save-results':
             if args.credentials:
                 manager.set_credentials(parse_credentials(args.credentials))
             manager.record_results()
-            print("Выгрузка результатов прошла успешно!")
+            print('Выгрузка результатов прошла успешно!')
         case _:
             print(parser.print_help())

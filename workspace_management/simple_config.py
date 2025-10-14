@@ -153,7 +153,7 @@ class ConfigUnion(ConfigInterface):
                 pass
         raise AttributeError
 
-    def __setattr__(self, key: str, value: Any) -> None:
+    def __setattr__(self, key: str, value: Any) -> None:  # noqa ANN401
         if key == 'configs':
             object.__setattr__(self, key, value)
         for sub_config in self.configs.values():

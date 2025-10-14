@@ -241,7 +241,7 @@ class WorkspaceManager:
             loader.fetch_data(
                     dst_path,
                     rules=rule_set.rules,
-                    ensure_all_files=rule_set.ensure_all_files
+                    ensure_all_files=rule_set.ensure_all_files,
                     )
 
             data_config.source = loader.config
