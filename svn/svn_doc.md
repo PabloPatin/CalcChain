@@ -19,8 +19,10 @@
 ```python3
 >>> client = SvnClient('svn://example/repo')
 # Создание объекта SvnClient для репозитория по адресу svn://example/repo
+
 >>> client = SvnClient('svn://example/repo/folder', check_exists=True)
 # Создание объекта SvnClient для сущесивующей папки в репозитории по адресу svn://example/repo/folder
+
 >>> client = SvnClient('svn://example/repo', username='login', password='password')
 # Создание объекта SvnClient для репозитория с логином и паролем
 ```
@@ -44,7 +46,7 @@
 
 ### SvnClient.url
 
-url, который в данный момент используется в качестве корня для всех методов, имплементирующих запросы к репозиторию.
+url, который в данный момент используется в качестве корня для всех методов, реализующих запросы к репозиторию.
 
 ```python3
 >>> client.url
@@ -120,8 +122,10 @@ return_binary=True).
 >>> client = SvnClient('svn://example/repo/content_folder')
 >>> info = client.info()
 # Получение информации о папке content_folder головной ревизии
+
 >>> info = client.info(path='some_file.txt', revision=123)
 # Получение информации о файле 'content_folder/some_file' в репозитории 123 ревизии
+
 >>> info.relative_url
 '^/content_folder/some_file'
 ```
@@ -135,15 +139,17 @@ return_binary=True).
 * `revision`: Номер ревизии, для которой будет получено содержимое. Если не указан, содержимое будет получено для
   текущей ревизии.
 * `encoding`: Кодировка файла (например, 'utf-8', 'latin1' и т.п.). Если не указана, содержимое будет возвращено в
-  кодировке по умолчанию (cp1251).
+  кодировке по умолчанию (Windows-1251).
 * `return_binary`: Флаг, указывающий, что содержимое должно быть возвращено как байты.
 
 Метод возвращает строку или байты, содержимое файла или папки в репозитории.
 
 ```python3
 >>> client = SvnClient('svn://example/repo/content_folder')
+
 >>> client.cat('some_file.txt')
 'file content'
+
 >>> content = client.cat('some_file.txt', return_binary=True)
 b'file content'
 ```
@@ -161,43 +167,45 @@ b'file content'
   формате [datetime](https://docs.python.org/3/library/datetime.html).
 * `changelist`: Флаг, указывающий, что необходимо так же извлечь все пути, затронутые изменениями и сообщения коммитов.
 
-Метод возвращает кортеж из `LogRecord` объектов, каждый из которых представляет собой запись истории изменений. Каждая
-запись содержит следующие поля:
+Метод возвращает кортеж из объектов класса `LogRecord`. Каждый такой объект представляет собой запись истории изменений и содержит следующие поля:
 
 * `xml`: XML-описание записи.
 * `revision`: Номер ревизии, к которой относится запись.
 * `author`: Автор коммита.
 * `date`: Дата коммита в формате [datetime](https://docs.python.org/3/library/datetime.html).
-* `msg`: Сообщение коммита. None, если changelist=False.
+* `msg`: Сообщение коммита. None, если `changelist=False`.
 * `paths`: кортеж из LogPath объектов, каждый из которых представляет собой изменение в файле или папке. None, если
-  changelist=False.
+  `changelist=False`.
 
-Каждый `LogPath` объект содержит следующие поля:
+Каждый объект класса `LogPath` содержит следующие поля:
 
-* `prop_mods`: Флаг, указывающий, что были изменения свойств.
+* `prop_mods`: Флаг, указывающий, что в коммите изменены свойства файла.
 * `text_mods`: Флаг, указывающий, что было изменено содержимое файла.
 * `kind`: Тип изменяемого объекта ('dir' или 'file').
 * `action`: Действие, произведенная над файлом или папкой.
-    * Action.ADD - Добавление.
-
+    - Action.ADD - Добавление.
     - Action.MODIFY - Изменение.
     - Action.DELETE - Удаление.
 * `path`: Путь к файлу или папке.
 
 ```python3
 >>> client = SvnClient('svn://example/repo/content_folder')
->>> log_records = client.log()
+
 # Получение истории изменений корневой папки репозитория
->>> log_record = log_records[0]
+>>> log_records = client.log()
+
 # Получение первого LogRecord объекта из истории изменений
+>>> log_record = log_records[0]
+
 >>> log_record.revision  # Номер ревизии
 123
 >>> log_record.author  # Автор коммита
 'user'
 >>> log_record.date  # Дата коммита
 datetime.datetime(1970, 1, 1, 3, 0)
->>> log_object = log.path[0]
+
 # Получение первого LogPath объекта
+>>> log_object = log.path[0]
 >>> log_object.kind
 'file'
 >>> log_object.path  # Путь изменяемого объекта       
@@ -209,7 +217,7 @@ datetime.datetime(1970, 1, 1, 3, 0)
 Метод является обёрткой команды [export](https://svnbook.red-bean.com/nightly/en/svn.ref.svn.c.export.html) и
 экспортирует файлы и папки из репозитория в указанный путь.
 
-* `from_path`: Путь к файлу или папке в репозитории для экспорта. None, если экспортировать папку SvnClient.url.
+* `from_path`: Путь к файлу или папке в репозитории для экспорта. None, если экспортировать корневую папку `SvnClient.url`.
 * `to_path`: Путь, куда будет сохранено содержимое репозитория.
 * `force`: Флаг, указывающий, что необходимо перезаписывать файлы, которые уже существуют в целевой папке.
 * `depth`: Глубина экспорта.
@@ -219,12 +227,14 @@ datetime.datetime(1970, 1, 1, 3, 0)
     * Depth.EMPTY - экспорт файла или пустой папки.
 
 ```python3
->>> client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для репозитория 'content_folder'
->>> client.export(to_path='/path/to/export')
+>>> client = SvnClient('svn://example/repo/content_folder')
+
 # Экспорт папки 'content_folder' в '/path/to/export' со всем содержимым
->>> client.export(from_path='some_file.txt', to_path='/path/to/export')
+>>> client.export(to_path='/path/to/export')
+
 # Экспорт файла 'some_file.txt' в '/path/to/export'
+>>> client.export(from_path='some_file.txt', to_path='/path/to/export')
 ```
 
 ### SvnClient.import_(self, from_path, to_path, message='', \*, force=False, encoding='utf-8', depth=Depth.INFINITY)
@@ -238,13 +248,15 @@ datetime.datetime(1970, 1, 1, 3, 0)
 * `encoding`: Кодировка сообщения коммита.
 
 ```python3
->>> client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для репозитория 'content_folder'
->>> client.import_(from_path='/path/to/import', to_path='some_file.txt')
+>>> client = SvnClient('svn://example/repo/content_folder')
+
 # Импорт файла '/path/to/import' в папку 'content_folder/some_file.txt'
->>> client.import_(from_path='/path/to/import', to_path='new_folder',
-                    message='Импорт папки без подпапок', depth=Depth.FILES)
+>>> client.import_(from_path='/path/to/import', to_path='some_file.txt')
+
 # Импорт с сообщением коммита
+>>> client.import_(from_path='/path/to/import', to_path='new_folder',
+                   message='Импорт папки без подпапок', depth=Depth.FILES)
 ```
 
 ### SvnClient.mkdir(self, path=None, message='', \*, parents=False, encoding='utf-8', exist_ok=False)
@@ -259,10 +271,12 @@ datetime.datetime(1970, 1, 1, 3, 0)
 
 ```python3
 >>> client = SvnClient('svn://example/repo/content_folder')
->>> client.mkdir(message='Создание папки content_folder', exist_ok=True)
+
 # Ничего не произойдёт, если папка уже существует
->>> client.mkdir('parent/new_folder', message='Создание папки new_folder', parents=True)
+>>> client.mkdir(message='Создание папки content_folder', exist_ok=True)
+
 # Создание родительских папок
+>>> client.mkdir('parent/new_folder', message='Создание папки new_folder', parents=True)
 ```
 
 ### SvnClient.delete(self, path=None, message='', \*, force=False)
@@ -272,14 +286,16 @@ datetime.datetime(1970, 1, 1, 3, 0)
 
 * `path`: Путь к файлу или папке, которое необходимо удалить. None, если удалить файл или папку SvnClient.url.
 * `message`: Сообщение коммита.
-* `force`: Флаг, указывающий, что необходимо принудительно удалить папку, даже если она не пустая.
+* `force`: Флаг, для принудительного удаления папки со всем содержимым.
 
 ```python3
->>> client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для репозитория 'content_folder'
+>>> client = SvnClient('svn://example/repo/content_folder')
+
 >>> client.delete(path='file.txt')  # Удаление файла 'file.txt' в 'content_folder'
->>> client.delete(message='Удаление папки с содержимым', force=True)
+
 # Принудительное удаление папки content_folder
+>>> client.delete(message='Удаление папки с содержимым', force=True)
 ```
 
 ### SvnClient.list(self, path=None, \*, recursive=False, revision=None) -> StorageTree
@@ -309,20 +325,22 @@ datetime.datetime(1970, 1, 1, 3, 0)
   формате [datetime](https://docs.python.org/3/library/datetime.html).
 
 ```python3
->>> client = SvnClient('svn://example/repo/content_folder')
 # Создание экземпляра клиента для папки 'content_folder' в репозитории
->>> content = client.list(recursive=True)  # Просмотр всех объектов рекурсивно
->>> paths = [node.rel_path for node in content.nodes if node.kind == 'file']
+>>> client = SvnClient('svn://example/repo/content_folder')
+
+# Просмотр всех объектов рекурсивно
+>>> content = client.list(recursive=True)  
 # Получение списка путей файлов
+>>> paths = [node.rel_path for node in content.nodes if node.kind == 'file']
 >>> '\n'.join(paths)
 'some_file.dat'
 'subfolder/file.txt'
 'subfolder/some_folder/other_file.txt'
 
->>> content = client.list(path='subfolder')  # Просмотр подпапки 'subfolder'
+# Только объекты, находящиеся непосредственно в 'subfolder'
+>>> content = client.list(path='subfolder')
 >>> paths = [node.rel_path for node in content.nodes]
 >>> '\n'.join(paths)
 'subfolder/file.txt'
 'subfolder/some_folder'
-# Только объекты, находящиеся непосредственно в 'subfolder'
 ```
