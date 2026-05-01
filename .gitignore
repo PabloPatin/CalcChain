@@ -1,2 +1,5 @@
 .idea
 .venv
+ai/*
+.ai_workspace/*
+AGENTS.md
