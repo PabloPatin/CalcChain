@@ -1418,3 +1418,37 @@ Dry-run не должен:
 При работе с расчетными программами может потребоваться перекодирование вывода и ввода в UTF-8, особенно на Windows.
 
 В будущем для Windows и Linux могут понадобиться отдельные оболочки или вспомогательные утилиты.
+
+## 25. Будущая оценка целостности и воспроизводимости
+
+В первой версии manifest не должен хранить итоговые поля вроде `is_reproducible` или `can_publish_versionable`.
+
+Причина:
+
+- такая оценка зависит от политики конкретной версии программы;
+- доступность внешних источников может измениться после создания manifest;
+- будущие версии CalcChain могут проверять тот же manifest по более строгим правилам.
+
+В следующей версии можно добавить отдельный блок integrity/reproducibility findings.
+
+Возможная форма:
+
+- warnings - факты, которые не блокируют работу, но важны для доверия к результату;
+- blockers - факты, которые блокируют воспроизведение или публикацию как воспроизводимого результата;
+- machine-readable code для каждого finding;
+- человекочитаемое описание finding.
+
+Примеры возможных finding:
+
+- `build_toml_changed`;
+- `build_lock_changed_after_build`;
+- `rules_changed_after_build`;
+- `code_changed_before_run`;
+- `input_changed_before_run`;
+- `non_versionable_input_frozen`;
+- `frozen_input_missing`;
+- `snapshot_missing`;
+- `publish_incomplete_manifest_not_published`;
+- `unknown_outputs_present`.
+
+Такой блок должен быть расширением manifest, а не заменой фактических данных build, run, publication, snapshots и frozen inputs.
