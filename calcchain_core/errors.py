@@ -20,3 +20,11 @@ class RulesError(CalcChainError):
 
 class BuildPlanError(CalcChainError):
     """Raised when a build lock cannot produce a safe build plan."""
+
+
+class BuildExecutionError(CalcChainError):
+    """Raised when a checked build plan cannot be materialized safely."""
+
+
+class RunExecutionError(CalcChainError):
+    """Raised when a run process cannot be started or recorded safely."""
