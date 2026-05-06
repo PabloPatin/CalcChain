@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 import re
 from typing import Any, Self
+from urllib.parse import urlsplit
 
 from calcchain_core.errors import ConfigFormatError, UnsupportedSchemaVersionError
 
@@ -55,7 +56,13 @@ class SourceRef:
     revision: str | int | None = None
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any], *, resolved_revision: bool = False) -> Self:
+    def from_dict(
+        cls,
+        data: Mapping[str, Any],
+        *,
+        resolved_revision: bool = False,
+        reject_userinfo: bool = False,
+    ) -> Self:
         ref_type = SourceType(_required_str(data, 'type'))
         location = _optional_str(data, 'location')
         path = _required_str(data, 'path')
@@ -70,6 +77,8 @@ class SourceRef:
 
         if location is None:
             raise ConfigFormatError('svn source requires location')
+        if reject_userinfo:
+            _validate_svn_location(location, field='source')
         _validate_svn_revision(revision, resolved_revision=resolved_revision, field='source')
         if revision is None:
             revision = 'HEAD'
@@ -78,6 +87,8 @@ class SourceRef:
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {'type': self.type.value}
         if self.location is not None:
+            if self.type is SourceType.SVN:
+                _validate_svn_location(self.location, field='source')
             result['location'] = self.location
         result['path'] = self.path
         if self.revision is not None:
@@ -93,7 +104,13 @@ class TargetRef:
     revision: str | int | None = None
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any], *, resolved_revision: bool = False) -> Self:
+    def from_dict(
+        cls,
+        data: Mapping[str, Any],
+        *,
+        resolved_revision: bool = False,
+        reject_userinfo: bool = False,
+    ) -> Self:
         ref_type = SourceType(_required_str(data, 'type'))
         path = _required_str(data, 'path')
         location = _optional_str(data, 'location')
@@ -108,6 +125,8 @@ class TargetRef:
 
         if location is None:
             raise ConfigFormatError('svn target requires location')
+        if reject_userinfo:
+            _validate_svn_location(location, field='target')
         _validate_svn_revision(revision, resolved_revision=resolved_revision, field='target')
         if revision is None:
             revision = 'HEAD'
@@ -116,6 +135,8 @@ class TargetRef:
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {'type': self.type.value, 'path': self.path}
         if self.location is not None:
+            if self.type is SourceType.SVN:
+                _validate_svn_location(self.location, field='target')
             result['location'] = self.location
         if self.revision is not None:
             result['revision'] = self.revision
@@ -128,9 +149,12 @@ class ArtifactRef:
     sources: list[SourceRef]
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> Self:
+    def from_dict(cls, data: Mapping[str, Any], *, reject_userinfo: bool = False) -> Self:
         sha256 = _required_sha256(data, 'sha256')
-        sources = [SourceRef.from_dict(item) for item in _required_list(data, 'sources')]
+        sources = [
+            SourceRef.from_dict(item, reject_userinfo=reject_userinfo)
+            for item in _required_list(data, 'sources')
+        ]
         if not sources:
             raise ConfigFormatError('artifact sources must not be empty')
         return cls(sha256=sha256, sources=sources)
@@ -672,12 +696,14 @@ def _validate_rule_source_presence(
 
 def _validate_manifest_refs(value: Any) -> None:
     if isinstance(value, Mapping):
+        if 'type' in value and 'path' in value:
+            SourceRef.from_dict(value, reject_userinfo=True)
         if 'sha256' in value and 'sources' in value:
-            ArtifactRef.from_dict(value)
+            ArtifactRef.from_dict(value, reject_userinfo=True)
         if 'source' in value and isinstance(value['source'], Mapping):
-            SourceRef.from_dict(value['source'])
+            SourceRef.from_dict(value['source'], reject_userinfo=True)
         if 'target' in value and isinstance(value['target'], Mapping):
-            TargetRef.from_dict(value['target'])
+            TargetRef.from_dict(value['target'], reject_userinfo=True)
         if 'rules' in value and isinstance(value['rules'], Mapping) and 'set' in value['rules']:
             RuleUse.from_dict(value['rules'])
         if 'map' in value and isinstance(value['map'], list):
@@ -726,6 +752,11 @@ def _validate_svn_revision(
     if isinstance(revision, str) and (revision == 'HEAD' or revision.isdecimal()):
         return
     raise ConfigFormatError(f'svn {field} revision must be HEAD or a concrete revision')
+
+
+def _validate_svn_location(location: str, *, field: str) -> None:
+    if '@' in urlsplit(location).netloc:
+        raise ConfigFormatError(f'svn {field} location must not contain userinfo')
 
 
 def _required_mapping(data: Mapping[str, Any], key: str) -> Mapping[str, Any]:

@@ -8,6 +8,8 @@ from calcchain_core.config import (
     write_manifest,
     write_publish_lock,
 )
+from calcchain_core.api import CalculationCore
+from calcchain_core.cleanup import CleanupResult, cleanup_work_dir
 from calcchain_core.errors import CalcChainError, ConfigFormatError, UnsupportedSchemaVersionError
 from calcchain_core.hash import sha256_file, tree_sha256
 from calcchain_core.layout import JobLayout, PublicationServiceLayout
@@ -29,12 +31,15 @@ from calcchain_core.models import (
     SourceType,
     TargetRef,
 )
+from calcchain_core.restore import RestoreRequest, RestoreResult, restore_from_manifest
 
 __all__ = [
     'ArtifactRef',
     'BuildConfig',
     'BuildLock',
     'CalcChainError',
+    'CalculationCore',
+    'CleanupResult',
     'ConfigFormatError',
     'FileMapEntry',
     'JobLayout',
@@ -48,15 +53,19 @@ __all__ = [
     'RulesFile',
     'RunConfig',
     'RunStatus',
+    'RestoreRequest',
+    'RestoreResult',
     'SourceRef',
     'SourceType',
     'TargetRef',
     'UnsupportedSchemaVersionError',
+    'cleanup_work_dir',
     'read_build',
     'read_build_lock',
     'read_publish',
     'read_rules',
     'read_run',
+    'restore_from_manifest',
     'sha256_file',
     'tree_sha256',
     'write_build_lock',

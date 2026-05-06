@@ -3,3 +3,4 @@
 ai/*
 .ai_workspace/*
 AGENTS.md
+**/__pycache__

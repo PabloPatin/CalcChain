@@ -1,0 +1,26 @@
+{
+  "rule_sets": {
+    "standard_outputs": {
+      "type": "output",
+      "status": "stable",
+      "ensure_all_files": true,
+      "rules": [
+        {
+          "source": "results/(.*)",
+          "destination": "<capt:1>"
+        }
+      ]
+    },
+    "standard_logs": {
+      "type": "logs",
+      "status": "stable",
+      "ensure_all_files": true,
+      "rules": [
+        {
+          "source": "logs/(.*)",
+          "destination": "<capt:1>"
+        }
+      ]
+    }
+  }
+}

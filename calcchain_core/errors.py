@@ -28,3 +28,15 @@ class BuildExecutionError(CalcChainError):
 
 class RunExecutionError(CalcChainError):
     """Raised when a run process cannot be started or recorded safely."""
+
+
+class PublishError(CalcChainError):
+    """Raised when publication cannot be planned or executed safely."""
+
+
+class RestoreError(CalcChainError):
+    """Raised when restore cannot reconstruct or verify a job safely."""
+
+
+class CleanupError(CalcChainError):
+    """Raised when cleanup cannot safely remove work files."""

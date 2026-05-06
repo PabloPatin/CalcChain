@@ -1,0 +1,13 @@
+[build]
+name = "test-workspace-case"
+
+[code.source]
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\code"
+
+[[inputs]]
+name = "input"
+
+[inputs.source]
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\input"

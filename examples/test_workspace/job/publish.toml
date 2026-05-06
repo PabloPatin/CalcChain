@@ -1,0 +1,18 @@
+[publish]
+message = "test workspace publish"
+
+[service_target]
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_service"
+
+[[targets]]
+name = "outputs"
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_outputs"
+rule_sets = ["standard_outputs"]
+
+[[targets]]
+name = "logs"
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_logs"
+rule_sets = ["standard_logs"]
