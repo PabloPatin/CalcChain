@@ -31,6 +31,17 @@ from calcchain_core.models import (
     SourceType,
     TargetRef,
 )
+from calcchain_core.plugin_api import PLUGIN_API_VERSION, CalcChainPlugin, PluginContext
+from calcchain_core.plugins import (
+    PluginActivationError,
+    PluginCapabilityConflictError,
+    PluginCompatibilityError,
+    PluginDependencyError,
+    PluginEntrypointError,
+    PluginError,
+    PluginMetadataError,
+    PluginRegistrationError,
+)
 from calcchain_core.restore import RestoreRequest, RestoreResult, restore_from_manifest
 
 __all__ = [
@@ -40,11 +51,22 @@ __all__ = [
     'CalcChainError',
     'CalculationCore',
     'CleanupResult',
+    'CalcChainPlugin',
     'ConfigFormatError',
     'FileMapEntry',
     'JobLayout',
     'JobStatus',
     'Manifest',
+    'PLUGIN_API_VERSION',
+    'PluginActivationError',
+    'PluginCapabilityConflictError',
+    'PluginCompatibilityError',
+    'PluginContext',
+    'PluginDependencyError',
+    'PluginEntrypointError',
+    'PluginError',
+    'PluginMetadataError',
+    'PluginRegistrationError',
     'PublicationServiceLayout',
     'PublishConfig',
     'PublishLock',
