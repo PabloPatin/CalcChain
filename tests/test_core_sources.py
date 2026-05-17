@@ -54,7 +54,7 @@ class TestCoreSources(unittest.TestCase):
 
             self.assertEqual(adapter.list_files(source), ['pkg/lib.txt', 'solver.py'])
             self.assertEqual(adapter.read_file(source, 'pkg/lib.txt'), b'library')
-            self.assertEqual(adapter.resolve_revision(source), source)
+            self.assertEqual(adapter.resolve_lock_ref(source), source)
             self.assertFalse(adapter.is_versionable(source))
 
     def test_local_source_rejects_unsafe_relative_reads(self):

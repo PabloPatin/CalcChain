@@ -71,7 +71,7 @@ class LocalSourceAdapter:
             raise SourceError(f'local source file not found: {relative_path}')
         return path.read_bytes()
 
-    def resolve_revision(self, source: SourceRef) -> SourceRef:
+    def resolve_lock_ref(self, source: SourceRef) -> SourceRef:
         validate_source_ref(source)
         _ensure_source_type(source, SourceType.LOCAL)
         return source
@@ -210,10 +210,12 @@ class _RuntimeSourceAdapter:
 class SourceRegistry:
     '''Регистратор для SourceAdapters'''
     def __init__(self, adapters: dict[SourceType | str, SourceAdapter] | None = None):
+        self._entries: dict[str, RegisteredSourceCapability] = {}
+
         # По умолчанию зарегистрирвовать только local
         self.register(
             source_type=SourceType.LOCAL.value,
-            adapter=LocalSourceAdapter,            
+            adapter=LocalSourceAdapter(),            
         )
         # Можно зарегистрировать готовые адаптеры
         if adapters:
