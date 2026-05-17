@@ -1,16 +1,24 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.config import read_publish
+from calcchain_core.auth import AuthService
+from calcchain_core.api import CalculationCore
+from calcchain_core.config import read_publish, write_manifest
 from calcchain_core.errors import ConfigFormatError, PublishError
 from calcchain_core.hash import sha256_file
 from calcchain_core.models import Manifest, PublishConfig, RuleSetType, RulesFile, SourceType, TargetRef
+from calcchain_core.plugin_runtime import AuthCredentials, AuthField, AuthRequirement
+from calcchain_core.plugin_runtime import PublishedRef as RuntimePublishedRef
+from calcchain_core.plugins.manager import PluginRuntimeSet
+from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.publish import build_publish_plan, create_publish_lock, execute_publish_plan
+from calcchain_core.restore import RestoreRequest, restore_from_manifest
+from calcchain_core.sources import SourceRegistry
 from calcchain_core.targets import LocalTargetAdapter, PublishedRef, TargetRegistry
 
 
@@ -217,6 +225,546 @@ class TestCorePublish(unittest.TestCase):
             with self.assertRaises(PublishError):
                 adapter.write_file(target, '../escape.txt', b'bad')
 
+    def test_target_registry_default_keeps_local_only(self):
+        registry = TargetRegistry()
+        target = TargetRef.from_dict(
+            {
+                'type': 'svn',
+                'location': 'https://svn.example.org/results',
+                'path': 'case/results',
+                'revision': 'HEAD',
+            },
+        )
+
+        with self.assertRaises(PublishError):
+            registry.resolve_revision(target)
+
+    def test_target_registry_from_runtime_dispatches_plugin_capability_with_context(self):
+        class PluginTargetAdapter:
+            def __init__(self):
+                self.calls = []
+
+            def validate_config(self, ref, context):
+                self.calls.append(('validate_config', ref, context))
+
+            def resolve_lock_ref(self, ref, context):
+                self.calls.append(('resolve_lock_ref', ref, context))
+                return {'type': 'artifact-store', 'path': ref['path'], 'revision': 99}
+
+            def validate_lock_ref(self, ref, context):
+                self.calls.append(('validate_lock_ref', ref, context))
+
+            def ensure_root(self, ref, context):
+                self.calls.append(('ensure_root', ref, context))
+                return dict(ref)
+
+            def write_file(self, ref, relative_path, data, context):
+                self.calls.append(('write_file', ref, relative_path, data, context))
+                return RuntimePublishedRef(ref={'type': 'artifact-store', 'path': f"{ref['path']}/{relative_path}"})
+
+        adapter = PluginTargetAdapter()
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.publisher',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('target', 'artifact-store'): CapabilityRecord(
+                    key=CapabilityKey('target', 'artifact-store'),
+                    capability=adapter,
+                    owner='plugin.publisher',
+                ),
+            },
+        )
+        auth = object()
+        registry = TargetRegistry.from_runtime(runtime, auth=auth)
+        target = TargetRef.from_dict({'type': 'artifact-store', 'path': 'runs/42'})
+
+        resolved = registry.resolve_revision(target)
+        registry.ensure_root(resolved)
+        published = registry.write_file(resolved, 'manifest.json', b'{}')
+
+        self.assertEqual(resolved.revision, 99)
+        self.assertEqual(published.source.path, 'runs/42/manifest.json')
+        self.assertEqual(registry._entries['artifact-store'].plugin_id, 'plugin.publisher')
+        self.assertIsNone(registry._entries['artifact-store'].plugin_version)
+        self.assertEqual(
+            [call[0] for call in adapter.calls],
+            ['validate_config', 'resolve_lock_ref', 'validate_lock_ref', 'ensure_root', 'validate_lock_ref', 'write_file'],
+        )
+        for call in adapter.calls:
+            context = call[-1]
+            self.assertEqual(context.plugin_id, 'plugin.publisher')
+            self.assertEqual(context.capability_id, 'artifact-store')
+            self.assertIs(context.auth, auth)
+
+    def test_target_registry_from_runtime_does_not_override_builtin_local(self):
+        adapter = object()
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.publisher',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('target', 'local'): CapabilityRecord(
+                    key=CapabilityKey('target', 'local'),
+                    capability=adapter,
+                    owner='plugin.publisher',
+                ),
+            },
+        )
+
+        registry = TargetRegistry.from_runtime(runtime)
+
+        self.assertIsNone(registry._entries['local'].plugin_id)
+        self.assertIsNone(registry._entries['local'].plugin_version)
+        self.assertIsInstance(registry.adapter_for(TargetRef.from_dict({'type': 'local', 'path': 'D:/unused'})), LocalTargetAdapter)
+
+    def test_plugin_target_lifecycle_adds_lock_metadata_and_uses_published_refs(self):
+        class PluginTargetAdapter:
+            plugin_version = '2.3.4'
+
+            def __init__(self):
+                self.calls = []
+
+            def validate_config(self, ref, context):
+                self.calls.append(('validate_config', ref['type'], context.operation))
+
+            def resolve_lock_ref(self, ref, context):
+                self.calls.append(('resolve_lock_ref', ref['type'], context.operation))
+                return {'type': 'artifact-store', 'path': ref['path'], 'revision': 5, 'bucket': ref['bucket']}
+
+            def validate_lock_ref(self, ref, context):
+                self.calls.append(('validate_lock_ref', ref['revision'], context.operation))
+
+            def ensure_root(self, ref, context):
+                self.calls.append(('ensure_root', ref['path'], context.operation))
+                return dict(ref)
+
+            def write_file(self, ref, relative_path, data, context):
+                self.calls.append(('write_file', relative_path, context.operation))
+                return RuntimePublishedRef(
+                    ref={
+                        'type': 'artifact-source',
+                        'path': f"{ref['path']}/{relative_path}",
+                        'revision': ref['revision'],
+                        'plugin': {'id': 'plugin.publisher', 'version': '2.3.4'},
+                    },
+                )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            adapter = PluginTargetAdapter()
+            registry = TargetRegistry.from_runtime(
+                PluginRuntimeSet(
+                    active_plugin_ids=('plugin.publisher',),
+                    environment=object(),
+                    capabilities={
+                        CapabilityKey('target', 'artifact-store'): CapabilityRecord(
+                            key=CapabilityKey('target', 'artifact-store'),
+                            capability=adapter,
+                            owner='plugin.publisher',
+                        ),
+                    },
+                ),
+            )
+            config = PublishConfig.from_dict(
+                {
+                    'publish': {'message': 'publish'},
+                    'service_target': {'type': 'artifact-store', 'path': 'service', 'bucket': 'b1'},
+                    'targets': [
+                        {
+                            'name': 'published',
+                            'type': 'artifact-store',
+                            'path': 'outputs',
+                            'bucket': 'b1',
+                            'rule_sets': ['standard_outputs', 'standard_logs', 'standard_temp'],
+                        },
+                    ],
+                },
+            )
+
+            lock = create_publish_lock(config, registry)
+            manifest_data = manifest_fixture(root).to_dict()
+            manifest_data['run']['file_groups']['temp'] = ['tmp/debug.bin']
+            manifest_data['run']['file_groups']['unknown'] = []
+            plan = build_publish_plan(Manifest.from_dict(manifest_data), lock, rules_fixture())
+            result = execute_publish_plan(replace(plan, target_registry=registry))
+
+            self.assertEqual(lock.service_target.plugin.id, 'plugin.publisher')
+            self.assertEqual(lock.service_target.plugin.version, '2.3.4')
+            self.assertEqual(lock.service_target.extra['bucket'], 'b1')
+            self.assertEqual(
+                [call[0] for call in adapter.calls[:6]],
+                [
+                    'validate_config',
+                    'resolve_lock_ref',
+                    'validate_lock_ref',
+                    'validate_config',
+                    'resolve_lock_ref',
+                    'validate_lock_ref',
+                ],
+            )
+            publication = result.updated_manifest.to_dict()['publication']
+            self.assertEqual(publication['lock']['sources'][0]['type'], 'artifact-source')
+            self.assertEqual(publication['lock']['sources'][0]['plugin']['id'], 'plugin.publisher')
+            self.assertEqual(publication['outputs'][0]['target']['plugin']['version'], '2.3.4')
+            self.assertEqual(publication['outputs'][0]['published_sources']['value.txt']['type'], 'artifact-source')
+            self.assertEqual(publication['outputs'][0]['published_sources']['value.txt']['path'], 'outputs/value.txt')
+            self.assertEqual(publication['outputs'][0]['published_sources']['value.txt']['plugin']['id'], 'plugin.publisher')
+            self.assertEqual(publication['logs'][0]['published_sources']['solver.log']['type'], 'artifact-source')
+            self.assertEqual(publication['logs'][0]['published_sources']['solver.log']['path'], 'outputs/solver.log')
+            self.assertEqual(publication['temp'][0]['published_sources']['debug.bin']['type'], 'artifact-source')
+            self.assertEqual(publication['temp'][0]['published_sources']['debug.bin']['path'], 'outputs/debug.bin')
+
+            class PublishedSourceAdapter:
+                data = {
+                    'outputs/value.txt': b'value',
+                    'outputs/solver.log': b'log',
+                    'outputs/debug.bin': b'debug',
+                }
+
+                def list_files(self, source):
+                    return [Path(source.path).name]
+
+                def read_file(self, source, relative_path):
+                    return self.data[source.path]
+
+                def resolve_revision(self, source):
+                    return source
+
+                def is_versionable(self, source):
+                    return True
+
+            manifest_path = root / 'published_manifest.json'
+            restored = root / 'restored'
+            manifest_data = result.updated_manifest.to_dict()
+            manifest_data['build']['inputs'] = []
+            write_manifest(Manifest.from_dict(manifest_data), manifest_path)
+            restore_result = restore_from_manifest(
+                RestoreRequest(manifest_path, restored),
+                SourceRegistry({'artifact-source': PublishedSourceAdapter()}),
+            )
+
+            self.assertEqual(restore_result.status, 'restored')
+            self.assertEqual((restored / 'work' / 'results' / 'value.txt').read_bytes(), b'value')
+            self.assertEqual((restored / 'work' / 'logs' / 'solver.log').read_bytes(), b'log')
+            self.assertEqual((restored / 'work' / 'tmp' / 'debug.bin').read_bytes(), b'debug')
+
+    def test_plugin_target_lifecycle_exception_is_wrapped_and_redacted(self):
+        class FailingPluginTargetAdapter:
+            def validate_config(self, ref, context):
+                raise RuntimeError(f'boom secret=abc ref={ref}')
+
+            def resolve_lock_ref(self, ref, context):
+                return dict(ref)
+
+            def validate_lock_ref(self, ref, context):
+                pass
+
+            def ensure_root(self, ref, context):
+                return dict(ref)
+
+            def write_file(self, ref, relative_path, data, context):
+                return RuntimePublishedRef(ref={'type': 'artifact-source', 'path': relative_path})
+
+        registry = TargetRegistry.from_runtime(
+            PluginRuntimeSet(
+                active_plugin_ids=('plugin.publisher',),
+                environment=object(),
+                capabilities={
+                    CapabilityKey('target', 'artifact-store'): CapabilityRecord(
+                        key=CapabilityKey('target', 'artifact-store'),
+                        capability=FailingPluginTargetAdapter(),
+                        owner='plugin.publisher',
+                    ),
+                },
+            ),
+        )
+        config = PublishConfig.from_dict(
+            {'service_target': {'type': 'artifact-store', 'path': 'service', 'token': 'abc123'}},
+        )
+
+        with self.assertRaises(PublishError) as caught:
+            create_publish_lock(config, registry)
+
+        message = str(caught.exception)
+        self.assertIn('plugin target validate_config failed', message)
+        self.assertIn('secret=[redacted]', message)
+        self.assertNotIn('abc', message)
+        self.assertIn("'token': '[redacted]'", message)
+        self.assertNotIn('abc123', message)
+
+    def test_plugin_target_runtime_errors_redact_secret_like_extra_fields_on_adapter_paths(self):
+        class FailingPluginTargetAdapter:
+            def __init__(self, failing_operation):
+                self.failing_operation = failing_operation
+
+            def validate_config(self, ref, context):
+                if self.failing_operation == 'validate_config':
+                    raise RuntimeError(f'bad ref {ref}')
+
+            def resolve_lock_ref(self, ref, context):
+                return {**ref, 'revision': 5}
+
+            def validate_lock_ref(self, ref, context):
+                pass
+
+            def ensure_root(self, ref, context):
+                if self.failing_operation == 'ensure_root':
+                    raise RuntimeError(f'bad ref {ref}')
+                return dict(ref)
+
+            def write_file(self, ref, relative_path, data, context):
+                if self.failing_operation == 'write_file':
+                    raise RuntimeError(f'bad ref {ref}')
+                return RuntimePublishedRef(ref={'type': 'artifact-source', 'path': relative_path})
+
+        target_data = {
+            'type': 'artifact-store',
+            'path': 'service',
+            'token': 'abc123',
+            'password': 'pw456',
+            'api-key': 'key789',
+            'bucket': 'public-bucket',
+        }
+
+        for operation in ('validate_config', 'ensure_root', 'write_file'):
+            with self.subTest(operation=operation):
+                registry = TargetRegistry.from_runtime(
+                    PluginRuntimeSet(
+                        active_plugin_ids=('plugin.publisher',),
+                        environment=object(),
+                        capabilities={
+                            CapabilityKey('target', 'artifact-store'): CapabilityRecord(
+                                key=CapabilityKey('target', 'artifact-store'),
+                                capability=FailingPluginTargetAdapter(operation),
+                                owner='plugin.publisher',
+                            ),
+                        },
+                    ),
+                )
+                target = TargetRef.from_dict({**target_data, 'revision': 5}, resolved_revision=True)
+
+                with self.assertRaises(PublishError) as caught:
+                    if operation == 'validate_config':
+                        create_publish_lock(
+                            PublishConfig.from_dict({'service_target': target_data}),
+                            registry,
+                        )
+                    elif operation == 'ensure_root':
+                        registry.ensure_root(target)
+                    else:
+                        registry.write_file(target, 'manifest.json', b'{}')
+
+                message = str(caught.exception)
+                self.assertIn(f'plugin target {operation} failed', message)
+                self.assertIn('public-bucket', message)
+                self.assertNotIn('abc123', message)
+                self.assertNotIn('pw456', message)
+                self.assertNotIn('key789', message)
+                self.assertIn("'token': '[redacted]'", message)
+                self.assertIn("'password': '[redacted]'", message)
+                self.assertIn("'api-key': '[redacted]'", message)
+
+    def test_target_runtime_context_auth_service_provides_credentials(self):
+        class AuthProvider:
+            def can_handle(self, requirement, context):
+                return requirement.scheme == 'token'
+
+            def validate_requirement(self, requirement, context):
+                pass
+
+            def get_credentials(self, requirement, context):
+                return AuthCredentials({'token': 'target-token'})
+
+        class PluginTargetAdapter:
+            def validate_config(self, ref, context):
+                pass
+
+            def resolve_lock_ref(self, ref, context):
+                return {'type': 'secure-target', 'path': ref['path'], 'revision': 1}
+
+            def validate_lock_ref(self, ref, context):
+                pass
+
+            def ensure_root(self, ref, context):
+                return dict(ref)
+
+            def write_file(self, ref, relative_path, data, context):
+                credentials = context.auth.get_credentials(
+                    AuthRequirement(
+                        scheme='token',
+                        scope={'use': 'target'},
+                        fields=(AuthField('token', True),),
+                    ),
+                )
+                return RuntimePublishedRef(
+                    ref={
+                        'type': 'secure-source',
+                        'path': f"{credentials.values['token']}/{relative_path}",
+                    },
+                )
+
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.secure',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('target', 'secure-target'): CapabilityRecord(
+                    key=CapabilityKey('target', 'secure-target'),
+                    capability=PluginTargetAdapter(),
+                    owner='plugin.secure',
+                ),
+                CapabilityKey('auth', 'token'): CapabilityRecord(
+                    key=CapabilityKey('auth', 'token'),
+                    capability=AuthProvider(),
+                    owner='plugin.secure',
+                ),
+            },
+        )
+        auth_service = AuthService.from_runtime(runtime)
+        registry = TargetRegistry.from_runtime(runtime, auth=auth_service)
+        target = TargetRef.from_dict({'type': 'secure-target', 'path': 'service'})
+
+        resolved = registry.resolve_revision(target)
+        published = registry.write_file(resolved, 'manifest.json', b'{}')
+
+        self.assertEqual(published.source.path, 'target-token/manifest.json')
+
+    def test_calculation_core_passes_explicit_auth_service_to_target_context(self):
+        class AuthProvider:
+            def can_handle(self, requirement, context):
+                return requirement.scheme == 'token'
+
+            def validate_requirement(self, requirement, context):
+                pass
+
+            def get_credentials(self, requirement, context):
+                return AuthCredentials({'token': 'explicit-target-token'})
+
+        class PluginTargetAdapter:
+            def validate_config(self, ref, context):
+                pass
+
+            def resolve_lock_ref(self, ref, context):
+                return {'type': 'secure-target', 'path': ref['path'], 'revision': 1}
+
+            def validate_lock_ref(self, ref, context):
+                pass
+
+            def ensure_root(self, ref, context):
+                return dict(ref)
+
+            def write_file(self, ref, relative_path, data, context):
+                credentials = context.auth.get_credentials(
+                    AuthRequirement(
+                        scheme='token',
+                        scope={'use': 'target'},
+                        fields=(AuthField('token', True),),
+                    ),
+                )
+                return RuntimePublishedRef(
+                    ref={
+                        'type': 'secure-source',
+                        'path': f"{credentials.values['token']}/{relative_path}",
+                    },
+                )
+
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.secure',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('target', 'secure-target'): CapabilityRecord(
+                    key=CapabilityKey('target', 'secure-target'),
+                    capability=PluginTargetAdapter(),
+                    owner='plugin.secure',
+                ),
+                CapabilityKey('auth', 'token'): CapabilityRecord(
+                    key=CapabilityKey('auth', 'token'),
+                    capability=AuthProvider(),
+                    owner='plugin.secure',
+                ),
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            core = CalculationCore(
+                Path(tmp),
+                plugin_runtime=runtime,
+                auth_service=AuthService.from_runtime(runtime),
+            )
+            resolved = core.target_registry.resolve_revision(
+                TargetRef.from_dict({'type': 'secure-target', 'path': 'service'}),
+            )
+            published = core.target_registry.write_file(resolved, 'manifest.json', b'{}')
+
+        self.assertEqual(published.source.path, 'explicit-target-token/manifest.json')
+
+    def test_calculation_core_does_not_auto_enable_auth_provider_for_target_context(self):
+        class AuthProvider:
+            def __init__(self):
+                self.calls = []
+
+            def can_handle(self, requirement, context):
+                self.calls.append(('can_handle', requirement.scheme))
+                return True
+
+            def validate_requirement(self, requirement, context):
+                self.calls.append(('validate_requirement', requirement.scheme))
+
+            def get_credentials(self, requirement, context):
+                self.calls.append(('get_credentials', requirement.scheme))
+                return AuthCredentials({'token': 'auto-enabled-target-token'})
+
+        class PluginTargetAdapter:
+            def validate_config(self, ref, context):
+                pass
+
+            def resolve_lock_ref(self, ref, context):
+                return {'type': 'secure-target', 'path': ref['path'], 'revision': 1}
+
+            def validate_lock_ref(self, ref, context):
+                pass
+
+            def ensure_root(self, ref, context):
+                return dict(ref)
+
+            def write_file(self, ref, relative_path, data, context):
+                context.auth.get_credentials(
+                    AuthRequirement(
+                        scheme='token',
+                        scope={'use': 'target'},
+                        fields=(AuthField('token', True),),
+                    ),
+                )
+                return RuntimePublishedRef(ref={'type': 'secure-source', 'path': relative_path})
+
+        provider = AuthProvider()
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.secure',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('target', 'secure-target'): CapabilityRecord(
+                    key=CapabilityKey('target', 'secure-target'),
+                    capability=PluginTargetAdapter(),
+                    owner='plugin.secure',
+                ),
+                CapabilityKey('auth', 'token'): CapabilityRecord(
+                    key=CapabilityKey('auth', 'token'),
+                    capability=provider,
+                    owner='plugin.secure',
+                ),
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            core = CalculationCore(Path(tmp), plugin_runtime=runtime)
+            resolved = core.target_registry.resolve_revision(
+                TargetRef.from_dict({'type': 'secure-target', 'path': 'service'}),
+            )
+
+            with self.assertRaises(PublishError) as caught:
+                core.target_registry.write_file(resolved, 'manifest.json', b'{}')
+
+        self.assertIn('auth service is not configured', str(caught.exception))
+        self.assertEqual(provider.calls, [])
+
 
 def manifest_fixture(root: Path) -> Manifest:
     job_dir = root / 'job'
@@ -286,6 +834,12 @@ def rules_fixture() -> RulesFile:
                     'status': 'stable',
                     'ensure_all_files': True,
                     'rules': [{'source': 'logs/(.*)', 'destination': '<capt:1>'}],
+                },
+                'standard_temp': {
+                    'type': RuleSetType.TEMP.value,
+                    'status': 'transient',
+                    'ensure_all_files': True,
+                    'rules': [{'source': 'tmp/(.*)', 'destination': '<capt:1>'}],
                 },
             },
         },

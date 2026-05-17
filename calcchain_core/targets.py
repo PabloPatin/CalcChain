@@ -1,15 +1,22 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 import tempfile
+import re
 from typing import Protocol
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from calcchain_core.artifacts import published_source
 from calcchain_core.errors import PublishError
 from calcchain_core.models import SourceRef, SourceType, TargetRef
-from svn.src.client import SvnClient
+from calcchain_core.plugin_runtime import PluginRefMetadata, TargetContext
+from calcchain_core.plugins.manager import PluginRuntimeSet
+from svn.client import SvnClient
+
+_URL_USERINFO_RE = re.compile(r'([A-Za-z][A-Za-z0-9+.-]*://)([^/\s?#@]+@)([^/\s?#]+)')
+_SECRET_ASSIGNMENT_RE = re.compile(r'(?i)\b(secret|token|password|passwd|api[_-]?key)=([^\s,;]+)')
+_SENSITIVE_EXTRA_KEYS = frozenset({'secret', 'token', 'password', 'passwd', 'api_key', 'apikey', 'api-key'})
 
 
 @dataclass(frozen=True)
@@ -20,6 +27,12 @@ class PublishedRef:
 
 
 class TargetAdapter(Protocol):
+    def validate_config(self, target: TargetRef) -> None:
+        """Validate an unresolved target config before lock resolution."""
+
+    def validate_lock_ref(self, target: TargetRef) -> None:
+        """Validate a locked target ref before writes."""
+
     def write_file(self, target: TargetRef, relative_path: str, data: bytes) -> PublishedRef:
         """Write data under target-relative path and return a published source ref."""
 
@@ -31,6 +44,14 @@ class TargetAdapter(Protocol):
 
 
 class LocalTargetAdapter:
+    def validate_config(self, target: TargetRef) -> None:
+        validate_target_ref(target)
+        _ensure_target_type(target, SourceType.LOCAL)
+
+    def validate_lock_ref(self, target: TargetRef) -> None:
+        validate_target_ref(target)
+        _ensure_target_type(target, SourceType.LOCAL)
+
     def write_file(self, target: TargetRef, relative_path: str, data: bytes) -> PublishedRef:
         validate_target_ref(target)
         _ensure_target_type(target, SourceType.LOCAL)
@@ -55,6 +76,14 @@ class LocalTargetAdapter:
 class SvnTargetAdapter:
     def __init__(self, client_factory=None):
         self._client_factory = client_factory or self._default_client_factory
+
+    def validate_config(self, target: TargetRef) -> None:
+        validate_target_ref(target)
+        _ensure_target_type(target, SourceType.SVN)
+
+    def validate_lock_ref(self, target: TargetRef) -> None:
+        validate_target_ref(target)
+        _ensure_target_type(target, SourceType.SVN)
 
     def write_file(self, target: TargetRef, relative_path: str, data: bytes) -> PublishedRef:
         validate_target_ref(target)
@@ -106,25 +135,129 @@ class SvnTargetAdapter:
         return SvnClient(location, check_exists=False)
 
 
+@dataclass(frozen=True)
+class RegisteredTargetCapability:
+    adapter: TargetAdapter
+    plugin_id: str | None = None
+    plugin_version: str | None = None
+
+
+class _RuntimeTargetAdapter:
+    def __init__(self, adapter, *, capability_id: str, plugin_id: str | None, auth: object | None) -> None:
+        self._adapter = adapter
+        self._capability_id = capability_id
+        self._plugin_id = plugin_id
+        self._auth = auth
+
+    def write_file(self, target: TargetRef, relative_path: str, data: bytes) -> PublishedRef:
+        self.validate_lock_ref(target)
+        published = self._call_plugin('write_file', target, relative_path, data, self._context('write_file'))
+        if isinstance(published, PublishedRef):
+            return published
+        return PublishedRef(
+            target=target,
+            relative_path=relative_path,
+            source=SourceRef.from_dict(published.ref),
+        )
+
+    def ensure_root(self, target: TargetRef) -> TargetRef:
+        self.validate_lock_ref(target)
+        ensured = self._call_plugin('ensure_root', target, self._context('ensure_root'))
+        return TargetRef.from_dict(ensured, resolved_revision=target.revision is not None)
+
+    def resolve_revision(self, target: TargetRef) -> TargetRef:
+        resolved = self._call_plugin('resolve_lock_ref', target, self._context('resolve_lock_ref'))
+        return TargetRef.from_dict(resolved, resolved_revision=True)
+
+    def validate_config(self, target: TargetRef) -> None:
+        self._call_plugin('validate_config', target, self._context('validate_config'))
+
+    def validate_lock_ref(self, target: TargetRef) -> None:
+        self._call_plugin('validate_lock_ref', target, self._context('validate_lock_ref'))
+
+    def _context(self, operation: str) -> TargetContext:
+        return TargetContext(
+            plugin_id=self._plugin_id,
+            capability_id=self._capability_id,
+            operation=operation,
+            auth=self._auth,
+        )
+
+    def _call_plugin(self, operation: str, target: TargetRef, *args):
+        try:
+            return getattr(self._adapter, operation)(target.to_dict(), *args)
+        except Exception as err:
+            raise PublishError(sanitize_target_error_message(f'plugin target {operation} failed: {err}', target)) from err
+
+
 class TargetRegistry:
     def __init__(self, adapters: dict[SourceType | str, TargetAdapter] | None = None):
-        self._adapters: dict[SourceType, TargetAdapter] = {
-            SourceType.LOCAL: LocalTargetAdapter(),
-            SourceType.SVN: SvnTargetAdapter(),
+        self._entries: dict[str, RegisteredTargetCapability] = {
+            SourceType.LOCAL.value: RegisteredTargetCapability(LocalTargetAdapter()),
         }
         if adapters:
             for target_type, adapter in adapters.items():
                 self.register(target_type, adapter)
 
-    def register(self, target_type: SourceType | str, adapter: TargetAdapter) -> None:
-        self._adapters[SourceType(target_type)] = adapter
+    @classmethod
+    def from_runtime(
+        cls,
+        runtime: PluginRuntimeSet | None,
+        *,
+        auth: object | None = None,
+    ) -> TargetRegistry:
+        registry = cls()
+        if runtime is None:
+            return registry
+        for key, record in runtime.capabilities.items():
+            if key.namespace != 'target':
+                continue
+            if key.id in registry._entries:
+                continue
+            registry.register(
+                key.id,
+                _RuntimeTargetAdapter(record.capability, capability_id=key.id, plugin_id=record.owner, auth=auth),
+                plugin_id=record.owner,
+                plugin_version=getattr(record.capability, 'plugin_version', None),
+            )
+        return registry
+
+    def register(
+        self,
+        target_type: SourceType | str,
+        adapter: TargetAdapter,
+        *,
+        plugin_id: str | None = None,
+        plugin_version: str | None = None,
+    ) -> None:
+        self._entries[_type_id(target_type)] = RegisteredTargetCapability(
+            adapter,
+            plugin_id=plugin_id,
+            plugin_version=plugin_version,
+        )
 
     def adapter_for(self, target: TargetRef) -> TargetAdapter:
+        return self._entry_for(target).adapter
+
+    def validate_config(self, target: TargetRef) -> None:
+        entry = self._entry_for(target)
+        _call_optional(entry.adapter, 'validate_config', target)
+
+    def resolve_lock_ref(self, target: TargetRef) -> TargetRef:
+        entry = self._entry_for(target)
+        resolved = entry.adapter.resolve_revision(target)
+        return _with_plugin_metadata(resolved, entry)
+
+    def validate_lock_ref(self, target: TargetRef) -> None:
+        entry = self._entry_for(target)
+        _call_optional(entry.adapter, 'validate_lock_ref', target)
+
+    def _entry_for(self, target: TargetRef) -> RegisteredTargetCapability:
         validate_target_ref(target)
         try:
-            return self._adapters[target.type]
+            return self._entries[_type_id(target.type)]
         except KeyError as err:
-            raise PublishError(f'unsupported target type: {target.type}') from err
+            raise PublishError(f'unsupported target type: {_type_id(target.type)}') from err
 
     def write_file(self, target: TargetRef, relative_path: str, data: bytes) -> PublishedRef:
         return self.adapter_for(target).write_file(target, relative_path, data)
@@ -133,13 +266,26 @@ class TargetRegistry:
         return self.adapter_for(target).ensure_root(target)
 
     def resolve_revision(self, target: TargetRef) -> TargetRef:
-        return self.adapter_for(target).resolve_revision(target)
+        self.validate_config(target)
+        return self.resolve_lock_ref(target)
+
+
+def sanitize_target_error_message(message: str, target: TargetRef | None = None) -> str:
+    sanitized = message
+    if target is not None and target.location is not None:
+        sanitized = sanitized.replace(target.location, _redact_location(target.location))
+    if target is not None:
+        sanitized = _redact_sensitive_extra_values(sanitized, target)
+    sanitized = _URL_USERINFO_RE.sub(r'\1[redacted]@\3', sanitized)
+    return _SECRET_ASSIGNMENT_RE.sub(r'\1=[redacted]', sanitized)
 
 
 def validate_target_ref(target: TargetRef) -> None:
-    if target.type is SourceType.LOCAL:
+    if _type_id(target.type) == SourceType.LOCAL.value:
         if target.location is not None or target.revision is not None:
             raise PublishError('local target must use only path')
+        return
+    if _type_id(target.type) != SourceType.SVN.value:
         return
     _normalize_relative_path(target.path, field='svn target path')
     if target.location is None:
@@ -149,8 +295,29 @@ def validate_target_ref(target: TargetRef) -> None:
 
 
 def _ensure_target_type(target: TargetRef, expected_type: SourceType) -> None:
-    if target.type is not expected_type:
-        raise PublishError(f'expected {expected_type.value} target, got {target.type.value}')
+    if _type_id(target.type) != expected_type.value:
+        raise PublishError(f'expected {expected_type.value} target, got {_type_id(target.type)}')
+
+
+def _redact_location(location: str) -> str:
+    parsed = urlsplit(location)
+    if '@' not in parsed.netloc:
+        return location
+    host = parsed.netloc.rsplit('@', maxsplit=1)[-1]
+    return urlunsplit((parsed.scheme, f'[redacted]@{host}', parsed.path, parsed.query, parsed.fragment))
+
+
+def _redact_sensitive_extra_values(message: str, target: TargetRef) -> str:
+    sanitized = message
+    for key, value in target.extra.items():
+        if _sensitive_key(key) and isinstance(value, str) and value:
+            sanitized = sanitized.replace(value, '[redacted]')
+    return sanitized
+
+
+def _sensitive_key(key: str) -> bool:
+    normalized = key.lower().replace('-', '_')
+    return normalized in _SENSITIVE_EXTRA_KEYS
 
 
 def _safe_join(root: Path, relative_path: str) -> Path:
@@ -186,3 +353,21 @@ def _normalize_relative_path(value: str, *, field: str) -> str:
 
 def _has_windows_drive(value: str) -> bool:
     return len(value) >= 2 and value[1] == ':' and value[0].isalpha()
+
+
+def _type_id(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return value
+
+
+def _call_optional(adapter: TargetAdapter, method_name: str, target: TargetRef) -> None:
+    method = getattr(adapter, method_name, None)
+    if method is not None:
+        method(target)
+
+
+def _with_plugin_metadata(target: TargetRef, entry: RegisteredTargetCapability) -> TargetRef:
+    if entry.plugin_id is None:
+        return target
+    return replace(target, plugin=PluginRefMetadata(id=entry.plugin_id, version=entry.plugin_version or ''))

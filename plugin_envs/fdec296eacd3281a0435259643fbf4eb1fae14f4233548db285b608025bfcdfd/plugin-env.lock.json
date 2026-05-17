@@ -1,0 +1,20 @@
+{
+  "active_plugins": [
+    {
+      "plugin_id": "calcchain.svn",
+      "plugin_version": "0.1.0"
+    }
+  ],
+  "env_hash": "fdec296eacd3281a0435259643fbf4eb1fae14f4233548db285b608025bfcdfd",
+  "installer_backend_version": "pip 25.1.1 from C:\\Users\\pashk\\AppData\\Roaming\\Python\\Python312\\site-packages\\pip (python 3.12)",
+  "plugin_api_version": "1.0",
+  "python_version": "3.12.2",
+  "requirements": [
+    {
+      "plugin_id": "calcchain.svn",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    }
+  ],
+  "resolved_dependencies": [],
+  "used_wheels": []
+}

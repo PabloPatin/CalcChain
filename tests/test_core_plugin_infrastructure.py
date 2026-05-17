@@ -8,6 +8,8 @@ import calcchain_core
 import calcchain_core.plugins as plugin_infrastructure
 from calcchain_core.api import CalculationCore
 from calcchain_core.plugin_api import CapabilityKey
+from calcchain_core.plugins.manager import PluginRuntimeSet
+from calcchain_core.plugins.registrars import CapabilityRecord
 from calcchain_core.plugins import (
     PluginActivationPlanner,
     PluginDiscovery,
@@ -61,11 +63,11 @@ class TestCorePluginInfrastructure(unittest.TestCase):
             )
             self.assertFalse((root / 'plugin_envs' / '.ready').exists())
 
-    def test_current_calculation_core_lifecycle_boundary_has_no_plugin_integration(self):
+    def test_calculation_core_accepts_plugin_runtime_without_lifecycle_helpers(self):
         signature = inspect.signature(CalculationCore)
         self.assertEqual(
             list(signature.parameters),
-            ['job_dir', 'source_registry', 'target_registry'],
+            ['job_dir', 'plugin_runtime', 'source_registry', 'target_registry', 'auth_service'],
         )
         with tempfile.TemporaryDirectory() as tmp:
             core = CalculationCore(Path(tmp))
@@ -75,6 +77,70 @@ class TestCorePluginInfrastructure(unittest.TestCase):
             self.assertFalse(hasattr(core, 'plugin_manager'))
             self.assertFalse(hasattr(core, 'plugin_runtime_set'))
             self.assertFalse(hasattr(core, 'activate_plugins'))
+
+    def test_calculation_core_builds_registries_from_supplied_runtime_only(self):
+        auth_service = object()
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.demo',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('source', 'demo-source'): CapabilityRecord(
+                    key=CapabilityKey('source', 'demo-source'),
+                    capability=object(),
+                    owner='plugin.demo',
+                ),
+                CapabilityKey('target', 'demo-target'): CapabilityRecord(
+                    key=CapabilityKey('target', 'demo-target'),
+                    capability=object(),
+                    owner='plugin.demo',
+                ),
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            core = CalculationCore(Path(tmp), plugin_runtime=runtime, auth_service=auth_service)
+
+        self.assertIn('local', core.source_registry._entries)
+        self.assertIn('local', core.target_registry._entries)
+        self.assertIn('demo-source', core.source_registry._entries)
+        self.assertIn('demo-target', core.target_registry._entries)
+        self.assertEqual(core.source_registry._entries['demo-source'].plugin_id, 'plugin.demo')
+        self.assertEqual(core.target_registry._entries['demo-target'].plugin_id, 'plugin.demo')
+        self.assertFalse(hasattr(core, 'plugin_manager'))
+        self.assertFalse(hasattr(core, 'activate_plugins'))
+
+    def test_calculation_core_injected_registries_override_plugin_runtime_factories(self):
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.demo',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('source', 'demo-source'): CapabilityRecord(
+                    key=CapabilityKey('source', 'demo-source'),
+                    capability=object(),
+                    owner='plugin.demo',
+                ),
+                CapabilityKey('target', 'demo-target'): CapabilityRecord(
+                    key=CapabilityKey('target', 'demo-target'),
+                    capability=object(),
+                    owner='plugin.demo',
+                ),
+            },
+        )
+        source_registry = SourceRegistry()
+        target_registry = TargetRegistry()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            core = CalculationCore(
+                Path(tmp),
+                plugin_runtime=runtime,
+                source_registry=source_registry,
+                target_registry=target_registry,
+            )
+
+        self.assertIs(core.source_registry, source_registry)
+        self.assertIs(core.target_registry, target_registry)
+        self.assertNotIn('demo-source', core.source_registry._entries)
+        self.assertNotIn('demo-target', core.target_registry._entries)
 
     def _write_plugin_package(self, plugin_root: Path) -> Path:
         package_dir = plugin_root / 'demo_plugin'

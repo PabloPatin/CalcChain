@@ -11,6 +11,7 @@ from calcchain_core.hash import tree_sha256
 from calcchain_core.layout import JobLayout
 from calcchain_core.models import FileMapEntry, SourceRef, SourceType
 from calcchain_core.snapshot import Snapshot, diff_snapshots
+from calcchain_core.sources import SourceRegistry
 
 
 @dataclass(frozen=True)
@@ -35,10 +36,11 @@ def freeze_effective_inputs(
     pre_run_snapshot: Snapshot,
     *,
     freeze_non_versionable: bool = True,
+    registry: SourceRegistry | None = None,
 ) -> FrozenInputSet | None:
     pre_run_entries = {entry.path: entry for entry in pre_run_snapshot.entries}
     input_paths = _input_paths(build_result)
-    non_versionable_paths = _non_versionable_input_paths(build_result) if freeze_non_versionable else set()
+    non_versionable_paths = _non_versionable_input_paths(build_result, registry) if freeze_non_versionable else set()
     changed_paths = _changed_input_paths(build_result.build_snapshot, pre_run_snapshot, input_paths)
     paths_to_freeze = sorted((changed_paths | non_versionable_paths) & set(pre_run_entries))
     if not paths_to_freeze:
@@ -80,11 +82,12 @@ def _input_paths(build_result: BuildResult) -> set[str]:
     }
 
 
-def _non_versionable_input_paths(build_result: BuildResult) -> set[str]:
+def _non_versionable_input_paths(build_result: BuildResult, registry: SourceRegistry | None) -> set[str]:
     result: set[str] = set()
+    source_registry = registry or SourceRegistry()
     for input_set in build_result.input_sets:
         sources = [input_set.source] if input_set.source is not None else list(input_set.sources)
-        if any(source.type is SourceType.LOCAL for source in sources if source is not None):
+        if any(not source_registry.is_versionable(source) for source in sources if source is not None):
             result.update(entry.work_path for entry in input_set.map if entry.work_path is not None)
     return result
 

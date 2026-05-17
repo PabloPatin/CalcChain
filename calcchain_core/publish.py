@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -9,8 +9,7 @@ from typing import Any
 
 import tomlkit
 
-from calcchain_core.artifacts import published_source
-from calcchain_core.errors import PublishError, RulesError
+from calcchain_core.errors import ConfigFormatError, PublishError, RulesError
 from calcchain_core.hash import sha256_file, tree_sha256
 from calcchain_core.layout import PublicationServiceLayout
 from calcchain_core.manifest import ManifestWriter
@@ -50,15 +49,22 @@ class PublishPlanGroup:
     tree_sha256: str
     files: list[PublishPlanFile] = field(default_factory=list)
     target_name: str = ''
+    published_sources: dict[str, SourceRef] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             'name': self.name,
             'tree_sha256': self.tree_sha256,
             'target': self.target.to_dict(),
             'rules': self.rules.to_dict(),
             'map': [entry.to_dict() for entry in self.map],
         }
+        if self.published_sources:
+            result['published_sources'] = {
+                path: source.to_dict()
+                for path, source in sorted(self.published_sources.items())
+            }
+        return result
 
 
 @dataclass(frozen=True)
@@ -82,16 +88,19 @@ class PublishResult:
 
 
 def create_publish_lock(config: PublishConfig, target_registry: TargetRegistry) -> PublishLock:
-    service_target = target_registry.resolve_revision(config.service_target)
-    targets = [
-        PublishTarget(
-            name=target.name,
-            target=target_registry.resolve_revision(target.target),
-            rule_sets=list(target.rule_sets),
-            message=target.message,
-        )
-        for target in config.targets
-    ]
+    try:
+        service_target = _resolve_target_for_lock(config.service_target, target_registry)
+        targets = [
+            PublishTarget(
+                name=target.name,
+                target=_resolve_target_for_lock(target.target, target_registry),
+                rule_sets=list(target.rule_sets),
+                message=target.message,
+            )
+            for target in config.targets
+        ]
+    except (ConfigFormatError, PublishError) as err:
+        raise PublishError(str(err)) from err
     return PublishLock(
         schema_version=config.schema_version,
         lock=LockMetadata(
@@ -139,26 +148,34 @@ def execute_publish_plan(plan: PublishPlan, *, dry_run: bool = False) -> Publish
     for target in _unique_targets([group.target for group in plan.groups]):
         registry.ensure_root(target)
 
+    published_group_sources: dict[str, dict[str, SourceRef]] = {}
     for group in plan.groups:
+        group_sources: dict[str, SourceRef] = {}
         for file in group.files:
-            registry.write_file(file.target, file.relative_path, file.data)
+            ref = registry.write_file(file.target, file.relative_path, file.data)
+            _validate_published_source(ref.source)
+            group_sources[file.relative_path] = ref.source
+        published_group_sources[group.name] = group_sources
+    published_groups = [
+        replace(group, published_sources=published_group_sources.get(group.name, {}))
+        for group in plan.groups
+    ]
 
     published_service_refs: list[PublishedRef] = []
     for file in plan.service_artifacts:
         published_service_refs.append(registry.write_file(file.target, file.relative_path, file.data))
 
-    publish_lock_ref = _published_artifact(
-        plan.lock.service_target,
-        PublicationServiceLayout().publish_lock_name,
+    publish_lock_ref = _published_artifact_from_write(
+        _required_published_ref(published_service_refs, plan.service_artifacts, PublicationServiceLayout().publish_lock_name),
         _publish_lock_bytes(plan.lock),
     )
     service_artifacts = [
-        _published_artifact(ref.target, ref.relative_path, _file.data)
+        _published_artifact_from_write(ref, _file.data)
         for ref, _file in zip(published_service_refs, plan.service_artifacts, strict=True)
     ]
     interim = PublishResult(
         publish_lock_artifact=publish_lock_ref,
-        groups=list(plan.groups),
+        groups=published_groups,
         service_artifacts=service_artifacts,
         updated_manifest=plan.manifest,
         service_target=plan.lock.service_target,
@@ -169,12 +186,24 @@ def execute_publish_plan(plan: PublishPlan, *, dry_run: bool = False) -> Publish
     registry.write_file(plan.lock.service_target, plan.manifest_path, manifest_bytes)
     return PublishResult(
         publish_lock_artifact=publish_lock_ref,
-        groups=list(plan.groups),
+        groups=published_groups,
         service_artifacts=service_artifacts,
         updated_manifest=updated_manifest,
         service_target=plan.lock.service_target,
         dry_run=False,
     )
+
+
+def _resolve_target_for_lock(target: TargetRef, registry: TargetRegistry) -> TargetRef:
+    registry.validate_config(target)
+    resolved = registry.resolve_lock_ref(target)
+    _validate_serializable_lock_ref(resolved)
+    registry.validate_lock_ref(resolved)
+    return resolved
+
+
+def _validate_serializable_lock_ref(target: TargetRef) -> None:
+    TargetRef.from_dict(target.to_dict(), resolved_revision=_type_id(target.type) == SourceType.SVN.value)
 
 
 def _publication_groups(
@@ -311,21 +340,34 @@ def _first_local_source_path(artifact_or_set: dict[str, Any]) -> Path | None:
     if isinstance(sources, list):
         for source in sources:
             source_ref = SourceRef.from_dict(_mapping_value(source, 'source'), reject_userinfo=True)
-            if source_ref.type is SourceType.LOCAL:
+            if _type_id(source_ref.type) == SourceType.LOCAL.value:
                 return Path(source_ref.path)
     source = artifact_or_set.get('source')
     if isinstance(source, dict):
         source_ref = SourceRef.from_dict(source, reject_userinfo=True)
-        if source_ref.type is SourceType.LOCAL:
+        if _type_id(source_ref.type) == SourceType.LOCAL.value:
             return Path(source_ref.path)
     return None
 
 
-def _published_artifact(target: TargetRef, relative_path: str, data: bytes) -> ArtifactRef:
-    return ArtifactRef(
-        sha256=hashlib.sha256(data).hexdigest(),
-        sources=[published_source(target, relative_path)],
-    )
+def _published_artifact_from_write(ref: PublishedRef, data: bytes) -> ArtifactRef:
+    _validate_published_source(ref.source)
+    return ArtifactRef(sha256=hashlib.sha256(data).hexdigest(), sources=[ref.source])
+
+
+def _required_published_ref(
+    refs: list[PublishedRef],
+    files: list[PublishPlanFile],
+    relative_path: str,
+) -> PublishedRef:
+    for ref, file in zip(refs, files, strict=True):
+        if file.relative_path == relative_path:
+            return ref
+    raise PublishError(f'published service artifact was not written: {relative_path}')
+
+
+def _validate_published_source(source: SourceRef) -> None:
+    SourceRef.from_dict(source.to_dict())
 
 
 def _publish_lock_bytes(lock: PublishLock) -> bytes:
@@ -357,7 +399,7 @@ def _deduplicate_plan_files(files: list[PublishPlanFile]) -> list[PublishPlanFil
     result: list[PublishPlanFile] = []
     seen: set[tuple[str, str, str | None, str]] = set()
     for file in files:
-        key = (file.target.type.value, file.target.path, file.target.location, file.relative_path)
+        key = (_type_id(file.target.type), file.target.path, file.target.location, file.relative_path)
         if key in seen:
             continue
         seen.add(key)
@@ -369,7 +411,7 @@ def _unique_targets(targets: list[TargetRef]) -> list[TargetRef]:
     result: list[TargetRef] = []
     seen: set[tuple[str, str, str | None]] = set()
     for target in targets:
-        key = (target.type.value, target.path, target.location)
+        key = (_type_id(target.type), target.path, target.location)
         if key not in seen:
             seen.add(key)
             result.append(target)
@@ -410,6 +452,12 @@ def _normalize_relative_path(value: str, *, field: str) -> str:
 
 def _has_windows_drive(value: str) -> bool:
     return len(value) >= 2 and value[1] == ':' and value[0].isalpha()
+
+
+def _type_id(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return value
 
 
 def _required_mapping(data: dict[str, Any], key: str) -> dict[str, Any]:

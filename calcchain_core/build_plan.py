@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import PurePosixPath
 
-from calcchain_core.errors import BuildPlanError, RulesError, SourceError
+from calcchain_core.errors import BuildPlanError, ConfigFormatError, RulesError, SourceError
 from calcchain_core.models import (
     BuildConfig,
     BuildInfo,
@@ -52,17 +52,17 @@ def create_build_lock(
 ) -> BuildLock:
     try:
         _validate_build_sources(build)
-    except SourceError as err:
+    except (ConfigFormatError, SourceError) as err:
         raise BuildPlanError(sanitize_source_error_message(str(err))) from err
 
     if _uses_rules(build) and rules is None:
         raise BuildPlanError('rules are required when build uses rule_set')
 
     try:
-        code_source = registry.resolve_revision(build.code.source)
+        code_source = _resolve_source_for_lock(build.code.source, registry)
         input_configs = [
             InputConfig(
-                source=registry.resolve_revision(input_config.source),
+                source=_resolve_source_for_lock(input_config.source, registry),
                 name=input_config.name,
                 rule_set=input_config.rule_set,
             )
@@ -113,12 +113,14 @@ def validate_build_lock(
     entries: list[BuildPlanEntry] = []
     used_work_paths: dict[str, BuildPlanEntry] = {}
     try:
+        _validate_source_lock_ref(lock.code.source, registry)
         _ensure_concrete_revision(lock.code.source)
         entries.extend(_entries_for_code(lock, registry, rules))
         for input_config in lock.inputs:
+            _validate_source_lock_ref(input_config.source, registry)
             _ensure_concrete_revision(input_config.source)
             entries.extend(_entries_for_input(input_config, registry, rules))
-    except (RulesError, SourceError) as err:
+    except (ConfigFormatError, RulesError, SourceError) as err:
         raise BuildPlanError(sanitize_source_error_message(str(err))) from err
 
     for entry in entries:
@@ -131,6 +133,7 @@ def validate_build_lock(
         used_work_paths[entry.work_path] = entry
 
     if lock.rules is not None and lock.rules.source is not None:
+        _validate_source_lock_ref(lock.rules.source, registry)
         _ensure_concrete_revision(lock.rules.source)
 
     return BuildPlan(lock=lock, entries=entries, warnings=[])
@@ -143,7 +146,7 @@ def _resolve_rules_reference(
 ) -> RulesReference | None:
     if reference is None:
         return None
-    source = registry.resolve_revision(reference.source) if reference.source is not None else None
+    source = _resolve_source_for_lock(reference.source, registry) if reference.source is not None else None
     resolved = None
     if rules is not None:
         resolved = {
@@ -167,6 +170,23 @@ def _validate_lock_sources(lock: BuildLock) -> None:
         validate_source_ref(input_config.source)
     if lock.rules is not None and lock.rules.source is not None:
         validate_source_ref(lock.rules.source)
+
+
+def _resolve_source_for_lock(source: SourceRef, registry: SourceRegistry) -> SourceRef:
+    registry.validate_config(source)
+    resolved = registry.resolve_lock_ref(source)
+    _validate_serializable_lock_ref(resolved)
+    registry.validate_lock_ref(resolved)
+    return resolved
+
+
+def _validate_source_lock_ref(source: SourceRef, registry: SourceRegistry) -> None:
+    _validate_serializable_lock_ref(source)
+    registry.validate_lock_ref(source)
+
+
+def _validate_serializable_lock_ref(source: SourceRef) -> None:
+    SourceRef.from_dict(source.to_dict(), resolved_revision=_type_id(source.type) == SourceType.SVN.value)
 
 
 def _entries_for_code(
@@ -267,7 +287,7 @@ def _lock_uses_rules(lock: BuildLock) -> bool:
 
 
 def _ensure_concrete_revision(source: SourceRef) -> None:
-    if source.type is not SourceType.SVN:
+    if _type_id(source.type) != SourceType.SVN.value:
         return
     revision = source.revision
     if isinstance(revision, int) and revision >= 0:
@@ -297,3 +317,9 @@ def _normalize_relative_path(value: str, *, field: str) -> str:
 
 def _has_windows_drive(value: str) -> bool:
     return len(value) >= 2 and value[1] == ':' and value[0].isalpha()
+
+
+def _type_id(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return value

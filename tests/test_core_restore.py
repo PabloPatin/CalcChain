@@ -10,6 +10,8 @@ from calcchain_core.errors import RestoreError
 from calcchain_core.hash import sha256_file, tree_sha256
 from calcchain_core.layout import JobLayout
 from calcchain_core.models import Manifest
+from calcchain_core.plugins.manager import PluginRuntimeSet
+from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.restore import RestoreRequest, restore_from_manifest
 from calcchain_core.sources import SourceRegistry
 
@@ -82,6 +84,68 @@ class TestCoreRestore(unittest.TestCase):
             self.assertFalse((root / 'escape_snapshot.json').exists())
             self.assertFalse((target.parent / 'escape_snapshot.json').exists())
 
+    def test_restore_reads_plugin_source_by_string_type(self):
+        class PluginSourceAdapter:
+            def validate_config(self, ref, context):
+                pass
+
+            def resolve_lock_ref(self, ref, context):
+                return dict(ref)
+
+            def validate_lock_ref(self, ref, context):
+                pass
+
+            def list_files(self, ref, context):
+                return ['solver.py']
+
+            def read_file(self, ref, relative_path, context):
+                return b'print("plugin restore")\n'
+
+            def is_versionable(self, ref, context):
+                return True
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = b'print("plugin restore")\n'
+            digest = _sha256_bytes(data)
+            manifest = Manifest.from_dict(
+                {
+                    'job': {'status': 'Built', 'job_dir': str(root / 'original')},
+                    'build': {
+                        'code': {
+                            'name': 'solver',
+                            'tree_sha256': tree_sha256([('solver.py', digest)]),
+                            'source': {
+                                'type': 'plugin-store',
+                                'path': 'archive/code',
+                                'plugin': {'id': 'plugin.restore', 'version': '1.0.0'},
+                            },
+                            'map': [{'sha256': digest, 'source_path': 'solver.py', 'work_path': 'solver.py'}],
+                        },
+                        'inputs': [],
+                    },
+                },
+            )
+            manifest_path = root / 'manifest.json'
+            write_manifest(manifest, manifest_path)
+            runtime = PluginRuntimeSet(
+                active_plugin_ids=('plugin.restore',),
+                environment=object(),
+                capabilities={
+                    CapabilityKey('source', 'plugin-store'): CapabilityRecord(
+                        key=CapabilityKey('source', 'plugin-store'),
+                        capability=PluginSourceAdapter(),
+                        owner='plugin.restore',
+                    ),
+                },
+            )
+            target = root / 'restored'
+
+            result = restore_from_manifest(RestoreRequest(manifest_path, target), SourceRegistry.from_runtime(runtime))
+
+            self.assertEqual(result.status, 'restored')
+            self.assertEqual((target / 'work' / 'solver.py').read_bytes(), data)
+
 
 def _restore_fixture(root: Path) -> tuple[Path, Path]:
     source_code = root / 'source_code'
@@ -141,6 +205,12 @@ def _restore_fixture(root: Path) -> tuple[Path, Path]:
 
 def _artifact(path: Path) -> dict:
     return {'sha256': sha256_file(path), 'sources': [{'type': 'local', 'path': str(path)}]}
+
+
+def _sha256_bytes(data: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
 
 
 def _published_restore_fixture(root: Path) -> tuple[Path, Path, Path]:

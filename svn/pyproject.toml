@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=75.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calcchain-svn"
+version = "0.1.0"
+description = "SVN CLI wrapper used by CalcChain SVN integration"
+requires-python = ">=3.12"
+
+[tool.setuptools]
+packages = ["svn"]
+
+[tool.setuptools.package-dir]
+"svn" = "src"
+
+[tool.setuptools.package-data]
+"svn" = ["svn_doc.md"]

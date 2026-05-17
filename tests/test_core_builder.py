@@ -7,6 +7,7 @@ from pathlib import Path
 from calcchain_core.build_plan import BuildPlan, BuildPlanEntry
 from calcchain_core.builder import EnvironmentBuilder
 from calcchain_core.layout import JobLayout
+from calcchain_core.manifest import ManifestWriter
 from calcchain_core.models import (
     BuildInfo,
     BuildLock,
@@ -35,6 +36,24 @@ class MemoryAdapter:
 
     def is_versionable(self, source):
         return source.type.value == 'svn'
+
+
+class PluginMemoryAdapter:
+    def __init__(self, trees, *, versionable):
+        self.trees = trees
+        self.versionable = versionable
+
+    def list_files(self, source):
+        return sorted(self.trees[source.path])
+
+    def read_file(self, source, relative_path):
+        return self.trees[source.path][relative_path]
+
+    def resolve_revision(self, source):
+        return source
+
+    def is_versionable(self, source):
+        return self.versionable
 
 
 def _sha(data):
@@ -112,6 +131,61 @@ class TestCoreBuilder(unittest.TestCase):
             self.assertEqual(len(result.build_snapshot.entries), 2)
             self.assertIsNone(result.pre_run_snapshot)
 
+    def test_build_maps_and_manifest_preserve_plugin_source_metadata_and_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            layout = JobLayout.from_job_dir(root / 'job')
+            source = SourceRef.from_dict(
+                {
+                    'type': 'plugin-store',
+                    'path': 'code',
+                    'revision': 7,
+                    'dataset': 'main',
+                    'plugin': {'id': 'plugin.demo', 'version': '1.2.3'},
+                },
+                resolved_revision=True,
+            )
+            lock = BuildLock(
+                schema_version='1.0',
+                lock=LockMetadata('2026-05-03T00:00:00+00:00', 'build.toml', '1' * 64, 'build_toml_sha256'),
+                build=BuildInfo(name='case'),
+                code=CodeConfig(source=source, name='solver'),
+                inputs=[],
+            )
+            plan = BuildPlan(
+                lock=lock,
+                entries=[
+                    BuildPlanEntry(
+                        'code',
+                        'solver',
+                        source,
+                        'solver.py',
+                        'solver.py',
+                        _sha(b'print("plugin")\n'),
+                    ),
+                ],
+                warnings=[],
+            )
+            registry = SourceRegistry(
+                {
+                    'plugin-store': PluginMemoryAdapter(
+                        {'code': {'solver.py': b'print("plugin")\n'}},
+                        versionable=True,
+                    ),
+                },
+            )
+
+            result = EnvironmentBuilder(registry).build(layout, plan)
+            code_map = json.loads((layout.build_artifacts_dir / 'code_map.json').read_text(encoding='utf-8'))
+            manifest = ManifestWriter.create_after_build({'id': 'case', 'job_dir': layout.job_dir}, result, {})
+            manifest_code_source = manifest.to_dict()['build']['code']['source']
+
+            self.assertEqual(code_map['source']['type'], 'plugin-store')
+            self.assertEqual(code_map['source']['plugin'], {'id': 'plugin.demo', 'version': '1.2.3'})
+            self.assertEqual(code_map['source']['dataset'], 'main')
+            self.assertEqual(code_map['source']['revision'], 7)
+            self.assertEqual(manifest_code_source, code_map['source'])
+
     def test_pre_run_check_records_code_rules_and_lock_blockers(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -182,6 +256,53 @@ class TestCoreBuilder(unittest.TestCase):
             self.assertEqual(check_result.blockers, [])
             self.assertIsNotNone(check_result.frozen_inputs)
             self.assertEqual((layout.frozen_inputs_dir / 'input' / 'mesh.dat').read_bytes(), b'changed mesh')
+
+    def test_pre_run_check_freezes_unchanged_input_when_registry_marks_source_non_versionable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            layout = JobLayout.from_job_dir(root / 'job')
+            code_source = SourceRef.from_dict({'type': 'local', 'path': 'code'})
+            input_source = SourceRef.from_dict(
+                {
+                    'type': 'plugin-store',
+                    'path': 'input',
+                    'revision': 7,
+                    'dataset': 'main',
+                    'plugin': {'id': 'plugin.demo', 'version': '1.2.3'},
+                },
+                resolved_revision=True,
+            )
+            registry = SourceRegistry(
+                {
+                    'local': MemoryAdapter({'code': {'solver.py': b'code'}}),
+                    'plugin-store': PluginMemoryAdapter({'input': {'mesh.dat': b'mesh'}}, versionable=False),
+                },
+            )
+            lock = BuildLock(
+                schema_version='1.0',
+                lock=LockMetadata('2026-05-03T00:00:00+00:00', 'build.toml', '1' * 64, 'build_toml_sha256'),
+                build=BuildInfo(name='case'),
+                code=CodeConfig(source=code_source, name='solver'),
+                inputs=[InputConfig(source=input_source, name='mesh')],
+            )
+            plan = BuildPlan(
+                lock=lock,
+                entries=[
+                    BuildPlanEntry('code', 'solver', code_source, 'solver.py', 'solver.py', _sha(b'code')),
+                    BuildPlanEntry('input', 'mesh', input_source, 'mesh.dat', 'input/mesh.dat', _sha(b'mesh')),
+                ],
+                warnings=[],
+            )
+            builder = EnvironmentBuilder(registry)
+            build_result = builder.build(layout, plan)
+
+            check_result = builder.check_pre_run(layout, build_result, plan)
+
+            self.assertEqual(check_result.blockers, [])
+            self.assertIsNotNone(check_result.frozen_inputs)
+            self.assertEqual((layout.frozen_inputs_dir / 'input' / 'mesh.dat').read_bytes(), b'mesh')
+            frozen_data = json.loads((layout.frozen_inputs_dir / 'frozen_inputs.json').read_text(encoding='utf-8'))
+            self.assertEqual(frozen_data['map'][0]['work_path'], 'input/mesh.dat')
 
     def test_dry_run_returns_preview_without_writes(self):
         with tempfile.TemporaryDirectory() as tmp:

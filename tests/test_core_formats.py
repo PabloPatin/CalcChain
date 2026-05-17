@@ -124,7 +124,86 @@ class TestCoreFormats(unittest.TestCase):
         with self.assertRaises(ConfigFormatError):
             TargetRef.from_dict({'type': 'local', 'location': 'D:/target', 'path': 'out'})
         with self.assertRaises(ConfigFormatError):
+            TargetRef.from_dict({'type': 'local', 'path': 'out', 'revision': 10})
+        with self.assertRaises(ConfigFormatError):
             TargetRef.from_dict({'type': 'svn', 'path': 'out'})
+
+    def test_plugin_source_and_target_refs_preserve_dynamic_fields(self):
+        source = SourceRef.from_dict(
+            {
+                'type': 'git',
+                'url': 'https://git.example/repo.git',
+                'branch': 'main',
+                'depth': 1,
+                'plugin': {'id': 'calcchain.git', 'version': '1.2.0'},
+            },
+        )
+        target = TargetRef.from_dict(
+            {
+                'type': 'release-store',
+                'bucket': 'results',
+                'prefix': 'case-1',
+                'plugin': {'id': 'calcchain.release', 'version': '2.0.0'},
+            },
+        )
+
+        self.assertEqual(source.type, 'git')
+        self.assertEqual(source.plugin.id, 'calcchain.git')
+        self.assertEqual(source.extra['branch'], 'main')
+        self.assertEqual(
+            source.to_dict(),
+            {
+                'type': 'git',
+                'plugin': {'id': 'calcchain.git', 'version': '1.2.0'},
+                'url': 'https://git.example/repo.git',
+                'branch': 'main',
+                'depth': 1,
+            },
+        )
+        self.assertEqual(
+            target.to_dict(),
+            {
+                'type': 'release-store',
+                'plugin': {'id': 'calcchain.release', 'version': '2.0.0'},
+                'bucket': 'results',
+                'prefix': 'case-1',
+            },
+        )
+
+    def test_plugin_ref_metadata_and_extra_fields_are_validated(self):
+        with self.assertRaises(ConfigFormatError):
+            SourceRef.from_dict({'type': '', 'path': 'repo'})
+        with self.assertRaises(ConfigFormatError):
+            SourceRef.from_dict({'type': 'git', 'plugin': {'id': 10, 'version': '1.0.0'}})
+        with self.assertRaises(ConfigFormatError):
+            SourceRef.from_dict({'type': 'git', 'plugin': {'id': 'calcchain.git', 'version': 10}})
+        with self.assertRaises(ConfigFormatError):
+            TargetRef.from_dict({'type': 'release-store', 'runtime': object()})
+        with self.assertRaises(ConfigFormatError):
+            SourceRef.from_dict({'type': 'git', 'revision': object()})
+
+    def test_svn_refs_reject_embedded_userinfo_at_parse_and_serialize_boundaries(self):
+        source_data = {
+            'type': 'svn',
+            'location': 'https://user:secret@svn.example/repo',
+            'path': 'trunk',
+            'revision': 12,
+        }
+        target_data = {
+            'type': 'svn',
+            'location': 'https://user:secret@svn.example/repo',
+            'path': 'out',
+            'revision': 12,
+        }
+
+        with self.assertRaises(ConfigFormatError):
+            SourceRef.from_dict(source_data, reject_userinfo=True)
+        with self.assertRaises(ConfigFormatError):
+            TargetRef.from_dict(target_data, reject_userinfo=True)
+        with self.assertRaises(ConfigFormatError):
+            SourceRef.from_dict(source_data).to_dict()
+        with self.assertRaises(ConfigFormatError):
+            TargetRef.from_dict(target_data).to_dict()
 
     def test_run_toml_has_no_output_rule_set(self):
         with self.assertRaises(ConfigFormatError):

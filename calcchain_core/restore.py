@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -210,14 +210,9 @@ def _service_root_from_published_lock(source: SourceRef) -> SourceRef | None:
     parts = PurePosixPath(normalized).parts
     if not parts:
         return None
-    if source.type is SourceType.LOCAL:
+    if _type_id(source.type) == SourceType.LOCAL.value:
         return SourceRef(type=SourceType.LOCAL, path=str(Path(source.path).parent))
-    return SourceRef(
-        type=source.type,
-        location=source.location,
-        path=PurePosixPath(*parts[:-1]).as_posix() if len(parts) > 1 else '',
-        revision=source.revision,
-    )
+    return replace(source, path=PurePosixPath(*parts[:-1]).as_posix() if len(parts) > 1 else '')
 
 
 def _frozen_source_candidates(
@@ -235,15 +230,10 @@ def _frozen_source_candidates(
 
 def _join_service_frozen_source(root: SourceRef, frozen_source_path: str) -> SourceRef:
     relative = _join_relative('frozen_inputs', frozen_source_path)
-    if root.type is SourceType.LOCAL:
+    if _type_id(root.type) == SourceType.LOCAL.value:
         return SourceRef(type=SourceType.LOCAL, path=str(Path(root.path) / Path(*PurePosixPath(relative).parts)))
     root_path = root.path.replace('\\', '/').strip('/')
-    return SourceRef(
-        type=root.type,
-        location=root.location,
-        path=f'{root_path}/{relative}' if root_path else relative,
-        revision=root.revision,
-    )
+    return replace(root, path=f'{root_path}/{relative}' if root_path else relative)
 
 
 def _join_relative(base: str, relative_path: str) -> str:
@@ -273,11 +263,12 @@ def _files_from_publication(data: dict[str, Any]) -> list[_RestoreFile]:
         for raw_group in _optional_list(publication, category):
             group = _mapping_value(raw_group, f'publication {category} group')
             target = TargetRef.from_dict(_required_mapping(group, 'target'), resolved_revision=True)
+            published_sources = _published_sources_by_target_path(group)
             for raw_entry in _map_entries(group):
                 entry = _file_map_entry(raw_entry)
                 work_path = _required_entry_path(entry.work_path, 'work_path')
                 target_path = _required_entry_path(entry.target_path, 'target_path')
-                source = published_source(target, target_path)
+                source = published_sources.get(target_path) or published_source(target, target_path)
                 result.append(
                     _RestoreFile(
                         relative_path=work_path,
@@ -286,6 +277,16 @@ def _files_from_publication(data: dict[str, Any]) -> list[_RestoreFile]:
                         source_path=_artifact_source_path(source),
                     ),
                 )
+    return result
+
+
+def _published_sources_by_target_path(group: dict[str, Any]) -> dict[str, SourceRef]:
+    raw_sources = _optional_mapping(group, 'published_sources') or {}
+    result: dict[str, SourceRef] = {}
+    for target_path, source in raw_sources.items():
+        if not isinstance(target_path, str):
+            raise RestoreError('published_sources target path must be a string')
+        result[target_path] = SourceRef.from_dict(_mapping_value(source, 'published source'), reject_userinfo=True)
     return result
 
 
@@ -303,11 +304,11 @@ def _artifact_restore_file(artifact: dict[str, Any], destination: Path) -> _Rest
 
 
 def _read_source_bytes(source: SourceRef, source_path: str, registry: SourceRegistry) -> bytes:
-    if source.type is SourceType.LOCAL:
+    if _type_id(source.type) == SourceType.LOCAL.value:
         path = Path(source.path)
         if path.is_file():
             return path.read_bytes()
-    if source.type is SourceType.SVN:
+    if _type_id(source.type) == SourceType.SVN.value:
         normalized = source.path.replace('\\', '/')
         parts = PurePosixPath(normalized).parts
         if len(parts) > 1:
@@ -387,7 +388,7 @@ def _source_refs(container: dict[str, Any]) -> list[SourceRef]:
 
 def _artifact_source_path(source: SourceRef) -> str:
     path = source.path.replace('\\', '/')
-    if source.type is SourceType.LOCAL:
+    if _type_id(source.type) == SourceType.LOCAL.value:
         return Path(path).name
     parts = PurePosixPath(path).parts
     if not parts:
@@ -523,3 +524,9 @@ def _sha256_bytes(data: bytes) -> str:
     import hashlib
 
     return hashlib.sha256(data).hexdigest()
+
+
+def _type_id(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return value

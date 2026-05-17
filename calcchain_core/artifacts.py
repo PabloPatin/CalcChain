@@ -21,8 +21,18 @@ def local_source(path: Path) -> SourceRef:
 
 def published_source(target: TargetRef, relative_path: str) -> SourceRef:
     safe_relative_path = _safe_relative_path(relative_path)
-    if target.type is SourceType.LOCAL:
+    if _type_id(target.type) == SourceType.LOCAL.value:
         return SourceRef(type=SourceType.LOCAL, path=_join_posix(target.path, safe_relative_path))
+
+    if _type_id(target.type) != SourceType.SVN.value:
+        return SourceRef(
+            type=target.type,
+            location=target.location,
+            path=_join_posix(target.path, safe_relative_path),
+            revision=target.revision,
+            plugin=target.plugin,
+            extra=dict(target.extra),
+        )
 
     if target.location is None:
         raise ConfigFormatError('svn published source requires location')
@@ -55,3 +65,9 @@ def _join_posix(base_path: str, relative_path: str) -> str:
 
 def _has_windows_drive(value: str) -> bool:
     return len(value) >= 2 and value[1] == ':' and value[0].isalpha()
+
+
+def _type_id(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return value

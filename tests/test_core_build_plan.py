@@ -14,6 +14,8 @@ from calcchain_core.models import (
     RulesFile,
     SourceRef,
 )
+from calcchain_core.plugins.manager import PluginRuntimeSet
+from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.sources import SourceRegistry
 
 
@@ -162,6 +164,129 @@ class TestCoreBuildPlan(unittest.TestCase):
         )
         self.assertEqual(by_work_path['input/mesh.msh'].rules.set, 'input_all')
         self.assertEqual(plan.warnings, [])
+
+    def test_plugin_source_lifecycle_adds_lock_metadata_and_reads_with_lock_refs(self):
+        class PluginSourceAdapter:
+            plugin_version = '1.2.3'
+
+            def __init__(self):
+                self.calls = []
+
+            def validate_config(self, ref, context):
+                self.calls.append(('validate_config', ref['type'], context.operation))
+
+            def resolve_lock_ref(self, ref, context):
+                self.calls.append(('resolve_lock_ref', ref['type'], context.operation))
+                return {'type': 'demo-source', 'path': ref['path'], 'revision': 7, 'dataset': ref['dataset']}
+
+            def validate_lock_ref(self, ref, context):
+                self.calls.append(('validate_lock_ref', ref['revision'], context.operation))
+
+            def list_files(self, ref, context):
+                self.calls.append(('list_files', ref['revision'], context.operation))
+                return ['solver.py'] if ref['path'] == 'code' else ['mesh.dat']
+
+            def read_file(self, ref, relative_path, context):
+                self.calls.append(('read_file', relative_path, context.operation))
+                return b'print("plugin")\n' if relative_path == 'solver.py' else b'mesh'
+
+            def is_versionable(self, ref, context):
+                self.calls.append(('is_versionable', ref['revision'], context.operation))
+                return True
+
+        adapter = PluginSourceAdapter()
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.demo',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('source', 'demo-source'): CapabilityRecord(
+                    key=CapabilityKey('source', 'demo-source'),
+                    capability=adapter,
+                    owner='plugin.demo',
+                ),
+            },
+        )
+        data_registry = SourceRegistry.from_runtime(runtime)
+        build = BuildConfig.from_dict(
+            {
+                'build': {'name': 'case'},
+                'code': {'source': {'type': 'demo-source', 'path': 'code', 'dataset': 'main'}},
+                'inputs': [{'name': 'mesh', 'source': {'type': 'demo-source', 'path': 'input', 'dataset': 'main'}}],
+            },
+        )
+
+        lock = create_build_lock(build, data_registry, None)
+        self.assertEqual(
+            [call[0] for call in adapter.calls[:6]],
+            [
+                'validate_config',
+                'resolve_lock_ref',
+                'validate_lock_ref',
+                'validate_config',
+                'resolve_lock_ref',
+                'validate_lock_ref',
+            ],
+        )
+        plan = validate_build_lock(lock, data_registry, None)
+
+        self.assertEqual(lock.code.source.plugin.id, 'plugin.demo')
+        self.assertEqual(lock.code.source.plugin.version, '1.2.3')
+        self.assertEqual(lock.code.source.extra['dataset'], 'main')
+        self.assertEqual(lock.code.source.revision, 7)
+        by_work_path = {entry.work_path: entry for entry in plan.entries}
+        self.assertEqual(by_work_path['solver.py'].sha256, hashlib.sha256(b'print("plugin")\n').hexdigest())
+        self.assertIn(('validate_config', 'demo-source', 'validate_config'), adapter.calls)
+        self.assertIn(('resolve_lock_ref', 'demo-source', 'resolve_lock_ref'), adapter.calls)
+        self.assertIn(('validate_lock_ref', 7, 'validate_lock_ref'), adapter.calls)
+        self.assertIn(('list_files', 7, 'list_files'), adapter.calls)
+        self.assertIn(('read_file', 'solver.py', 'read_file'), adapter.calls)
+
+    def test_plugin_source_lifecycle_exception_is_wrapped_and_redacted(self):
+        class FailingPluginSourceAdapter:
+            def validate_config(self, ref, context):
+                raise RuntimeError('boom secret=abc')
+
+            def resolve_lock_ref(self, ref, context):
+                return dict(ref)
+
+            def validate_lock_ref(self, ref, context):
+                pass
+
+            def list_files(self, ref, context):
+                return []
+
+            def read_file(self, ref, relative_path, context):
+                return b''
+
+            def is_versionable(self, ref, context):
+                return True
+
+        runtime = PluginRuntimeSet(
+            active_plugin_ids=('plugin.demo',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('source', 'demo-source'): CapabilityRecord(
+                    key=CapabilityKey('source', 'demo-source'),
+                    capability=FailingPluginSourceAdapter(),
+                    owner='plugin.demo',
+                ),
+            },
+        )
+        build = BuildConfig.from_dict(
+            {
+                'build': {'name': 'case'},
+                'code': {'source': {'type': 'demo-source', 'path': 'code'}},
+                'inputs': [{'name': 'mesh', 'source': {'type': 'local', 'path': 'input'}}],
+            },
+        )
+
+        with self.assertRaises(BuildPlanError) as caught:
+            create_build_lock(build, SourceRegistry.from_runtime(runtime), None)
+
+        message = str(caught.exception)
+        self.assertIn('plugin source validate_config failed', message)
+        self.assertIn('secret=[redacted]', message)
+        self.assertNotIn('abc', message)
 
     def test_validate_build_lock_allows_full_tree_without_rules_source(self):
         build = build_config(code_rule=None, input_rule=None)

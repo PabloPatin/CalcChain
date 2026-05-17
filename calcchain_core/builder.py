@@ -136,7 +136,7 @@ class EnvironmentBuilder:
         from calcchain_core.frozen_inputs import freeze_effective_inputs
 
         _write_json(layout.snapshots_dir / 'pre_run_snapshot.json', pre_run_snapshot.to_dict())
-        frozen_inputs = freeze_effective_inputs(layout, build_result, pre_run_snapshot)
+        frozen_inputs = freeze_effective_inputs(layout, build_result, pre_run_snapshot, registry=self._registry)
         write_runtime_status(layout.service_dir / 'runtime_status.json', runtime_status)
         return PreRunCheckResult(
             pre_run_snapshot=pre_run_snapshot,
@@ -170,7 +170,7 @@ class EnvironmentBuilder:
             return self._rules_file_path.read_bytes()
         if source is None:
             return None
-        if source.type is SourceType.LOCAL and Path(source.path).is_file():
+        if _type_id(source.type) == SourceType.LOCAL.value and Path(source.path).is_file():
             return Path(source.path).read_bytes()
         try:
             return self._registry.read_file(source, Path(source.path).name)
@@ -311,6 +311,12 @@ def _safe_join(root: Path, relative_path: str) -> Path:
 
 def _has_windows_drive(value: str) -> bool:
     return len(value) >= 2 and value[1] == ':' and value[0].isalpha()
+
+
+def _type_id(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return value
 
 
 def _write_json(path: Path, data: Any) -> None:

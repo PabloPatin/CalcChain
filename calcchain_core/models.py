@@ -9,6 +9,7 @@ from typing import Any, Self
 from urllib.parse import urlsplit
 
 from calcchain_core.errors import ConfigFormatError, UnsupportedSchemaVersionError
+from calcchain_core.plugin_runtime import PluginRefMetadata
 
 LATEST_SCHEMA_VERSION = '1.0'
 SUPPORTED_SCHEMA_VERSIONS = {'1.0'}
@@ -50,10 +51,16 @@ class RunStatus(StrEnum):
 
 @dataclass(frozen=True)
 class SourceRef:
-    type: SourceType
-    path: str
+    type: SourceType | str
+    path: str = ''
     location: str | None = None
     revision: str | int | None = None
+    plugin: PluginRefMetadata | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'type', _ref_type(self.type))
+        _string_value(self.path, 'path')
 
     @classmethod
     def from_dict(
@@ -63,45 +70,85 @@ class SourceRef:
         resolved_revision: bool = False,
         reject_userinfo: bool = False,
     ) -> Self:
-        ref_type = SourceType(_required_str(data, 'type'))
+        ref_type = _ref_type(_required_str(data, 'type'))
         location = _optional_str(data, 'location')
-        path = _required_str(data, 'path')
+        path = _optional_str(data, 'path') or ''
         revision = data.get('revision')
+        plugin = _optional_plugin_metadata(data)
+        extra = _extra_ref_fields(data, {'type', 'path', 'location', 'revision', 'plugin'})
 
-        if ref_type is SourceType.LOCAL:
+        if _is_ref_type(ref_type, SourceType.LOCAL):
             if location is not None:
                 raise ConfigFormatError('local source must not define location')
             if revision is not None:
                 raise ConfigFormatError('local source must not define revision')
-            return cls(type=ref_type, path=path)
+            if not path:
+                raise ConfigFormatError('missing required field: path')
+            return cls(type=ref_type, path=path, plugin=plugin, extra=extra)
+
+        if not _is_ref_type(ref_type, SourceType.SVN):
+            return cls(
+                type=ref_type,
+                location=location,
+                path=path,
+                revision=_serializable_value(revision, 'revision') if revision is not None else None,
+                plugin=plugin,
+                extra=extra,
+            )
 
         if location is None:
             raise ConfigFormatError('svn source requires location')
+        if not path:
+            raise ConfigFormatError('missing required field: path')
         if reject_userinfo:
             _validate_svn_location(location, field='source')
         _validate_svn_revision(revision, resolved_revision=resolved_revision, field='source')
         if revision is None:
             revision = 'HEAD'
-        return cls(type=ref_type, location=location, path=path, revision=revision)
+        return cls(type=ref_type, location=location, path=path, revision=revision, plugin=plugin, extra=extra)
 
     def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {'type': self.type.value}
+        result: dict[str, Any] = {'type': _ref_type_value(self.type)}
+        if _is_ref_type(self.type, SourceType.LOCAL) and not self.path:
+            raise ConfigFormatError('missing required field: path')
         if self.location is not None:
-            if self.type is SourceType.SVN:
+            if _is_ref_type(self.type, SourceType.LOCAL):
+                raise ConfigFormatError('local source must not define location')
+            if _is_ref_type(self.type, SourceType.SVN):
                 _validate_svn_location(self.location, field='source')
             result['location'] = self.location
-        result['path'] = self.path
+        elif _is_ref_type(self.type, SourceType.SVN):
+            raise ConfigFormatError('svn source requires location')
+        if _is_ref_type(self.type, SourceType.SVN) and not self.path:
+            raise ConfigFormatError('missing required field: path')
+        if self.path or _is_ref_type(self.type, SourceType.LOCAL) or _is_ref_type(self.type, SourceType.SVN):
+            result['path'] = self.path
         if self.revision is not None:
-            result['revision'] = self.revision
+            if _is_ref_type(self.type, SourceType.LOCAL):
+                raise ConfigFormatError('local source must not define revision')
+            if _is_ref_type(self.type, SourceType.SVN):
+                _validate_svn_revision(self.revision, resolved_revision=False, field='source')
+                result['revision'] = self.revision
+            else:
+                result['revision'] = _serializable_value(self.revision, 'revision')
+        if self.plugin is not None:
+            result['plugin'] = self.plugin.to_dict()
+        result.update(_serializable_mapping(self.extra, 'source extra'))
         return result
 
 
 @dataclass(frozen=True)
 class TargetRef:
-    type: SourceType
-    path: str
+    type: SourceType | str
+    path: str = ''
     location: str | None = None
     revision: str | int | None = None
+    plugin: PluginRefMetadata | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'type', _ref_type(self.type))
+        _string_value(self.path, 'path')
 
     @classmethod
     def from_dict(
@@ -111,35 +158,70 @@ class TargetRef:
         resolved_revision: bool = False,
         reject_userinfo: bool = False,
     ) -> Self:
-        ref_type = SourceType(_required_str(data, 'type'))
-        path = _required_str(data, 'path')
+        ref_type = _ref_type(_required_str(data, 'type'))
+        path = _optional_str(data, 'path') or ''
         location = _optional_str(data, 'location')
         revision = data.get('revision')
+        plugin = _optional_plugin_metadata(data)
+        extra = _extra_ref_fields(data, {'type', 'path', 'location', 'revision', 'plugin'})
 
-        if ref_type is SourceType.LOCAL:
+        if _is_ref_type(ref_type, SourceType.LOCAL):
             if location is not None:
                 raise ConfigFormatError('local target must not define location')
             if revision is not None:
                 raise ConfigFormatError('local target must not define revision')
-            return cls(type=ref_type, path=path)
+            if not path:
+                raise ConfigFormatError('missing required field: path')
+            return cls(type=ref_type, path=path, plugin=plugin, extra=extra)
+
+        if not _is_ref_type(ref_type, SourceType.SVN):
+            return cls(
+                type=ref_type,
+                path=path,
+                location=location,
+                revision=_serializable_value(revision, 'revision') if revision is not None else None,
+                plugin=plugin,
+                extra=extra,
+            )
 
         if location is None:
             raise ConfigFormatError('svn target requires location')
+        if not path:
+            raise ConfigFormatError('missing required field: path')
         if reject_userinfo:
             _validate_svn_location(location, field='target')
         _validate_svn_revision(revision, resolved_revision=resolved_revision, field='target')
         if revision is None:
             revision = 'HEAD'
-        return cls(type=ref_type, location=location, path=path, revision=revision)
+        return cls(type=ref_type, location=location, path=path, revision=revision, plugin=plugin, extra=extra)
 
     def to_dict(self) -> dict[str, Any]:
-        result: dict[str, Any] = {'type': self.type.value, 'path': self.path}
+        result: dict[str, Any] = {'type': _ref_type_value(self.type)}
+        if _is_ref_type(self.type, SourceType.LOCAL) and not self.path:
+            raise ConfigFormatError('missing required field: path')
         if self.location is not None:
-            if self.type is SourceType.SVN:
+            if _is_ref_type(self.type, SourceType.LOCAL):
+                raise ConfigFormatError('local target must not define location')
+            if _is_ref_type(self.type, SourceType.SVN):
                 _validate_svn_location(self.location, field='target')
             result['location'] = self.location
+        elif _is_ref_type(self.type, SourceType.SVN):
+            raise ConfigFormatError('svn target requires location')
+        if _is_ref_type(self.type, SourceType.SVN) and not self.path:
+            raise ConfigFormatError('missing required field: path')
+        if self.path or _is_ref_type(self.type, SourceType.LOCAL) or _is_ref_type(self.type, SourceType.SVN):
+            result['path'] = self.path
         if self.revision is not None:
-            result['revision'] = self.revision
+            if _is_ref_type(self.type, SourceType.LOCAL):
+                raise ConfigFormatError('local target must not define revision')
+            if _is_ref_type(self.type, SourceType.SVN):
+                _validate_svn_revision(self.revision, resolved_revision=False, field='target')
+                result['revision'] = self.revision
+            else:
+                result['revision'] = _serializable_value(self.revision, 'revision')
+        if self.plugin is not None:
+            result['plugin'] = self.plugin.to_dict()
+        result.update(_serializable_mapping(self.extra, 'target extra'))
         return result
 
 
@@ -487,9 +569,14 @@ class PublishTarget:
         default_message: str,
         resolved_revision: bool = False,
     ) -> Self:
+        target_data = {
+            key: value
+            for key, value in data.items()
+            if key not in {'name', 'rule_sets', 'message'}
+        }
         return cls(
             name=_required_str(data, 'name'),
-            target=TargetRef.from_dict(data, resolved_revision=resolved_revision),
+            target=TargetRef.from_dict(target_data, resolved_revision=resolved_revision),
             rule_sets=[_string_value(item, 'rule_sets item') for item in _required_list(data, 'rule_sets')],
             message=_optional_str(data, 'message') or default_message,
         )
@@ -757,6 +844,65 @@ def _validate_svn_revision(
 def _validate_svn_location(location: str, *, field: str) -> None:
     if '@' in urlsplit(location).netloc:
         raise ConfigFormatError(f'svn {field} location must not contain userinfo')
+
+
+def _ref_type(value: SourceType | str) -> SourceType | str:
+    if isinstance(value, SourceType):
+        return value
+    value = _string_value(value, 'type')
+    if value == '':
+        raise ConfigFormatError('type must not be empty')
+    try:
+        return SourceType(value)
+    except ValueError:
+        return value
+
+
+def _is_ref_type(value: SourceType | str, expected: SourceType) -> bool:
+    return _ref_type_value(value) == expected.value
+
+
+def _ref_type_value(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return _string_value(value, 'type')
+
+
+def _optional_plugin_metadata(data: Mapping[str, Any]) -> PluginRefMetadata | None:
+    if 'plugin' not in data:
+        return None
+    try:
+        return PluginRefMetadata.from_dict(_mapping_value(data['plugin'], 'plugin'))
+    except ValueError as error:
+        raise ConfigFormatError(str(error)) from error
+
+
+def _extra_ref_fields(data: Mapping[str, Any], known_fields: set[str]) -> dict[str, Any]:
+    return {
+        _string_value(key, 'ref field'): _serializable_value(value, f'{key} value')
+        for key, value in data.items()
+        if key not in known_fields
+    }
+
+
+def _serializable_mapping(data: Mapping[str, Any], field: str) -> dict[str, Any]:
+    return {
+        _string_value(key, f'{field} key'): _serializable_value(value, f'{field}.{key}')
+        for key, value in data.items()
+    }
+
+
+def _serializable_value(value: Any, field: str) -> Any:
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if isinstance(value, list):
+        return [_serializable_value(item, f'{field} item') for item in value]
+    if isinstance(value, Mapping):
+        return {
+            _string_value(key, f'{field} key'): _serializable_value(item, f'{field}.{key}')
+            for key, item in value.items()
+        }
+    raise ConfigFormatError(f'{field} must be serializable')
 
 
 def _required_mapping(data: Mapping[str, Any], key: str) -> Mapping[str, Any]:

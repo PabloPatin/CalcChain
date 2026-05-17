@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from typing import Any
 
 from calcchain_core.build_plan import BuildPlanEntry
 from calcchain_core.hash import tree_sha256
-from calcchain_core.models import FileMapEntry, RuleUse, SourceRef
+from calcchain_core.models import FileMapEntry, RuleUse, SourceRef, SourceType
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,7 @@ def _unique_sources(sources) -> list[SourceRef]:
     result: list[SourceRef] = []
     seen: set[tuple] = set()
     for source in sources:
-        key = (source.type.value, source.location, source.path, source.revision)
+        key = (_type_id(source.type), source.location, source.path, source.revision, _plugin_key(source), _stable_extra(source))
         if key not in seen:
             seen.add(key)
             result.append(source)
@@ -86,3 +87,19 @@ def _common_rules(entries: list[BuildPlanEntry]) -> RuleUse | None:
     if all(rule == first for rule in rules) and len(rules) == len(entries):
         return first
     return None
+
+
+def _type_id(value: SourceType | str) -> str:
+    if isinstance(value, SourceType):
+        return value.value
+    return value
+
+
+def _plugin_key(source: SourceRef) -> tuple[str, str] | None:
+    if source.plugin is None:
+        return None
+    return source.plugin.id, source.plugin.version
+
+
+def _stable_extra(source: SourceRef) -> str:
+    return json.dumps(source.extra, ensure_ascii=False, sort_keys=True, separators=(',', ':'))

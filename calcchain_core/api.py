@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from calcchain_core.auth import NoAuthService
 from calcchain_core.build_plan import BuildPlan, create_build_lock, validate_build_lock
 from calcchain_core.builder import BuildResult, EnvironmentBuilder, RulesArtifact
 from calcchain_core.cleanup import CleanupResult, cleanup_work_dir
@@ -32,6 +33,7 @@ from calcchain_core.models import (
     SourceRef,
 )
 from calcchain_core.output_classifier import classify_files
+from calcchain_core.plugins.manager import PluginRuntimeSet
 from calcchain_core.publish import PublishResult, build_publish_plan, create_publish_lock, execute_publish_plan
 from calcchain_core.restore import RestoreRequest, RestoreResult, restore_from_manifest
 from calcchain_core.runner import CancelToken, ProcessRunner, RunResult
@@ -45,13 +47,16 @@ class CalculationCore:
         self,
         job_dir: Path,
         *,
+        plugin_runtime: PluginRuntimeSet | None = None,
         source_registry: SourceRegistry | None = None,
         target_registry: TargetRegistry | None = None,
+        auth_service: object | None = None,
     ):
         self.job_dir = Path(job_dir)
         self.layout = JobLayout.from_job_dir(self.job_dir)
-        self.source_registry = source_registry or SourceRegistry()
-        self.target_registry = target_registry or TargetRegistry()
+        self.auth_service = auth_service if auth_service is not None else NoAuthService()
+        self.source_registry = source_registry or SourceRegistry.from_runtime(plugin_runtime, auth=self.auth_service)
+        self.target_registry = target_registry or TargetRegistry.from_runtime(plugin_runtime, auth=self.auth_service)
         self._last_plan: BuildPlan | None = None
         self._last_build_result: BuildResult | None = None
 
