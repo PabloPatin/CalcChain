@@ -41,14 +41,14 @@ class PublicationServiceLayout:
 
 @dataclass(frozen=True)
 class JobLayout:
-    job_dir: Path
-    work_dir: Path
-    service_dir: Path
+    job_dir: Path  # Рабочее окружение
+    work_dir: Path  # Папка расчёта
+    service_dir: Path  # Папка со служебными файлами
     rules_dir: Path
     logs_dir: Path
     frozen_inputs_dir: Path
     snapshots_dir: Path
-    build_artifacts_dir: Path
+    build_artifacts_dir: Path 
     publication_artifacts_dir: Path
     manifest_path: Path
 

@@ -18,22 +18,22 @@ _SECRET_ASSIGNMENT_RE = re.compile(r'(?i)\b(secret|token|password|passwd|api[_-]
 
 class SourceAdapter(Protocol):
     def validate_config(self, source: SourceRef) -> None:
-        """Validate an unresolved source config before lock resolution."""
+        """Валидирует конфиг, созданный пользователем."""
 
     def validate_lock_ref(self, source: SourceRef) -> None:
-        """Validate a locked source ref before reads."""
+        """Валидирует lock файл"""
 
     def list_files(self, source: SourceRef) -> list[str]:
-        """Return source-relative file paths using POSIX separators."""
+        """Возвращает список относительных путей файлов источника в формате POSIX."""
 
     def read_file(self, source: SourceRef, relative_path: str) -> bytes:
-        """Read one source-relative file."""
+        """Читает файл источника по относительному пути."""
 
-    def resolve_revision(self, source: SourceRef) -> SourceRef:
-        """Return the source with a concrete revision when the source supports revisions."""
+    def resolve_lock_ref(self, source: SourceRef) -> SourceRef:
+        """Преобразует пользовательский конфиг в lock, убирая неоднозначности."""
 
     def is_versionable(self, source: SourceRef) -> bool:
-        """Return whether the source has stable version identity."""
+        """Возвращает Turue, если источник версионируемый."""
 
 
 class LocalSourceAdapter:
@@ -121,7 +121,7 @@ class SvnSourceAdapter:
             raise SourceError(f'svn cat returned text for file: {relative_path}')
         return data
 
-    def resolve_revision(self, source: SourceRef) -> SourceRef:
+    def resolve_lock_ref(self, source: SourceRef) -> SourceRef:
         validate_source_ref(source)
         _ensure_source_type(source, SourceType.SVN)
         revision = source.revision
@@ -184,7 +184,7 @@ class _RuntimeSourceAdapter:
         self.validate_lock_ref(source)
         return self._call_plugin('read_file', source, relative_path, self._context('read_file'))
 
-    def resolve_revision(self, source: SourceRef) -> SourceRef:
+    def resolve_lock_ref(self, source: SourceRef) -> SourceRef:
         resolved = self._call_plugin('resolve_lock_ref', source, self._context('resolve_lock_ref'))
         return SourceRef.from_dict(resolved, resolved_revision=True)
 
@@ -208,10 +208,14 @@ class _RuntimeSourceAdapter:
 
 
 class SourceRegistry:
+    '''Регистратор для SourceAdapters'''
     def __init__(self, adapters: dict[SourceType | str, SourceAdapter] | None = None):
-        self._entries: dict[str, RegisteredSourceCapability] = {
-            SourceType.LOCAL.value: RegisteredSourceCapability(LocalSourceAdapter()),
-        }
+        # По умолчанию зарегистрирвовать только local
+        self.register(
+            source_type=SourceType.LOCAL.value,
+            adapter=LocalSourceAdapter,            
+        )
+        # Можно зарегистрировать готовые адаптеры
         if adapters:
             for source_type, adapter in adapters.items():
                 self.register(source_type, adapter)
@@ -229,8 +233,6 @@ class SourceRegistry:
         for key, record in runtime.capabilities.items():
             if key.namespace != 'source':
                 continue
-            if key.id in registry._entries:
-                continue
             registry.register(
                 key.id,
                 _RuntimeSourceAdapter(record.capability, capability_id=key.id, plugin_id=record.owner, auth=auth),
@@ -246,7 +248,21 @@ class SourceRegistry:
         *,
         plugin_id: str | None = None,
         plugin_version: str | None = None,
+        override: bool = False,
     ) -> None:
+        type_id = _type_id(source_type)
+
+        # Если override запрещён и встретился повторный type_id поднять исключение
+        if type_id in self._entries and not override:
+            existing = self._entries[type_id]
+            existing_owner = existing.plugin_id or 'builtin'
+            new_owner = plugin_id or 'builtin'
+            raise SourceError(
+                f"source type {type_id!r} is already registered by "
+                f"{existing_owner}, cannot register {new_owner}"
+            )
+
+        # Регистрация
         self._entries[_type_id(source_type)] = RegisteredSourceCapability(
             adapter,
             plugin_id=plugin_id,
@@ -258,16 +274,16 @@ class SourceRegistry:
 
     def validate_config(self, source: SourceRef) -> None:
         entry = self._entry_for(source)
-        _call_optional(entry.adapter, 'validate_config', source)
+        entry.adapter.validate_config(source)
 
     def resolve_lock_ref(self, source: SourceRef) -> SourceRef:
         entry = self._entry_for(source)
-        resolved = entry.adapter.resolve_revision(source)
+        resolved = entry.adapter.resolve_lock_ref(source)
         return _with_plugin_metadata(resolved, entry)
 
     def validate_lock_ref(self, source: SourceRef) -> None:
         entry = self._entry_for(source)
-        _call_optional(entry.adapter, 'validate_lock_ref', source)
+        entry.adapter.validate_lock_ref(source)
 
     def _entry_for(self, source: SourceRef) -> RegisteredSourceCapability:
         validate_source_ref(source)
@@ -281,9 +297,6 @@ class SourceRegistry:
 
     def read_file(self, source: SourceRef, relative_path: str) -> bytes:
         return self.adapter_for(source).read_file(source, relative_path)
-
-    def resolve_revision(self, source: SourceRef) -> SourceRef:
-        return self.resolve_lock_ref(source)
 
     def is_versionable(self, source: SourceRef) -> bool:
         return self.adapter_for(source).is_versionable(source)
@@ -360,12 +373,6 @@ def _type_id(value: SourceType | str) -> str:
     if isinstance(value, SourceType):
         return value.value
     return value
-
-
-def _call_optional(adapter: SourceAdapter, method_name: str, source: SourceRef) -> None:
-    method = getattr(adapter, method_name, None)
-    if method is not None:
-        method(source)
 
 
 def _with_plugin_metadata(source: SourceRef, entry: RegisteredSourceCapability) -> SourceRef:

@@ -79,7 +79,7 @@ class TestCoreSources(unittest.TestCase):
             },
         )
 
-        resolved = adapter.resolve_revision(source)
+        resolved = adapter.resolve_lock_ref(source)
 
         self.assertEqual(resolved.revision, 1842)
         self.assertTrue(adapter.is_versionable(source))
@@ -125,7 +125,7 @@ class TestCoreSources(unittest.TestCase):
         for source_data in unsafe_sources:
             with self.subTest(source=source_data):
                 with self.assertRaises(SourceError) as caught:
-                    adapter.resolve_revision(SourceRef.from_dict(source_data))
+                    adapter.resolve_lock_ref(SourceRef.from_dict(source_data))
                 self.assertNotIn('secret', str(caught.exception))
 
         self.assertEqual(calls, [])
@@ -142,7 +142,7 @@ class TestCoreSources(unittest.TestCase):
         )
 
         with self.assertRaises(SourceError) as caught:
-            adapter.resolve_revision(source)
+            adapter.resolve_lock_ref(source)
 
         message = str(caught.exception)
         self.assertIn('https://[redacted]@svn.example.org/repo', message)
