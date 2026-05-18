@@ -10,7 +10,7 @@ from calcchain_core.config import (
 )
 from calcchain_core.api import CalculationCore
 from calcchain_core.cleanup import CleanupResult, cleanup_work_dir
-from calcchain_core.errors import CalcChainError, ConfigFormatError, UnsupportedSchemaVersionError
+from calcchain_core.errors import CalcChainError, ConfigFormatError, ReportError, UnsupportedSchemaVersionError
 from calcchain_core.hash import sha256_file, tree_sha256
 from calcchain_core.layout import JobLayout, PublicationServiceLayout
 from calcchain_core.models import (
@@ -42,6 +42,8 @@ from calcchain_core.plugins import (
     PluginMetadataError,
     PluginRegistrationError,
 )
+from calcchain_core.plugin_runtime import ReportDescriptor, ReportRequest, ReportResult
+from calcchain_core.reports import ReportRegistry
 from calcchain_core.restore import RestoreRequest, RestoreResult, restore_from_manifest
 
 __all__ = [
@@ -75,6 +77,11 @@ __all__ = [
     'RulesFile',
     'RunConfig',
     'RunStatus',
+    'ReportDescriptor',
+    'ReportError',
+    'ReportRegistry',
+    'ReportRequest',
+    'ReportResult',
     'RestoreRequest',
     'RestoreResult',
     'SourceRef',

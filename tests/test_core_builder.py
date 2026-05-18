@@ -31,11 +31,20 @@ class MemoryAdapter:
     def read_file(self, source, relative_path):
         return self.trees[source.path][relative_path]
 
+    def validate_config(self, source):
+        pass
+
+    def resolve_lock_ref(self, source):
+        return self.resolve_revision(source)
+
+    def validate_lock_ref(self, source):
+        pass
+
     def resolve_revision(self, source):
         return source
 
     def is_versionable(self, source):
-        return source.type.value == 'svn'
+        return getattr(source.type, 'value', source.type) == 'svn'
 
 
 class PluginMemoryAdapter:
@@ -49,6 +58,15 @@ class PluginMemoryAdapter:
     def read_file(self, source, relative_path):
         return self.trees[source.path][relative_path]
 
+    def validate_config(self, source):
+        pass
+
+    def resolve_lock_ref(self, source):
+        return self.resolve_revision(source)
+
+    def validate_lock_ref(self, source):
+        pass
+
     def resolve_revision(self, source):
         return source
 
@@ -58,6 +76,13 @@ class PluginMemoryAdapter:
 
 def _sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def _source_registry(**adapters):
+    registry = SourceRegistry()
+    for source_type, adapter in adapters.items():
+        registry.register(source_type, adapter, override=source_type == 'local')
+    return registry
 
 
 def _plan(rules_path):
@@ -105,15 +130,13 @@ class TestCoreBuilder(unittest.TestCase):
             rules_path = root / 'rules.json'
             rules_path.write_text('{"rule_sets": {}}\n', encoding='utf-8')
             layout = JobLayout.from_job_dir(root / 'job')
-            registry = SourceRegistry(
-                {
-                    'local': MemoryAdapter(
-                        {
-                            'code': {'solver.py': b'print("ok")\n'},
-                            'input': {'mesh.dat': b'mesh'},
-                        },
-                    ),
-                },
+            registry = _source_registry(
+                local=MemoryAdapter(
+                    {
+                        'code': {'solver.py': b'print("ok")\n'},
+                        'input': {'mesh.dat': b'mesh'},
+                    },
+                ),
             )
 
             result = EnvironmentBuilder(registry, rules_file_path=rules_path).build(layout, _plan(rules_path))
@@ -166,12 +189,12 @@ class TestCoreBuilder(unittest.TestCase):
                 ],
                 warnings=[],
             )
-            registry = SourceRegistry(
-                {
+            registry = _source_registry(
+                **{
                     'plugin-store': PluginMemoryAdapter(
-                        {'code': {'solver.py': b'print("plugin")\n'}},
-                        versionable=True,
-                    ),
+                    {'code': {'solver.py': b'print("plugin")\n'}},
+                    versionable=True,
+                )
                 },
             )
 
@@ -192,15 +215,13 @@ class TestCoreBuilder(unittest.TestCase):
             rules_path = root / 'rules.json'
             rules_path.write_text('{"rule_sets": {}}\n', encoding='utf-8')
             layout = JobLayout.from_job_dir(root / 'job')
-            registry = SourceRegistry(
-                {
-                    'local': MemoryAdapter(
-                        {
-                            'code': {'solver.py': b'print("ok")\n'},
-                            'input': {'mesh.dat': b'mesh'},
-                        },
-                    ),
-                },
+            registry = _source_registry(
+                local=MemoryAdapter(
+                    {
+                        'code': {'solver.py': b'print("ok")\n'},
+                        'input': {'mesh.dat': b'mesh'},
+                    },
+                ),
             )
             builder = EnvironmentBuilder(registry, rules_file_path=rules_path)
             plan = _plan(rules_path)
@@ -223,14 +244,12 @@ class TestCoreBuilder(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             layout = JobLayout.from_job_dir(root / 'job')
-            registry = SourceRegistry({'local': MemoryAdapter({'code': {'solver.py': b'code'}, 'input': {'mesh.dat': b'mesh'}})})
+            registry = _source_registry(local=MemoryAdapter({'code': {'solver.py': b'code'}, 'input': {'mesh.dat': b'mesh'}}))
             code_source = SourceRef.from_dict({'type': 'local', 'path': 'code'})
             input_source = SourceRef.from_dict({'type': 'svn', 'location': 'https://svn.example.org/data', 'path': 'input', 'revision': 1})
-            registry = SourceRegistry(
-                {
-                    'local': MemoryAdapter({'code': {'solver.py': b'code'}}),
-                    'svn': MemoryAdapter({'input': {'mesh.dat': b'mesh'}}),
-                },
+            registry = _source_registry(
+                local=MemoryAdapter({'code': {'solver.py': b'code'}}),
+                svn=MemoryAdapter({'input': {'mesh.dat': b'mesh'}}),
             )
             lock = BuildLock(
                 schema_version='1.0',
@@ -272,8 +291,8 @@ class TestCoreBuilder(unittest.TestCase):
                 },
                 resolved_revision=True,
             )
-            registry = SourceRegistry(
-                {
+            registry = _source_registry(
+                **{
                     'local': MemoryAdapter({'code': {'solver.py': b'code'}}),
                     'plugin-store': PluginMemoryAdapter({'input': {'mesh.dat': b'mesh'}}, versionable=False),
                 },
@@ -310,7 +329,7 @@ class TestCoreBuilder(unittest.TestCase):
             rules_path = root / 'rules.json'
             rules_path.write_text('{}', encoding='utf-8')
             layout = JobLayout.from_job_dir(root / 'job')
-            registry = SourceRegistry({'local': MemoryAdapter({'code': {}, 'input': {}})})
+            registry = _source_registry(local=MemoryAdapter({'code': {}, 'input': {}}))
 
             result = EnvironmentBuilder(registry, rules_file_path=rules_path).build(
                 layout,
@@ -329,7 +348,7 @@ class TestCoreBuilder(unittest.TestCase):
             rules_path = root / 'rules.json'
             rules_path.write_text('{}', encoding='utf-8')
             layout = JobLayout.from_job_dir(root / 'job')
-            registry = SourceRegistry({'local': MemoryAdapter({'code': {'solver.py': b'print("ok")\n'}, 'input': {'mesh.dat': b'mesh'}})})
+            registry = _source_registry(local=MemoryAdapter({'code': {'solver.py': b'print("ok")\n'}, 'input': {'mesh.dat': b'mesh'}}))
             builder = EnvironmentBuilder(registry, rules_file_path=rules_path)
             plan = _plan(rules_path)
             build_result = builder.build(layout, plan)

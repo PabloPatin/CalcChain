@@ -29,15 +29,31 @@ class MemoryAdapter:
     def read_file(self, source, relative_path):
         return self.trees[source.path][relative_path]
 
+    def validate_config(self, source):
+        pass
+
+    def resolve_lock_ref(self, source):
+        return self.resolve_revision(source)
+
+    def validate_lock_ref(self, source):
+        pass
+
     def resolve_revision(self, source):
         return source
 
     def is_versionable(self, source):
-        return source.type.value == 'svn'
+        return getattr(source.type, 'value', source.type) == 'svn'
 
 
 def _sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def _source_registry(**adapters):
+    registry = SourceRegistry()
+    for source_type, adapter in adapters.items():
+        registry.register(source_type, adapter, override=source_type == 'local')
+    return registry
 
 
 def _plan(input_source):
@@ -65,7 +81,7 @@ class TestCoreFrozenInputs(unittest.TestCase):
             root = Path(tmp)
             layout = JobLayout.from_job_dir(root / 'job')
             input_source = SourceRef.from_dict({'type': 'local', 'path': 'input'})
-            registry = SourceRegistry({'local': MemoryAdapter({'code': {'solver.py': b'code'}, 'input': {'mesh.dat': b'mesh'}})})
+            registry = _source_registry(local=MemoryAdapter({'code': {'solver.py': b'code'}, 'input': {'mesh.dat': b'mesh'}}))
             build_result = EnvironmentBuilder(registry).build(layout, _plan(input_source))
 
             frozen = freeze_effective_inputs(layout, build_result, create_snapshot(layout.work_dir))
@@ -88,17 +104,15 @@ class TestCoreFrozenInputs(unittest.TestCase):
                     'revision': 1842,
                 },
             )
-            registry = SourceRegistry(
-                {
-                    'local': MemoryAdapter({'code': {'solver.py': b'code'}}),
-                    'svn': MemoryAdapter({'input': {'mesh.dat': b'mesh'}}),
-                },
+            registry = _source_registry(
+                local=MemoryAdapter({'code': {'solver.py': b'code'}}),
+                svn=MemoryAdapter({'input': {'mesh.dat': b'mesh'}}),
             )
             build_result = EnvironmentBuilder(registry).build(layout, _plan(input_source))
             (layout.work_dir / 'mesh.dat').write_bytes(b'changed mesh')
             pre_run_snapshot = create_snapshot(layout.work_dir)
 
-            frozen = freeze_effective_inputs(layout, build_result, pre_run_snapshot)
+            frozen = freeze_effective_inputs(layout, build_result, pre_run_snapshot, registry=registry)
 
             self.assertIsNotNone(frozen)
             self.assertEqual((layout.frozen_inputs_dir / 'mesh.dat').read_bytes(), b'changed mesh')
@@ -116,11 +130,9 @@ class TestCoreFrozenInputs(unittest.TestCase):
                     'revision': 1842,
                 },
             )
-            registry = SourceRegistry(
-                {
-                    'local': MemoryAdapter({'code': {'solver.py': b'code'}}),
-                    'svn': MemoryAdapter({'input': {'mesh.dat': b'mesh'}}),
-                },
+            registry = _source_registry(
+                local=MemoryAdapter({'code': {'solver.py': b'code'}}),
+                svn=MemoryAdapter({'input': {'mesh.dat': b'mesh'}}),
             )
             build_result = EnvironmentBuilder(registry).build(layout, _plan(input_source))
 

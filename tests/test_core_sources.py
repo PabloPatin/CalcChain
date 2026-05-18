@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +11,8 @@ from calcchain_core.models import SourceRef
 from calcchain_core.plugin_runtime import AuthCredentials, AuthField, AuthRequirement
 from calcchain_core.plugins.manager import PluginRuntimeSet
 from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
-from calcchain_core.sources import LocalSourceAdapter, SourceRegistry, SvnSourceAdapter
+from calcchain_core.sources import LocalSourceAdapter, SourceRegistry
+from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 
 
 class FakeSvnClient:
@@ -41,6 +43,30 @@ class FailingSvnClient:
         raise RuntimeError('cannot access https://user:secret@svn.example.org/repo')
 
 
+class StaticAuthService:
+    def __init__(self):
+        self.calls = []
+
+    def get_credentials(self, requirement):
+        self.calls.append(requirement)
+        return AuthCredentials({'username': 'user', 'password': 'plain-secret-value'})
+
+
+def _svn_source_registry(adapter, *, auth=None) -> SourceRegistry:
+    runtime = PluginRuntimeSet(
+        active_plugin_ids=('calcchain.svn',),
+        environment=object(),
+        capabilities={
+            CapabilityKey('source', 'svn'): CapabilityRecord(
+                key=CapabilityKey('source', 'svn'),
+                capability=adapter,
+                owner='calcchain.svn',
+            ),
+        },
+    )
+    return SourceRegistry.from_runtime(runtime, auth=auth)
+
+
 class TestCoreSources(unittest.TestCase):
     def test_local_source_lists_and_reads_relative_files(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -69,7 +95,10 @@ class TestCoreSources(unittest.TestCase):
 
     def test_svn_source_resolves_head_and_reads_with_source_path(self):
         fake = FakeSvnClient()
-        adapter = SvnSourceAdapter(client_factory=lambda location: fake)
+        registry = _svn_source_registry(
+            BundledSvnSourceAdapter(client_factory=lambda location, **kwargs: fake),
+            auth=StaticAuthService(),
+        )
         source = SourceRef.from_dict(
             {
                 'type': 'svn',
@@ -79,13 +108,79 @@ class TestCoreSources(unittest.TestCase):
             },
         )
 
-        resolved = adapter.resolve_lock_ref(source)
+        resolved = registry.resolve_lock_ref(source)
 
         self.assertEqual(resolved.revision, 1842)
-        self.assertTrue(adapter.is_versionable(source))
-        self.assertEqual(adapter.list_files(resolved), ['case/bc.dat', 'case/nested/input.txt'])
-        self.assertEqual(adapter.read_file(resolved, 'case/bc.dat'), b'boundary')
+        self.assertEqual(resolved.plugin.id, 'calcchain.svn')
+        self.assertTrue(registry.is_versionable(resolved))
+        self.assertEqual(registry.list_files(resolved), ['case/bc.dat', 'case/nested/input.txt'])
+        self.assertEqual(registry.read_file(resolved, 'case/bc.dat'), b'boundary')
         self.assertIn(('cat', 'trunk/data/case/bc.dat', 1842, True), fake.calls)
+
+    def test_svn_source_lock_ref_preserves_safe_auth_metadata_for_post_lock_operations(self):
+        fake = FakeSvnClient()
+        auth = StaticAuthService()
+        registry = _svn_source_registry(
+            BundledSvnSourceAdapter(client_factory=lambda location, **kwargs: fake),
+            auth=auth,
+        )
+        source = SourceRef.from_dict(
+            {
+                'type': 'svn',
+                'location': 'https://svn.example.org/repo',
+                'path': 'trunk/data',
+                'revision': 'HEAD',
+                'auth': {'scheme': 'username_password', 'persistence': 'allowed', 'optional': True},
+            },
+        )
+
+        resolved = registry.resolve_lock_ref(source)
+        serialized = resolved.to_dict()
+        files = registry.list_files(resolved)
+        data = registry.read_file(resolved, 'case/bc.dat')
+
+        self.assertEqual(serialized['revision'], 1842)
+        self.assertEqual(
+            serialized['auth'],
+            {'scheme': 'username_password', 'persistence': 'allowed', 'optional': True},
+        )
+        self.assertNotIn('plain-secret-value', json.dumps(serialized, sort_keys=True))
+        self.assertNotIn('abc123', json.dumps(serialized, sort_keys=True))
+        self.assertNotIn('token', serialized['auth'])
+        self.assertEqual(files, ['case/bc.dat', 'case/nested/input.txt'])
+        self.assertEqual(data, b'boundary')
+        self.assertEqual(len(auth.calls), 3)
+        for requirement in auth.calls:
+            self.assertEqual(requirement.scheme, 'username_password')
+            self.assertEqual(requirement.persistence, 'allowed')
+            self.assertTrue(requirement.optional)
+            self.assertEqual(requirement.scope, {'source_type': 'svn', 'location': 'https://svn.example.org/repo'})
+
+    def test_svn_source_auth_config_rejects_secret_like_fields_before_client(self):
+        calls = []
+
+        def factory(location):
+            calls.append(location)
+            return FakeSvnClient()
+
+        registry = _svn_source_registry(BundledSvnSourceAdapter(client_factory=factory))
+        source = SourceRef.from_dict(
+            {
+                'type': 'svn',
+                'location': 'https://svn.example.org/repo',
+                'path': 'trunk/data',
+                'revision': 'HEAD',
+                'auth': {'scheme': 'username_password', 'password': 'plain-secret-value', 'token': 'abc123'},
+            },
+        )
+
+        with self.assertRaises(SourceError) as caught:
+            registry.resolve_lock_ref(source)
+
+        self.assertIn('unsupported fields', str(caught.exception))
+        self.assertNotIn('plain-secret-value', str(caught.exception))
+        self.assertNotIn('abc123', str(caught.exception))
+        self.assertEqual(calls, [])
 
     def test_svn_source_rejects_unsafe_ref_before_client(self):
         calls = []
@@ -94,7 +189,7 @@ class TestCoreSources(unittest.TestCase):
             calls.append(location)
             return FakeSvnClient()
 
-        adapter = SvnSourceAdapter(client_factory=factory)
+        registry = _svn_source_registry(BundledSvnSourceAdapter(client_factory=factory))
         unsafe_sources = (
             {
                 'type': 'svn',
@@ -125,13 +220,13 @@ class TestCoreSources(unittest.TestCase):
         for source_data in unsafe_sources:
             with self.subTest(source=source_data):
                 with self.assertRaises(SourceError) as caught:
-                    adapter.resolve_lock_ref(SourceRef.from_dict(source_data))
+                    registry.resolve_lock_ref(SourceRef.from_dict(source_data))
                 self.assertNotIn('secret', str(caught.exception))
 
         self.assertEqual(calls, [])
 
     def test_svn_adapter_sanitizes_credentials_in_client_errors(self):
-        adapter = SvnSourceAdapter(client_factory=lambda location: FailingSvnClient())
+        registry = _svn_source_registry(BundledSvnSourceAdapter(client_factory=lambda location: FailingSvnClient()))
         source = SourceRef.from_dict(
             {
                 'type': 'svn',
@@ -142,7 +237,7 @@ class TestCoreSources(unittest.TestCase):
         )
 
         with self.assertRaises(SourceError) as caught:
-            adapter.resolve_lock_ref(source)
+            registry.resolve_lock_ref(source)
 
         message = str(caught.exception)
         self.assertIn('https://[redacted]@svn.example.org/repo', message)
@@ -154,8 +249,8 @@ class TestCoreSources(unittest.TestCase):
             def list_files(self, source):
                 return ['one.txt']
 
-        source = SourceRef.from_dict({'type': 'local', 'path': 'D:/unused'})
-        registry = SourceRegistry({'local': Adapter()})
+        source = SourceRef.from_dict({'type': 'demo', 'path': 'D:/unused'})
+        registry = SourceRegistry({'demo': Adapter()})
 
         self.assertEqual(registry.list_files(source), ['one.txt'])
 
@@ -171,7 +266,7 @@ class TestCoreSources(unittest.TestCase):
         )
 
         with self.assertRaises(SourceError):
-            registry.resolve_revision(source)
+            registry.resolve_lock_ref(source)
 
     def test_source_registry_from_runtime_dispatches_plugin_capability_with_context(self):
         class PluginSourceAdapter:
@@ -216,7 +311,7 @@ class TestCoreSources(unittest.TestCase):
         registry = SourceRegistry.from_runtime(runtime, auth=auth)
         source = SourceRef.from_dict({'type': 'demo', 'path': 'dataset'})
 
-        resolved = registry.resolve_revision(source)
+        resolved = registry.resolve_lock_ref(source)
 
         self.assertEqual(resolved.revision, 42)
         self.assertEqual(registry.list_files(resolved), ['result.txt'])
@@ -256,11 +351,10 @@ class TestCoreSources(unittest.TestCase):
             },
         )
 
-        registry = SourceRegistry.from_runtime(runtime)
+        with self.assertRaises(SourceError) as caught:
+            SourceRegistry.from_runtime(runtime)
 
-        self.assertIsNone(registry._entries['local'].plugin_id)
-        self.assertIsNone(registry._entries['local'].plugin_version)
-        self.assertIsInstance(registry.adapter_for(SourceRef.from_dict({'type': 'local', 'path': 'D:/unused'})), LocalSourceAdapter)
+        self.assertIn("source type 'local' is already registered", str(caught.exception))
 
     def test_source_runtime_context_auth_service_provides_credentials(self):
         class AuthProvider:
@@ -319,7 +413,7 @@ class TestCoreSources(unittest.TestCase):
         registry = SourceRegistry.from_runtime(runtime, auth=auth_service)
         source = SourceRef.from_dict({'type': 'secure-source', 'path': 'repo'})
 
-        resolved = registry.resolve_revision(source)
+        resolved = registry.resolve_lock_ref(source)
 
         self.assertEqual(registry.list_files(resolved), ['source-token'])
 
@@ -385,7 +479,7 @@ class TestCoreSources(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             core = CalculationCore(Path(tmp), plugin_runtime=runtime)
-            resolved = core.source_registry.resolve_revision(
+            resolved = core.source_registry.resolve_lock_ref(
                 SourceRef.from_dict({'type': 'secure-source', 'path': 'repo'}),
             )
 

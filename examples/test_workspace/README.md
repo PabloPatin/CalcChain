@@ -8,6 +8,12 @@
 python examples/test_workspace/run_demo.py
 ```
 
+Скрипт интерактивный и ждет Enter между шагами. Для non-interactive smoke run в PowerShell можно подать пустые ответы:
+
+```powershell
+1..20 | ForEach-Object { "" } | python examples/test_workspace/run_demo.py
+```
+
 Скрипт:
 
 - пересоздает runtime-директории `job/`, `published_*`, `restored/`;

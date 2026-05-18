@@ -1,0 +1,64 @@
+# publish.toml описывает только пользовательское намерение публикации
+# уже сформированного результата. Он не описывает сборку, запуск,
+# классификацию output-файлов или режим preview/dry-run.
+# Dry-run задается отдельным флагом при вызове Python API публикации.
+
+# Необязательное поле.
+# Default: последняя версия схемы publish.toml, поддерживаемая текущей версией приложения.
+schema_version = "1.0"
+
+[publish]
+
+# Необязательное поле.
+# Default: "".
+# Используется как общее сообщение публикации, если target поддерживает историю/коммиты,
+# например SVN. Target может переопределить message локально.
+message = "Publish heat-case-42 results"
+
+# Обязательный блок.
+# Служебный target публикации.
+# Только сюда публикуются manifest, lock-файлы, frozen inputs и snapshots.
+# Пользовательские result targets ниже не обязаны получать служебные артефакты.
+[service_target]
+type = "svn"
+location = "https://svn.example.org/calc-results"
+path = "heat-case-42/run-20260502-120000/_calcchain"
+revision = "HEAD"
+
+# targets - необязательный список пользовательских result targets.
+# В каждый target можно публиковать свой набор групп через rule_sets.
+# Если outputs/logs/temp публиковать не нужно, targets может отсутствовать,
+# но service_target все равно нужен для публикации manifest и служебных файлов.
+#
+# Для type = "local":
+#   обязательное поле path;
+#   location и revision не используются.
+#
+# Для type = "svn":
+#   обязательные поля location и path;
+#   revision необязателен в publish.toml, default = "HEAD".
+#   В publish.lock.toml "HEAD" должен быть разрешен в конкретный номер ревизии.
+
+[[targets]]
+name = "results_svn"
+type = "svn"
+location = "https://svn.example.org/calc-results"
+path = "heat-case-42/run-20260502-120000"
+revision = "HEAD"
+
+# Обязательный список.
+# Указывает, какие rule sets применяются при публикации в этот target.
+# Например, сюда идут только output-файлы.
+rule_sets = ["standard_outputs"]
+
+# Необязательное поле.
+# Default: publish.message.
+message = "Publish heat-case-42 outputs"
+
+[[targets]]
+name = "logs_local"
+type = "local"
+path = "D:/published_results/heat-case-42/logs"
+
+# В этот target публикуем только логи.
+rule_sets = ["standard_logs"]

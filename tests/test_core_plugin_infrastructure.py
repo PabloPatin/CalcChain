@@ -1,16 +1,22 @@
 import inspect
+import io
 import json
+import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 import calcchain_core
+import calcchain_core.plugins.bootstrap as bootstrap_module
 import calcchain_core.plugins as plugin_infrastructure
 from calcchain_core.api import CalculationCore
 from calcchain_core.plugin_api import CapabilityKey
 from calcchain_core.plugins.manager import PluginRuntimeSet
 from calcchain_core.plugins.registrars import CapabilityRecord
 from calcchain_core.plugins import (
+    PluginActivationError,
     PluginActivationPlanner,
     PluginDiscovery,
     PluginEnvLock,
@@ -18,6 +24,7 @@ from calcchain_core.plugins import (
     PluginManager,
     PluginSettings,
     PluginSettingsStore,
+    activate_plugins,
     write_plugin_env_lock,
 )
 from calcchain_core.sources import SourceRegistry
@@ -36,6 +43,180 @@ class TestCorePluginInfrastructure(unittest.TestCase):
         self.assertIn('PluginDiscovery', plugin_infrastructure.__all__)
         self.assertIn('PluginEnvironmentManager', plugin_infrastructure.__all__)
         self.assertIn('PluginManager', plugin_infrastructure.__all__)
+        self.assertIn('activate_plugins', plugin_infrastructure.__all__)
+
+    def test_explicit_bootstrap_returns_runtime_set_and_core_consumes_it(self):
+        class FakeInstaller:
+            def __init__(self):
+                self.calls = []
+
+            def install(self, plan, target_site_packages: Path, *, allow_online: bool):
+                from calcchain_core.plugins.environment import ResolvedDependencies
+
+                self.calls.append((plan, target_site_packages, allow_online))
+                target_site_packages.mkdir(parents=True, exist_ok=True)
+                return ResolvedDependencies()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_root = self._write_plugin_package(root / 'plugins' / 'demo')
+            settings_path = root / 'plugins.json'
+            PluginSettingsStore(settings_path).save(PluginSettings(('plugin.demo',)))
+            installer = FakeInstaller()
+
+            runtime_set = activate_plugins(
+                [plugin_root.parent],
+                settings_path,
+                root / 'plugin_envs',
+                python_executable=sys.executable,
+                pip_installer=installer,
+            )
+            core = CalculationCore(root / 'job', plugin_runtime=runtime_set)
+
+        self.assertEqual(runtime_set.active_plugin_ids, ('plugin.demo',))
+        self.assertEqual(
+            sorted(key.qualified_id for key in runtime_set.capabilities),
+            ['report:summary', 'source:demo'],
+        )
+        self.assertEqual(len(installer.calls), 1)
+        self.assertFalse(installer.calls[0][2])
+        self.assertIn('demo', core.source_registry._entries)
+        self.assertIn('summary', core.report_registry._entries)
+
+    def test_explicit_bootstrap_invokes_lifecycle_components_in_order(self):
+        calls = []
+        repository = object()
+        settings = object()
+        activation_plan = type('ActivationPlan', (), {'has_errors': False, 'diagnostics': ()})()
+        dependency_plan = object()
+        environment = object()
+        runtime_set = PluginRuntimeSet(active_plugin_ids=('plugin.demo',), environment=environment, capabilities={})
+
+        class FakeDiscovery:
+            def discover(self, roots):
+                calls.append(('discover', roots))
+                return repository
+
+        class FakeSettingsStore:
+            def __init__(self, path):
+                self.path = path
+
+            def load(self):
+                calls.append(('settings', self.path))
+                return settings
+
+        class FakeActivationPlanner:
+            def __init__(self, *, python_version):
+                self.python_version = python_version
+
+            def plan(self, discovered_repository, loaded_settings):
+                calls.append(('activation_plan', self.python_version, discovered_repository, loaded_settings))
+                return activation_plan
+
+        class FakeDependencyPlanner:
+            def plan(self, planned_activation, *, shared_wheelhouse, installer_backend_version):
+                calls.append(('dependency_plan', planned_activation, shared_wheelhouse, installer_backend_version))
+                return dependency_plan
+
+        class FakeEnvironmentManager:
+            def __init__(self, root, *, installer):
+                self.root = root
+                self.installer = installer
+
+            def ensure_environment(self, planned_dependencies, *, allow_online):
+                calls.append(('environment', self.root, self.installer, planned_dependencies, allow_online))
+                return environment
+
+        class FakePluginManager:
+            def activate(self, planned_activation, prepared_environment):
+                calls.append(('manager', planned_activation, prepared_environment))
+                return runtime_set
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            installer = object()
+            with (
+                patch.object(bootstrap_module, 'PluginDiscovery', return_value=FakeDiscovery()),
+                patch.object(bootstrap_module, 'PluginSettingsStore', FakeSettingsStore),
+                patch.object(bootstrap_module, 'PluginActivationPlanner', FakeActivationPlanner),
+                patch.object(bootstrap_module, 'PluginDependencyPlanner', return_value=FakeDependencyPlanner()),
+                patch.object(bootstrap_module, 'PluginEnvironmentManager', FakeEnvironmentManager),
+                patch.object(bootstrap_module, 'PluginManager', return_value=FakePluginManager()),
+                patch.object(bootstrap_module, '_python_version', return_value='3.12.1'),
+                patch.object(bootstrap_module, '_pip_version', return_value='pip 24.0'),
+            ):
+                result = activate_plugins(
+                    [root / 'plugins'],
+                    root / 'plugins.json',
+                    root / 'plugin_envs',
+                    python_executable=sys.executable,
+                    pip_installer=installer,
+                )
+
+        self.assertIs(result, runtime_set)
+        self.assertEqual(
+            calls,
+            [
+                ('discover', (root / 'plugins',)),
+                ('settings', root / 'plugins.json'),
+                ('activation_plan', '3.12.1', repository, settings),
+                ('dependency_plan', activation_plan, None, 'pip 24.0'),
+                ('environment', root / 'plugin_envs', installer, dependency_plan, False),
+                ('manager', activation_plan, environment),
+            ],
+        )
+
+    def test_calculation_core_constructor_does_not_call_explicit_bootstrap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch('calcchain_core.plugins.bootstrap.PluginDiscovery') as discovery:
+                CalculationCore(Path(tmp))
+
+        discovery.assert_not_called()
+
+    def test_explicit_bootstrap_fails_fast_before_environment_for_invalid_activation_plan(self):
+        class FakeInstaller:
+            def __init__(self):
+                self.calls = []
+
+            def install(self, plan, target_site_packages: Path, *, allow_online: bool):
+                self.calls.append((plan, target_site_packages, allow_online))
+                raise AssertionError('installer must not be called')
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin_root = self._write_plugin_package(root / 'plugins' / 'demo')
+            settings_path = root / 'plugins.json'
+            envs_dir = root / 'plugin_envs'
+            PluginSettingsStore(settings_path).save(PluginSettings(('plugin.missing', 'plugin.demo')))
+            installer = FakeInstaller()
+
+            with self.assertRaises(PluginActivationError) as caught:
+                activate_plugins(
+                    [plugin_root.parent],
+                    settings_path,
+                    envs_dir,
+                    python_executable=sys.executable,
+                    pip_installer=installer,
+                )
+
+        self.assertEqual(caught.exception.diagnostic.code, 'plugin_activation_plan_invalid')
+        self.assertEqual(installer.calls, [])
+        self.assertFalse(envs_dir.exists())
+
+    def test_demo_main_uses_explicit_bootstrap_without_network_operations(self):
+        import examples.plugin_system_demo as demo
+
+        runtime_set = PluginRuntimeSet(active_plugin_ids=('plugin.demo',), environment=object(), capabilities={})
+
+        with patch.object(demo, 'activate_plugins', return_value=runtime_set) as activate:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                exit_code = demo.main()
+
+        self.assertEqual(exit_code, 0)
+        activate.assert_called_once_with(demo.PLUGIN_ROOTS, demo.PLUGIN_SETTINGS, demo.PLUGIN_ENVS)
+        self.assertIn("active plugin ids: ('plugin.demo',)", output.getvalue())
+        self.assertIn('No SVN network operation is run by this demo.', output.getvalue())
 
     def test_temp_plugin_package_end_to_end_infrastructure_smoke(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -145,6 +326,13 @@ class TestCorePluginInfrastructure(unittest.TestCase):
     def _write_plugin_package(self, plugin_root: Path) -> Path:
         package_dir = plugin_root / 'demo_plugin'
         package_dir.mkdir(parents=True)
+        (plugin_root / 'requirements.txt').write_text('', encoding='utf-8')
+        wheels_dir = plugin_root / 'wheels'
+        wheels_dir.mkdir()
+        (wheels_dir / 'wheels.lock.json').write_text(
+            json.dumps({'wheels': []}, indent=2),
+            encoding='utf-8',
+        )
         (package_dir / '__init__.py').write_text('', encoding='utf-8')
         (package_dir / 'entry.py').write_text(
             (

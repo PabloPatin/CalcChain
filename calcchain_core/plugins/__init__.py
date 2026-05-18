@@ -41,6 +41,7 @@ _EXPORT_MODULES = {
     'WheelLockEntry': 'calcchain_core.plugins.dependencies',
     'WheelLockReader': 'calcchain_core.plugins.dependencies',
     'WheelRecord': 'calcchain_core.plugins.dependencies',
+    'activate_plugins': 'calcchain_core.plugins.bootstrap',
     'compute_env_hash': 'calcchain_core.plugins.dependencies',
     'read_plugin_env_lock': 'calcchain_core.plugins.environment_lock',
     'redact_secrets': 'calcchain_core.plugins.diagnostics',

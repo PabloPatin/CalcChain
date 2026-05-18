@@ -1,0 +1,419 @@
+{
+  // Версия схемы самого manifest.
+  "schema_version": "1.0",
+
+  // Идентификация одной задачи расчета.
+  // Пользовательские build.toml/run.toml/publish.toml сюда не входят:
+  // manifest описывает фактические процедуры.
+  "job": {
+    "id": "run-20260502-120000",
+    "created_at": "2026-05-02T12:35:20+03:00",
+    "status": "Published",
+    "job_dir": "D:/jobs/heat-case-42",
+    "user": "DOMAIN/user",
+    "hostname": "calc-ws-01"
+  },
+
+  // Фактический запуск расчетного процесса.
+  // Блок отсутствует, если manifest создан только после build.
+  "run": {
+    "command": ["bin/heat_solver.exe", "--case", "input"],
+    "cwd": "D:/jobs/heat-case-42/work",
+    "timeout_seconds": 3600,
+    "encoding": "utf-8",
+
+    "env": {
+      "OMP_NUM_THREADS": "4",
+      "CALCCHAIN_MODE": "run",
+      "secrets": ["LICENSE_TOKEN"]
+    },
+
+    "stdin": {
+      "mode": "script",
+      "text": "start\nconfirm\n",
+      "log": {
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "type": "local",
+            "path": "D:/jobs/heat-case-42/.calcchain/logs/stdin.log"
+          },
+          {
+            "type": "svn",
+            "location": "https://svn.example.org/calc-results",
+            "path": "heat-case-42/run-20260502-120000/_calcchain/logs/stdin.log",
+            "revision": 2910
+          }
+        ]
+      }
+    },
+
+    // stdout/stderr log blocks добавляются, если соответствующие локальные логи есть.
+    // Если логи опубликованы, добавляется второй source с target revision.
+    "stdout": {
+      "log": {
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sources": [
+          {
+            "type": "local",
+            "path": "D:/jobs/heat-case-42/.calcchain/logs/stdout.log"
+          },
+          {
+            "type": "svn",
+            "location": "https://svn.example.org/calc-results",
+            "path": "heat-case-42/run-20260502-120000/_calcchain/logs/stdout.log",
+            "revision": 2910
+          }
+        ]
+      }
+    },
+
+    "stderr": {
+      "log": {
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "sources": [
+          {
+            "type": "local",
+            "path": "D:/jobs/heat-case-42/.calcchain/logs/stderr.log"
+          },
+          {
+            "type": "svn",
+            "location": "https://svn.example.org/calc-results",
+            "path": "heat-case-42/run-20260502-120000/_calcchain/logs/stderr.log",
+            "revision": 2910
+          }
+        ]
+      }
+    },
+
+    "status": "Succeeded",
+    "return_code": 0,
+
+    // Список файлов рабочей области, помеченных после run.
+    // Это не карта публикации и не список всех файлов с хэшами, а классификация
+    // относительных путей в work dir.
+    "file_groups": {
+      "code": [
+        "bin/heat_solver.exe",
+        "lib/model.dll"
+      ],
+      "inputs": [
+        "input/mesh/case42.msh",
+        "input/boundary/wall.bc"
+      ],
+      "outputs": [
+        "results/temperature.csv",
+        "results/report.txt"
+      ],
+      "logs": [
+        "logs/solver.log"
+      ],
+      "temp": [
+        "tmp/intermediate.bin"
+      ],
+      "ignored": [
+        "cache/runtime.cache"
+      ],
+      "unknown": [
+        "unexpected/debug_dump.bin"
+      ]
+    },
+
+    "started_at": "2026-05-02T12:01:00+03:00",
+    "finished_at": "2026-05-02T12:35:10+03:00"
+  },
+
+  // Общий файл правил, если он использовался при build или publication.
+  "rules": {
+    "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "sources": [
+      {
+        "type": "local",
+        "path": "D:/jobs/heat-case-42/.calcchain/rules/heat_solver-rules.json"
+      },
+      {
+        "type": "local",
+        "path": "D:/calc_catalog/rules/heat_solver-rules.json"
+      },
+      {
+        "type": "svn",
+        "location": "https://svn.example.org/calc-results",
+        "path": "heat-case-42/run-20260502-120000/_calcchain/rules/heat_solver-rules.json",
+        "revision": 2910
+      }
+    ]
+  },
+
+  // Фактическая сборка рабочего окружения.
+  "build": {
+    "lock": {
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:/jobs/heat-case-42/build.lock.toml"
+        },
+        {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-results",
+          "path": "heat-case-42/run-20260502-120000/_calcchain/build.lock.toml",
+          "revision": 2910
+        }
+      ]
+    },
+
+    "code": {
+      "name": "heat_solver",
+      "version": "1.2.0",
+
+      // tree_sha256 считается по всем файлам набора:
+      // берем sha256 каждого файла, сортируем записи по work_path,
+      // складываем хэши в одну строку/bytes-последовательность и еще раз
+      // прогоняем через sha256.
+      "tree_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+
+      "source": {
+        "type": "local",
+        "path": "D:/calc_catalog/heat_solver/1.2.0"
+      },
+
+      // Если code был собран без rules, поля rules нет.
+      "rules": {
+        "set": "code_all",
+        "status": "stable"
+      },
+
+      // Карта source file -> work file.
+      // Массив выбран вместо объекта, чтобы у каждой записи можно было хранить
+      // хэш и дополнительные поля.
+      "map": [
+        {
+          "source_path": "bin/heat_solver.exe",
+          "work_path": "bin/heat_solver.exe",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "source_path": "lib/model.dll",
+          "work_path": "lib/model.dll",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ]
+    },
+
+    "inputs": [
+      {
+        "name": "mesh",
+        "tree_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+        "source": {
+          "type": "local",
+          "path": "D:/calc_inputs/case-42/mesh"
+        },
+        "rules": {
+          "set": "mesh_input",
+          "status": "stable"
+        },
+        "map": [
+          {
+            "source_path": "case42.msh",
+            "work_path": "input/mesh/case42.msh",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ]
+      },
+      {
+        "name": "boundary_conditions",
+        "tree_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+        "source": {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-data",
+          "path": "cases/case-42/boundary",
+          "revision": 1842
+        },
+        "rules": {
+          "set": "bc_input",
+          "status": "experimental"
+        },
+        "map": [
+          {
+            "source_path": "wall.bc",
+            "work_path": "input/boundary/wall.bc",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        ]
+      },
+      {
+        // Frozen inputs появляются, если пользователь изменил входы перед run
+        // или если для воспроизводимости нужно сохранить input из неверсионируемого source.
+        "name": "frozen_inputs",
+        "tree_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "sources": [
+          {
+            "type": "local",
+            "path": "D:/jobs/heat-case-42/.calcchain/frozen_inputs"
+          },
+          {
+            "type": "svn",
+            "location": "https://svn.example.org/calc-results",
+            "path": "heat-case-42/run-20260502-120000/_calcchain/frozen_inputs",
+            "revision": 2910
+          }
+        ],
+        "map": [
+          {
+            "source_path": "input/mesh/case42.msh",
+            "work_path": "input/mesh/case42.msh",
+            "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          }
+        ]
+      }
+    ]
+  },
+
+  // Фактическая публикация результата.
+  // Блок отсутствует, если результат еще не публиковался.
+  "publication": {
+    "lock": {
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:/jobs/heat-case-42/.calcchain/publication/publish.lock.toml"
+        },
+        {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-results",
+          "path": "heat-case-42/run-20260502-120000/_calcchain/publication/publish.lock.toml",
+          "revision": 2910
+        }
+      ]
+    },
+
+    "outputs": [
+      {
+        "name": "primary",
+        "tree_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+        "target": {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-results",
+          "path": "heat-case-42/run-20260502-120000/results",
+          "revision": 2910
+        },
+        "rules": {
+          "set": "standard_outputs",
+          "status": "stable"
+        },
+        "map": [
+          {
+            "work_path": "results/temperature.csv",
+            "target_path": "temperature.csv",
+            "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          },
+          {
+            "work_path": "results/report.txt",
+            "target_path": "report.txt",
+            "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+          }
+        ]
+      }
+    ],
+
+    // Блок logs пишется только если из logs действительно что-то публиковалось.
+    "logs": [
+      {
+        "name": "solver_logs",
+        "tree_sha256": "1212121212121212121212121212121212121212121212121212121212121212",
+        "target": {
+          "type": "local",
+          "path": "D:/published_results/heat-case-42/logs"
+        },
+        "rules": {
+          "set": "standard_logs",
+          "status": "stable"
+        },
+        "map": [
+          {
+            "work_path": "logs/solver.log",
+            "target_path": "solver.log",
+            "sha256": "1313131313131313131313131313131313131313131313131313131313131313"
+          }
+        ]
+      }
+    ],
+
+    // Блок temp пишется только если пользователь явно решил опубликовать
+    // один или несколько временных файлов.
+    "temp": [
+      {
+        "name": "debug_temp",
+        "tree_sha256": "1414141414141414141414141414141414141414141414141414141414141414",
+        "target": {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-results",
+          "path": "heat-case-42/run-20260502-120000/debug_temp",
+          "revision": 2910
+        },
+        "rules": {
+          "set": "debug_temp",
+          "status": "experimental"
+        },
+        "map": [
+          {
+            "work_path": "tmp/intermediate.bin",
+            "target_path": "intermediate.bin",
+            "sha256": "1515151515151515151515151515151515151515151515151515151515151515"
+          }
+        ]
+      }
+    ]
+  },
+
+  // Снимки рабочего окружения.
+  // Блок нужен для проверки restore и анализа изменений между build, pre-run и post-run.
+  "snapshots": {
+    "build": {
+      "sha256": "1616161616161616161616161616161616161616161616161616161616161616",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:/jobs/heat-case-42/.calcchain/snapshots/build_snapshot.json"
+        },
+        {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-results",
+          "path": "heat-case-42/run-20260502-120000/_calcchain/snapshots/build_snapshot.json",
+          "revision": 2910
+        }
+      ]
+    },
+    "pre_run": {
+      "sha256": "1717171717171717171717171717171717171717171717171717171717171717",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:/jobs/heat-case-42/.calcchain/snapshots/pre_run_snapshot.json"
+        },
+        {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-results",
+          "path": "heat-case-42/run-20260502-120000/_calcchain/snapshots/pre_run_snapshot.json",
+          "revision": 2910
+        }
+      ]
+    },
+    "post_run": {
+      "sha256": "1818181818181818181818181818181818181818181818181818181818181818",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:/jobs/heat-case-42/.calcchain/snapshots/post_run_snapshot.json"
+        },
+        {
+          "type": "svn",
+          "location": "https://svn.example.org/calc-results",
+          "path": "heat-case-42/run-20260502-120000/_calcchain/snapshots/post_run_snapshot.json",
+          "revision": 2910
+        }
+      ]
+    }
+  }
+}

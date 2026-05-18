@@ -35,6 +35,8 @@ from calcchain_core.models import (
 from calcchain_core.output_classifier import classify_files
 from calcchain_core.plugins.manager import PluginRuntimeSet
 from calcchain_core.publish import PublishResult, build_publish_plan, create_publish_lock, execute_publish_plan
+from calcchain_core.reports import ReportRegistry, export_report_result, read_report_manifest
+from calcchain_core.plugin_runtime import ReportDescriptor, ReportRequest, ReportResult
 from calcchain_core.restore import RestoreRequest, RestoreResult, restore_from_manifest
 from calcchain_core.runner import CancelToken, ProcessRunner, RunResult
 from calcchain_core.snapshot import Snapshot, SnapshotEntry
@@ -57,6 +59,7 @@ class CalculationCore:
         self.auth_service = auth_service if auth_service is not None else NoAuthService()
         self.source_registry = source_registry or SourceRegistry.from_runtime(plugin_runtime, auth=self.auth_service)
         self.target_registry = target_registry or TargetRegistry.from_runtime(plugin_runtime, auth=self.auth_service)
+        self.report_registry = ReportRegistry.from_runtime(plugin_runtime)
         self._last_plan: BuildPlan | None = None
         self._last_build_result: BuildResult | None = None
 
@@ -145,6 +148,37 @@ class CalculationCore:
 
     def cleanup(self, *, dry_run: bool = False) -> CleanupResult:
         return cleanup_work_dir(self.layout, dry_run=dry_run)
+
+    def list_reports(self) -> list[ReportDescriptor]:
+        return self.report_registry.list_reports()
+
+    def render_report(self, request: ReportRequest) -> ReportResult:
+        rendered = self._render_report_content(request)
+        if request.output == 'file':
+            descriptor = self.report_registry.describe(request.report_id)
+            return export_report_result(rendered, descriptor, self.layout.reports_dir)
+        return rendered
+
+    def export_report(self, request: ReportRequest, output_dir: Path | None = None) -> ReportResult:
+        render_request = ReportRequest(
+            report_id=request.report_id,
+            manifest_path=request.manifest_path,
+            parameters=request.parameters,
+            output='return',
+        )
+        rendered = self._render_report_content(render_request)
+        descriptor = self.report_registry.describe(request.report_id)
+        return export_report_result(
+            rendered,
+            descriptor,
+            self.layout.reports_dir,
+            output_dir=output_dir,
+        )
+
+    def _render_report_content(self, request: ReportRequest) -> ReportResult:
+        manifest_path = Path(request.manifest_path) if request.manifest_path is not None else self.layout.manifest_path
+        manifest = read_report_manifest(manifest_path)
+        return self.report_registry.render(request, manifest)
 
     def _read_rules_optional(self):
         path = self._rules_path_optional()

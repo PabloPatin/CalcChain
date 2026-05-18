@@ -35,7 +35,7 @@ class AuthContext:
 class ReportContext:
     plugin_id: str | None
     capability_id: str
-    operation: str
+    manifest: Mapping[str, Any]
     logger: object | None = None
 
 
@@ -113,22 +113,36 @@ class PublishedRef:
 @dataclass(frozen=True)
 class ReportDescriptor:
     id: str
-    name: str
-    formats: tuple[str, ...] = ()
+    title: str
+    content_type: str | None = None
+    file_extension: str | None = None
 
 
 @dataclass(frozen=True)
 class ReportRequest:
-    manifest: Mapping[str, Any]
-    format: str | None = None
-    options: Mapping[str, Any] = field(default_factory=dict)
+    report_id: str
+    manifest_path: Any | None = None
+    parameters: Mapping[str, Any] = field(default_factory=dict)
+    output: str = 'return'
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.report_id, str) or not self.report_id:
+            raise ValueError('report_id must be a non-empty string')
+        object.__setattr__(self, 'parameters', dict(self.parameters))
+        if self.output not in {'return', 'file'}:
+            raise ValueError('report output must be return or file')
 
 
 @dataclass(frozen=True)
 class ReportResult:
-    data: bytes
-    media_type: str
-    filename: str | None = None
+    report_id: str
+    content: bytes | str | None
+    content_type: str
+    path: Any | None = None
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'metadata', dict(self.metadata))
 
 
 class SourceAdapter(Protocol):

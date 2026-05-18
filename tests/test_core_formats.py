@@ -30,14 +30,7 @@ from calcchain_core.models import (
     TargetRef,
 )
 
-EXAMPLES_DIR = (
-    Path(__file__).resolve().parents[1]
-    / '.ai_workspace'
-    / 'runs'
-    / 'run-20260501-183759'
-    / 'packets'
-    / 'format_examples'
-)
+EXAMPLES_DIR = Path(__file__).resolve().parents[1] / 'format_examples'
 
 
 class TestCoreFormats(unittest.TestCase):

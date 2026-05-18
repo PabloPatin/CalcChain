@@ -1,0 +1,48 @@
+schema_version = "1.0"
+
+[lock]
+created_at = "2026-05-02T12:00:00+03:00"
+created_from = "build.toml"
+build_toml_sha256 = "1111111111111111111111111111111111111111111111111111111111111111"
+
+[build]
+name = "heat-case-42"
+description = "Single local heat solver build for case 42"
+
+[code]
+name = "heat_solver"
+version = "1.2.0"
+rule_set = "code_all"
+
+[code.source]
+type = "local"
+path = "D:/calc_catalog/heat_solver/1.2.0"
+
+[rules.source]
+type = "local"
+path = "D:/calc_catalog/rules/heat_solver-rules.json"
+
+[rules.resolved]
+schema_version = "1.0"
+sha256 = "3333333333333333333333333333333333333333333333333333333333333333"
+
+[[inputs]]
+name = "mesh"
+rule_set = "mesh_input"
+
+[inputs.source]
+type = "local"
+path = "D:/calc_inputs/case-42/mesh"
+
+[[inputs]]
+name = "boundary_conditions"
+rule_set = "bc_input"
+
+[inputs.source]
+type = "svn"
+location = "https://svn.example.org/calc-data"
+path = "cases/case-42/boundary"
+
+# В build.toml было revision = "HEAD".
+# В build.lock.toml оно разрешено в конкретную ревизию.
+revision = 1842

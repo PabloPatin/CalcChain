@@ -50,6 +50,7 @@ class JobLayout:
     snapshots_dir: Path
     build_artifacts_dir: Path 
     publication_artifacts_dir: Path
+    reports_dir: Path
     manifest_path: Path
 
     @classmethod
@@ -66,5 +67,6 @@ class JobLayout:
             snapshots_dir=service_dir / 'snapshots',
             build_artifacts_dir=service_dir / 'build',
             publication_artifacts_dir=service_dir / 'publication',
+            reports_dir=service_dir / 'reports',
             manifest_path=service_dir / 'manifest.json',
         )

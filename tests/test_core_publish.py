@@ -20,6 +20,7 @@ from calcchain_core.publish import build_publish_plan, create_publish_lock, exec
 from calcchain_core.restore import RestoreRequest, restore_from_manifest
 from calcchain_core.sources import SourceRegistry
 from calcchain_core.targets import LocalTargetAdapter, PublishedRef, TargetRegistry
+from plugins.svn.calcchain_svn_plugin.plugin import SvnTargetAdapter as BundledSvnTargetAdapter
 
 
 class RecordingTargetAdapter:
@@ -47,6 +48,30 @@ class FailingManifestAdapter(RecordingTargetAdapter):
         if relative_path == 'manifest.json':
             raise PublishError('manifest write failed')
         return super().write_file(target, relative_path, data)
+
+
+class FakeSvnTargetClient:
+    def __init__(self):
+        self.calls = []
+
+    def info(self, path, *, revision=None):
+        self.calls.append(('info', path, revision))
+        return type('Info', (), {'commit_revision': 77})()
+
+    def mkdir(self, path, *, message='', parents=False, exist_ok=False):
+        self.calls.append(('mkdir', path, message, parents, exist_ok))
+
+    def import_(self, from_path, to_path, message='', *, force=False):
+        self.calls.append(('import', Path(from_path).read_bytes(), to_path, message, force))
+
+
+class StaticAuthService:
+    def __init__(self):
+        self.calls = []
+
+    def get_credentials(self, requirement):
+        self.calls.append(requirement)
+        return AuthCredentials({'username': 'user', 'password': 'plain-secret-value'})
 
 
 class TestCorePublish(unittest.TestCase):
@@ -238,6 +263,99 @@ class TestCorePublish(unittest.TestCase):
 
         with self.assertRaises(PublishError):
             registry.resolve_revision(target)
+
+    def test_bundled_svn_target_plugin_resolves_and_publishes_with_fake_client(self):
+        fake = FakeSvnTargetClient()
+        registry = _svn_target_registry(
+            BundledSvnTargetAdapter(client_factory=lambda location, **kwargs: fake),
+            auth=StaticAuthService(),
+        )
+        target = TargetRef.from_dict(
+            {
+                'type': 'svn',
+                'location': 'https://svn.example.org/results',
+                'path': 'case/results',
+                'revision': 'HEAD',
+            },
+        )
+
+        resolved = registry.resolve_revision(target)
+        ensured = registry.ensure_root(resolved)
+        published = registry.write_file(ensured, 'nested/value.txt', b'value')
+
+        self.assertEqual(resolved.revision, 77)
+        self.assertEqual(resolved.plugin.id, 'calcchain.svn')
+        self.assertEqual(published.source.location, 'https://svn.example.org/results')
+        self.assertEqual(published.source.path, 'case/results/nested/value.txt')
+        self.assertEqual(published.source.revision, 77)
+        self.assertEqual(published.source.plugin.id, 'calcchain.svn')
+        self.assertIn(('mkdir', 'case/results', '', True, True), fake.calls)
+        self.assertIn(('import', b'value', 'case/results/nested/value.txt', '', True), fake.calls)
+
+    def test_bundled_svn_target_lock_ref_preserves_safe_auth_metadata_for_post_lock_operations(self):
+        fake = FakeSvnTargetClient()
+        auth = StaticAuthService()
+        registry = _svn_target_registry(
+            BundledSvnTargetAdapter(client_factory=lambda location, **kwargs: fake),
+            auth=auth,
+        )
+        target = TargetRef.from_dict(
+            {
+                'type': 'svn',
+                'location': 'https://svn.example.org/results',
+                'path': 'case/results',
+                'revision': 'HEAD',
+                'auth': {'scheme': 'username_password', 'persistence': 'allowed', 'optional': True},
+            },
+        )
+
+        resolved = registry.resolve_lock_ref(target)
+        serialized = resolved.to_dict()
+        ensured = registry.ensure_root(resolved)
+        registry.write_file(ensured, 'nested/value.txt', b'value')
+
+        self.assertEqual(serialized['revision'], 77)
+        self.assertEqual(
+            serialized['auth'],
+            {'scheme': 'username_password', 'persistence': 'allowed', 'optional': True},
+        )
+        self.assertNotIn('plain-secret-value', json.dumps(serialized, sort_keys=True))
+        self.assertNotIn('abc123', json.dumps(serialized, sort_keys=True))
+        self.assertNotIn('token', serialized['auth'])
+        self.assertIn(('mkdir', 'case/results', '', True, True), fake.calls)
+        self.assertIn(('import', b'value', 'case/results/nested/value.txt', '', True), fake.calls)
+        self.assertEqual(len(auth.calls), 3)
+        for requirement in auth.calls:
+            self.assertEqual(requirement.scheme, 'username_password')
+            self.assertEqual(requirement.persistence, 'allowed')
+            self.assertTrue(requirement.optional)
+            self.assertEqual(requirement.scope, {'target_type': 'svn', 'location': 'https://svn.example.org/results'})
+
+    def test_bundled_svn_target_auth_config_rejects_secret_like_fields_before_client(self):
+        calls = []
+
+        def factory(location):
+            calls.append(location)
+            return FakeSvnTargetClient()
+
+        registry = _svn_target_registry(BundledSvnTargetAdapter(client_factory=factory))
+        target = TargetRef.from_dict(
+            {
+                'type': 'svn',
+                'location': 'https://svn.example.org/results',
+                'path': 'case/results',
+                'revision': 'HEAD',
+                'auth': {'scheme': 'username_password', 'password': 'plain-secret-value', 'token': 'abc123'},
+            },
+        )
+
+        with self.assertRaises(PublishError) as caught:
+            registry.resolve_lock_ref(target)
+
+        self.assertIn('unsupported fields', str(caught.exception))
+        self.assertNotIn('plain-secret-value', str(caught.exception))
+        self.assertNotIn('abc123', str(caught.exception))
+        self.assertEqual(calls, [])
 
     def test_target_registry_from_runtime_dispatches_plugin_capability_with_context(self):
         class PluginTargetAdapter:
@@ -860,6 +978,21 @@ def local_lock(root: Path, *, targets=None):
         },
     )
     return create_publish_lock(config, TargetRegistry({SourceType.LOCAL: RecordingTargetAdapter()}))
+
+
+def _svn_target_registry(adapter, *, auth=None) -> TargetRegistry:
+    runtime = PluginRuntimeSet(
+        active_plugin_ids=('calcchain.svn',),
+        environment=object(),
+        capabilities={
+            CapabilityKey('target', 'svn'): CapabilityRecord(
+                key=CapabilityKey('target', 'svn'),
+                capability=adapter,
+                owner='calcchain.svn',
+            ),
+        },
+    )
+    return TargetRegistry.from_runtime(runtime, auth=auth)
 
 
 def artifact(path: Path) -> dict:

@@ -4,13 +4,11 @@ from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 import re
 from typing import Protocol
-from urllib.parse import urlsplit, urlunsplit
 
 from calcchain_core.errors import SourceError
 from calcchain_core.models import SourceRef, SourceType
 from calcchain_core.plugin_runtime import PluginRefMetadata, SourceContext
 from calcchain_core.plugins.manager import PluginRuntimeSet
-from svn.client import SvnClient
 
 _URL_USERINFO_RE = re.compile(r'([A-Za-z][A-Za-z0-9+.-]*://)([^/\s?#@]+@)([^/\s?#]+)')
 _SECRET_ASSIGNMENT_RE = re.compile(r'(?i)\b(secret|token|password|passwd|api[_-]?key)=([^\s,;]+)')
@@ -38,10 +36,12 @@ class SourceAdapter(Protocol):
 
 class LocalSourceAdapter:
     def validate_config(self, source: SourceRef) -> None:
-        validate_source_ref(source)
-        _ensure_source_type(source, SourceType.LOCAL)
+        self._validate_config(source)
 
     def validate_lock_ref(self, source: SourceRef) -> None:
+        self._validate_config(source)
+
+    def _validate_config(self, source: SourceRef) -> None:
         validate_source_ref(source)
         _ensure_source_type(source, SourceType.LOCAL)
 
@@ -80,80 +80,6 @@ class LocalSourceAdapter:
         validate_source_ref(source)
         _ensure_source_type(source, SourceType.LOCAL)
         return False
-
-
-class SvnSourceAdapter:
-    def __init__(self, client_factory=None):
-        self._client_factory = client_factory or self._default_client_factory
-
-    def validate_config(self, source: SourceRef) -> None:
-        validate_source_ref(source)
-        _ensure_source_type(source, SourceType.SVN)
-
-    def validate_lock_ref(self, source: SourceRef) -> None:
-        validate_source_ref(source)
-        _ensure_source_type(source, SourceType.SVN)
-
-    def list_files(self, source: SourceRef) -> list[str]:
-        validate_source_ref(source)
-        _ensure_source_type(source, SourceType.SVN)
-        try:
-            client = self._client(source)
-            tree = client.list(source.path, recursive=True, revision=source.revision)
-        except Exception as err:
-            raise _sanitized_source_error('svn list failed', source, err) from err
-        return sorted(
-            _normalize_relative_path(node.rel_path, field='svn source file')
-            for node in tree.nodes
-            if node.kind == 'file'
-        )
-
-    def read_file(self, source: SourceRef, relative_path: str) -> bytes:
-        validate_source_ref(source)
-        _ensure_source_type(source, SourceType.SVN)
-        safe_path = _normalize_relative_path(relative_path, field='svn source file')
-        source_path = _join_source_path(source.path, safe_path)
-        try:
-            data = self._client(source).cat(source_path, revision=source.revision, return_binary=True)
-        except Exception as err:
-            raise _sanitized_source_error('svn cat failed', source, err) from err
-        if not isinstance(data, bytes):
-            raise SourceError(f'svn cat returned text for file: {relative_path}')
-        return data
-
-    def resolve_lock_ref(self, source: SourceRef) -> SourceRef:
-        validate_source_ref(source)
-        _ensure_source_type(source, SourceType.SVN)
-        revision = source.revision
-        try:
-            client = self._client(source)
-            info = client.info(source.path, revision=revision)
-        except Exception as err:
-            raise _sanitized_source_error('svn info failed', source, err) from err
-        if revision == 'HEAD' or revision is None:
-            revision = info.commit_revision
-        elif isinstance(revision, str):
-            revision = int(revision)
-        return SourceRef(
-            type=source.type,
-            location=source.location,
-            path=source.path,
-            revision=revision,
-        )
-
-    def is_versionable(self, source: SourceRef) -> bool:
-        validate_source_ref(source)
-        _ensure_source_type(source, SourceType.SVN)
-        return True
-
-    def _client(self, source: SourceRef):
-        if source.location is None:
-            raise SourceError('svn source requires location')
-        return self._client_factory(source.location)
-
-    @staticmethod
-    def _default_client_factory(location: str) -> SvnClient:
-        return SvnClient(location, check_exists=False)
 
 
 @dataclass(frozen=True)
@@ -310,48 +236,19 @@ def _ensure_source_type(source: SourceRef, expected_type: SourceType) -> None:
 
 
 def validate_source_ref(source: SourceRef) -> None:
-    if _type_id(source.type) != SourceType.SVN.value:
-        return
-    _normalize_relative_path(source.path, field='svn source path')
-    _validate_svn_location(source.location)
+    return None
 
 
 def sanitize_source_error_message(message: str, source: SourceRef | None = None) -> str:
     sanitized = message
-    if source is not None and source.location is not None:
-        sanitized = sanitized.replace(source.location, _redact_location(source.location))
+    if source is not None and source.location is not None and _URL_USERINFO_RE.search(source.location):
+        sanitized = sanitized.replace(source.location, _URL_USERINFO_RE.sub(r'\1[redacted]@\3', source.location))
     sanitized = _URL_USERINFO_RE.sub(r'\1[redacted]@\3', sanitized)
     return _SECRET_ASSIGNMENT_RE.sub(r'\1=[redacted]', sanitized)
 
 
-def _validate_svn_location(location: str | None) -> None:
-    if location is None:
-        raise SourceError('svn source requires location')
-    if '@' in urlsplit(location).netloc:
-        raise SourceError('svn source location must not contain userinfo')
-
-
-def _redact_location(location: str) -> str:
-    parsed = urlsplit(location)
-    if '@' not in parsed.netloc:
-        return location
-    host = parsed.netloc.rsplit('@', maxsplit=1)[-1]
-    return urlunsplit((parsed.scheme, f'[redacted]@{host}', parsed.path, parsed.query, parsed.fragment))
-
-
-def _sanitized_source_error(action: str, source: SourceRef, err: Exception) -> SourceError:
-    return SourceError(sanitize_source_error_message(f'{action}: {err}', source))
-
-
 def _sanitize_plugin_error(message: str, source: SourceRef) -> str:
     return sanitize_source_error_message(message, source)
-
-
-def _join_source_path(base_path: str, relative_path: str) -> str:
-    base = base_path.replace('\\', '/').strip('/')
-    if not base:
-        return relative_path
-    return f'{base}/{relative_path}'
 
 
 def _normalize_relative_path(value: str, *, field: str) -> str:

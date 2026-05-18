@@ -1,0 +1,57 @@
+schema_version = "1.0"
+
+[lock]
+created_at = "2026-05-02T12:36:00+03:00"
+created_from = "publish.toml"
+publish_toml_sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+[publish]
+message = "Publish heat-case-42 results"
+
+[service_target]
+type = "svn"
+location = "https://svn.example.org/calc-results"
+path = "heat-case-42/run-20260502-120000/_calcchain"
+
+# В publish.toml было revision = "HEAD".
+# В publish.lock.toml всегда фиксируется конкретная ревизия versioned service target.
+revision = 2910
+
+[[targets]]
+name = "results_svn"
+type = "svn"
+location = "https://svn.example.org/calc-results"
+path = "heat-case-42/run-20260502-120000"
+
+# В publish.toml было revision = "HEAD".
+# В publish.lock.toml всегда фиксируется конкретная ревизия versioned target.
+revision = 2910
+rule_sets = ["standard_outputs"]
+message = "Publish heat-case-42 outputs"
+
+[[targets]]
+name = "logs_local"
+type = "local"
+path = "D:/published_results/heat-case-42/logs"
+rule_sets = ["standard_logs"]
+message = "Publish heat-case-42 results"
+
+[published]
+service_target = "service_target"
+manifest_path = "manifest.json"
+manifest_revision = 2910
+frozen_inputs_revision = 2910
+build_lock_revision = 2910
+publish_lock_revision = 2910
+snapshots_revision = 2910
+
+[[published.groups]]
+name = "primary_outputs"
+target = "results_svn"
+rule_set = "standard_outputs"
+revision = 2910
+
+[[published.groups]]
+name = "solver_logs"
+target = "logs_local"
+rule_set = "standard_logs"

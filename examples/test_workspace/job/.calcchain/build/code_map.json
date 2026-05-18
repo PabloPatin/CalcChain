@@ -1,0 +1,15 @@
+{
+  "map": [
+    {
+      "sha256": "528043b760d579113768151aaa91522fcbf672dc7cedf0a9c5f5572fc35baea4",
+      "source_path": "solver.py",
+      "work_path": "solver.py"
+    }
+  ],
+  "name": "code",
+  "source": {
+    "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\code",
+    "type": "local"
+  },
+  "tree_sha256": "17f83a33a95c14cd0a425cd677e7a4cfc4dcb97f0747431900f18e84860750eb"
+}

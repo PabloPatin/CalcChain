@@ -1,0 +1,29 @@
+{
+  "build": {
+    "description": "",
+    "name": "test-workspace-case"
+  },
+  "code": {
+    "name": "code",
+    "source": {
+      "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\code",
+      "type": "local"
+    },
+    "version": ""
+  },
+  "inputs": [
+    {
+      "name": "input",
+      "source": {
+        "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\input",
+        "type": "local"
+      }
+    }
+  ],
+  "lock": {
+    "build_toml_sha256": "30cb006da6d26c845eeb261cef25f5917c8b885034b6a387e541300273ae01fe",
+    "created_at": "2026-05-18T15:01:52.450139+00:00",
+    "created_from": "build.toml"
+  },
+  "schema_version": "1.0"
+}

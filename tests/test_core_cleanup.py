@@ -51,6 +51,7 @@ class TestCoreCleanup(unittest.TestCase):
                 snapshots_dir=layout.snapshots_dir,
                 build_artifacts_dir=layout.build_artifacts_dir,
                 publication_artifacts_dir=layout.publication_artifacts_dir,
+                reports_dir=layout.reports_dir,
                 manifest_path=layout.manifest_path,
             )
 

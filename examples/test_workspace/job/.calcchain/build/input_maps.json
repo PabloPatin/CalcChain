@@ -1,0 +1,17 @@
+[
+  {
+    "map": [
+      {
+        "sha256": "f532699275b509acc1ab9b1b678375abe0f35033d5747baee7282dd5f6cb2b4b",
+        "source_path": "input/mesh.txt",
+        "work_path": "input/mesh.txt"
+      }
+    ],
+    "name": "input",
+    "source": {
+      "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\input",
+      "type": "local"
+    },
+    "tree_sha256": "c3a505d7c37767059f307f3bc2d094455c12dee67241913e7769608d956e3188"
+  }
+]

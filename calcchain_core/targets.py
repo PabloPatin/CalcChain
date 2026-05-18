@@ -2,17 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
-import tempfile
 import re
 from typing import Protocol
-from urllib.parse import urlsplit, urlunsplit
 
 from calcchain_core.artifacts import published_source
 from calcchain_core.errors import PublishError
 from calcchain_core.models import SourceRef, SourceType, TargetRef
 from calcchain_core.plugin_runtime import PluginRefMetadata, TargetContext
 from calcchain_core.plugins.manager import PluginRuntimeSet
-from svn.client import SvnClient
 
 _URL_USERINFO_RE = re.compile(r'([A-Za-z][A-Za-z0-9+.-]*://)([^/\s?#@]+@)([^/\s?#]+)')
 _SECRET_ASSIGNMENT_RE = re.compile(r'(?i)\b(secret|token|password|passwd|api[_-]?key)=([^\s,;]+)')
@@ -71,68 +68,6 @@ class LocalTargetAdapter:
         validate_target_ref(target)
         _ensure_target_type(target, SourceType.LOCAL)
         return target
-
-
-class SvnTargetAdapter:
-    def __init__(self, client_factory=None):
-        self._client_factory = client_factory or self._default_client_factory
-
-    def validate_config(self, target: TargetRef) -> None:
-        validate_target_ref(target)
-        _ensure_target_type(target, SourceType.SVN)
-
-    def validate_lock_ref(self, target: TargetRef) -> None:
-        validate_target_ref(target)
-        _ensure_target_type(target, SourceType.SVN)
-
-    def write_file(self, target: TargetRef, relative_path: str, data: bytes) -> PublishedRef:
-        validate_target_ref(target)
-        _ensure_target_type(target, SourceType.SVN)
-        safe_path = _normalize_relative_path(relative_path, field='svn target file')
-        target_path = _join_target_path(target.path, safe_path)
-        try:
-            with tempfile.NamedTemporaryFile(delete=False) as file:
-                file.write(data)
-                tmp_path = Path(file.name)
-            try:
-                self._client(target).import_(tmp_path, target_path, message='', force=True)
-            finally:
-                tmp_path.unlink(missing_ok=True)
-        except Exception as err:
-            raise PublishError(f'svn import failed: {err}') from err
-        return PublishedRef(target=target, relative_path=safe_path, source=published_source(target, safe_path))
-
-    def ensure_root(self, target: TargetRef) -> TargetRef:
-        validate_target_ref(target)
-        _ensure_target_type(target, SourceType.SVN)
-        try:
-            self._client(target).mkdir(target.path, message='', parents=True, exist_ok=True)
-        except Exception as err:
-            raise PublishError(f'svn mkdir failed: {err}') from err
-        return target
-
-    def resolve_revision(self, target: TargetRef) -> TargetRef:
-        validate_target_ref(target)
-        _ensure_target_type(target, SourceType.SVN)
-        try:
-            info = self._client(target).info(target.path, revision=target.revision)
-        except Exception as err:
-            raise PublishError(f'svn info failed: {err}') from err
-        return TargetRef(
-            type=target.type,
-            location=target.location,
-            path=target.path,
-            revision=info.commit_revision,
-        )
-
-    def _client(self, target: TargetRef):
-        if target.location is None:
-            raise PublishError('svn target requires location')
-        return self._client_factory(target.location)
-
-    @staticmethod
-    def _default_client_factory(location: str) -> SvnClient:
-        return SvnClient(location, check_exists=False)
 
 
 @dataclass(frozen=True)
@@ -272,8 +207,8 @@ class TargetRegistry:
 
 def sanitize_target_error_message(message: str, target: TargetRef | None = None) -> str:
     sanitized = message
-    if target is not None and target.location is not None:
-        sanitized = sanitized.replace(target.location, _redact_location(target.location))
+    if target is not None and target.location is not None and _URL_USERINFO_RE.search(target.location):
+        sanitized = sanitized.replace(target.location, _URL_USERINFO_RE.sub(r'\1[redacted]@\3', target.location))
     if target is not None:
         sanitized = _redact_sensitive_extra_values(sanitized, target)
     sanitized = _URL_USERINFO_RE.sub(r'\1[redacted]@\3', sanitized)
@@ -284,27 +219,12 @@ def validate_target_ref(target: TargetRef) -> None:
     if _type_id(target.type) == SourceType.LOCAL.value:
         if target.location is not None or target.revision is not None:
             raise PublishError('local target must use only path')
-        return
-    if _type_id(target.type) != SourceType.SVN.value:
-        return
-    _normalize_relative_path(target.path, field='svn target path')
-    if target.location is None:
-        raise PublishError('svn target requires location')
-    if '@' in urlsplit(target.location).netloc:
-        raise PublishError('svn target location must not contain userinfo')
+    return None
 
 
 def _ensure_target_type(target: TargetRef, expected_type: SourceType) -> None:
     if _type_id(target.type) != expected_type.value:
         raise PublishError(f'expected {expected_type.value} target, got {_type_id(target.type)}')
-
-
-def _redact_location(location: str) -> str:
-    parsed = urlsplit(location)
-    if '@' not in parsed.netloc:
-        return location
-    host = parsed.netloc.rsplit('@', maxsplit=1)[-1]
-    return urlunsplit((parsed.scheme, f'[redacted]@{host}', parsed.path, parsed.query, parsed.fragment))
 
 
 def _redact_sensitive_extra_values(message: str, target: TargetRef) -> str:
@@ -329,13 +249,6 @@ def _safe_join(root: Path, relative_path: str) -> Path:
     except ValueError as err:
         raise PublishError(f'target path escapes target root: {relative_path}') from err
     return result
-
-
-def _join_target_path(base_path: str, relative_path: str) -> str:
-    base = base_path.replace('\\', '/').strip('/')
-    if not base:
-        return relative_path
-    return f'{base}/{relative_path}'
 
 
 def _normalize_relative_path(value: str, *, field: str) -> str:

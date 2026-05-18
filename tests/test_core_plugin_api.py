@@ -91,15 +91,15 @@ class TestCorePluginApi(unittest.TestCase):
         )
         self.assertEqual(
             [field.name for field in fields(ReportContext)],
-            ['plugin_id', 'capability_id', 'operation', 'logger'],
+            ['plugin_id', 'capability_id', 'manifest', 'logger'],
         )
 
         metadata = PluginRefMetadata.from_dict({'id': 'plugin.one', 'version': '1.2.3'})
         self.assertEqual(metadata.to_dict(), {'id': 'plugin.one', 'version': '1.2.3'})
         self.assertEqual(PublishedRef({'type': 'git'}).ref['type'], 'git')
-        self.assertEqual(ReportDescriptor('summary', 'Summary', ('html',)).formats, ('html',))
-        self.assertEqual(ReportRequest({'job': {}}).manifest, {'job': {}})
-        self.assertEqual(ReportResult(b'ok', 'text/plain').data, b'ok')
+        self.assertEqual(ReportDescriptor('summary', 'Summary', 'text/html', '.html').title, 'Summary')
+        self.assertEqual(ReportRequest('summary', parameters={'format': 'html'}).parameters['format'], 'html')
+        self.assertEqual(ReportResult('summary', b'ok', 'text/plain').content, b'ok')
         requirement = AuthRequirement(
             scheme='username_password',
             scope={'location': 'https://svn.example.org/repo'},

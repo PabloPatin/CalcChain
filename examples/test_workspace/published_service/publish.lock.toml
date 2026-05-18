@@ -1,0 +1,27 @@
+schema_version = "1.0"
+
+[lock]
+created_at = "2026-05-18T15:01:52.588669+00:00"
+created_from = "publish.toml"
+publish_toml_sha256 = "3626536222ed9d89e23ce5032f2bc44176d0d03887ecf1ccf2e44dd8d99eb2c0"
+
+[publish]
+message = "test workspace publish"
+
+[service_target]
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_service"
+
+[[targets]]
+name = "outputs"
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_outputs"
+rule_sets = ["standard_outputs"]
+message = "test workspace publish"
+
+[[targets]]
+name = "logs"
+type = "local"
+path = "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_logs"
+rule_sets = ["standard_logs"]
+message = "test workspace publish"

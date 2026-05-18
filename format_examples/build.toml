@@ -1,0 +1,78 @@
+# build.toml описывает только пользовательское намерение сборки рабочего окружения.
+# Он не описывает запуск, output-классификацию или публикацию.
+
+# Необязательное поле.
+# Default: последняя версия схемы build.toml, поддерживаемая текущей версией приложения.
+schema_version = "1.0"
+
+# Необязательный блок.
+# Default: имя задания берется из имени директории задания, description = "".
+[build]
+name = "heat-case-42"
+description = "Single local heat solver build for case 42"
+
+# Обязательный блок.
+# Минимально пользователю нужен source расчетного кода.
+# Исполняемый файл задается отдельно в run.toml.
+[code]
+# Необязательные поля.
+# Default: name = имя директории/источника кода, version = "".
+name = "heat_solver"
+version = "1.2.0"
+
+# Необязательное поле.
+# Default: rule_set отсутствует, вся директория code.source копируется как есть
+# с сохранением относительных путей.
+# Если rule_set указан, должен быть указан [rules.source].
+rule_set = "code_all"
+
+[code.source]
+# Обязательное поле.
+type = "local"
+# Обязательное поле.
+path = "D:/calc_catalog/heat_solver/1.2.0"
+
+# Необязательный блок.
+# Default: файл правил не используется.
+# Блок нужен только если хотя бы у code или input указан rule_set.
+# Файл правил в первой версии хранится в JSON.
+[rules.source]
+# Обязательное поле.
+type = "local"
+
+# Обязательное поле, если блок [rules.source] указан.
+path = "D:/calc_catalog/rules/heat_solver-rules.json"
+
+# inputs - обязательный список из одного или нескольких входных источников.
+# Каждый input копируется в рабочее окружение.
+[[inputs]]
+# Необязательное поле.
+# Default: "input_<index>", например "input_1".
+name = "mesh"
+
+# Необязательное поле.
+# Default: rule_set отсутствует, весь input source копируется как есть
+# с сохранением относительных путей.
+# Если rule_set указан, должен быть указан [rules.source].
+rule_set = "mesh_input"
+
+[inputs.source]
+# Обязательное поле.
+type = "local"
+
+# Обязательное поле.
+path = "D:/calc_inputs/case-42/mesh"
+
+[[inputs]]
+name = "boundary_conditions"
+rule_set = "bc_input"
+
+[inputs.source]
+type = "svn"
+location = "https://svn.example.org/calc-data"
+path = "cases/case-42/boundary"
+
+# Необязательное поле, используется только для версионируемых источников.
+# Default для SVN: "HEAD" в build.toml.
+# При создании build.lock.toml приложение должно разрешить "HEAD" в конкретную ревизию.
+revision = "HEAD"

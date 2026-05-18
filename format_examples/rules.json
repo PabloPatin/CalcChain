@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "rules_file": {
+    "id": "heat_solver_rules",
+    "name": "Heat solver rules",
+    "version": "2026.05"
+  },
+  "rule_sets": {
+    "code_all": {
+      "type": "code",
+      "status": "stable",
+      "description": "Copy the complete solver directory into the calculation work dir.",
+      "ensure_all_files": true,
+      "rules": [
+        {
+          "source": "(.*)",
+          "destination": "<capt:1>"
+        }
+      ]
+    },
+    "mesh_input": {
+      "type": "input",
+      "status": "stable",
+      "description": "Place mesh files under input/mesh.",
+      "ensure_all_files": true,
+      "rules": [
+        {
+          "source": "(.*\\.msh)",
+          "destination": "input/mesh/<capt:1>"
+        }
+      ]
+    },
+    "bc_input": {
+      "type": "input",
+      "status": "experimental",
+      "description": "Place boundary condition files under input/boundary.",
+      "ensure_all_files": true,
+      "rules": [
+        {
+          "source": "(.*\\.bc)",
+          "destination": "input/boundary/<capt:1>"
+        }
+      ]
+    },
+    "standard_outputs": {
+      "type": "output",
+      "status": "stable",
+      "description": "Publish solver result files.",
+      "ensure_all_files": false,
+      "rules": [
+        {
+          "source": "results/(.*)",
+          "destination": "results/<capt:1>"
+        }
+      ]
+    },
+    "standard_logs": {
+      "type": "logs",
+      "status": "stable",
+      "description": "Publish solver log files.",
+      "ensure_all_files": false,
+      "rules": [
+        {
+          "source": "logs/(.*\\.log)",
+          "destination": "_calcchain/run_logs/<capt:1>"
+        }
+      ]
+    },
+    "debug_temp": {
+      "type": "temp",
+      "status": "experimental",
+      "description": "Optional publication rules for selected temporary debug files.",
+      "ensure_all_files": false,
+      "rules": [
+        {
+          "source": "tmp/(.*)",
+          "destination": "debug_temp/<capt:1>"
+        }
+      ]
+    },
+    "runtime_cache_ignore": {
+      "type": "ignore",
+      "status": "stable",
+      "description": "Ignore runtime cache files during output classification.",
+      "ensure_all_files": false,
+      "rules": [
+        {
+          "source": "cache/(.*)",
+          "destination": ""
+        }
+      ]
+    }
+  }
+}

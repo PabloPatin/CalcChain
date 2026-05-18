@@ -5,7 +5,7 @@ from types import ModuleType
 from pathlib import Path
 from uuid import uuid4
 
-from calcchain_core.plugin_api import CapabilityKey
+from calcchain_core.plugin_api import CapabilityKey, create_plugin_context
 from calcchain_core.plugins.activation_plan import (
     PlannedCapabilityDeclaration,
     PluginActivationPlan,
@@ -26,9 +26,23 @@ from calcchain_core.plugins.metadata import (
     PluginMetadata,
     PluginPackage,
 )
+from plugins.svn.calcchain_svn_plugin.plugin import SvnPlugin
 
 
 class TestCorePluginManager(unittest.TestCase):
+    def test_bundled_svn_plugin_registers_source_and_target_capabilities(self):
+        context, registry = create_plugin_context(owner='calcchain.svn')
+
+        SvnPlugin().register(context)
+
+        snapshot = registry.snapshot()
+        self.assertEqual(
+            sorted(key.qualified_id for key in snapshot),
+            ['source:svn', 'target:svn'],
+        )
+        self.assertEqual(snapshot[CapabilityKey('source', 'svn')].owner, 'calcchain.svn')
+        self.assertEqual(snapshot[CapabilityKey('target', 'svn')].owner, 'calcchain.svn')
+
     def test_successful_activation_imports_and_registers_capabilities(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

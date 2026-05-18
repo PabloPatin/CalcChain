@@ -1,5 +1,5 @@
 [run]
-executable = "D:\\AI_Coding\\CalcChain\\.venv\\Scripts\\python.exe"
+executable = "C:\\Program Files\\Python312\\python.exe"
 args = ["solver.py"]
 cwd = "."
 timeout_seconds = 10

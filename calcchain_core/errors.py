@@ -40,3 +40,7 @@ class RestoreError(CalcChainError):
 
 class CleanupError(CalcChainError):
     """Raised when cleanup cannot safely remove work files."""
+
+
+class ReportError(CalcChainError):
+    """Raised when a report capability cannot render or export safely."""

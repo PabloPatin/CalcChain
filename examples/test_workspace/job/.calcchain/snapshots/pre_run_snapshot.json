@@ -1,0 +1,20 @@
+{
+  "created_at": "2026-05-18T15:01:52.493705+00:00",
+  "entries": [
+    {
+      "kind": "file",
+      "mtime_utc": "2026-05-18T15:01:52.489308+00:00",
+      "path": "input/mesh.txt",
+      "sha256": "b4a3c425740bdad1e170aa1d7b95e63f369a283c7b03a1d79eff1a663c45cb31",
+      "size": 14
+    },
+    {
+      "kind": "file",
+      "mtime_utc": "2026-05-18T15:01:52.470307+00:00",
+      "path": "solver.py",
+      "sha256": "528043b760d579113768151aaa91522fcbf672dc7cedf0a9c5f5572fc35baea4",
+      "size": 286
+    }
+  ],
+  "schema_version": "1.0"
+}

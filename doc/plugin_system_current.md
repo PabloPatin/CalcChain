@@ -1,6 +1,6 @@
 # Система плагинов CalcChain: текущая версия
 
-Документ описывает текущее состояние системы плагинов CalcChain после инфраструктурного этапа реализации. Сейчас модуль решает задачи обнаружения, проверки, планирования, подготовки окружения, импорта и атомарной активации плагинов. Интеграция возможностей плагинов в рабочий цикл `CalculationCore`, реестры источников/целей, CLI и UI пока не реализована.
+Документ описывает текущее состояние системы плагинов CalcChain после инфраструктурного этапа реализации. Сейчас модуль решает задачи обнаружения, проверки, планирования, подготовки окружения, импорта и атомарной активации плагинов. Интеграция возможностей плагинов в рабочий цикл `CalculationCore` выполняется через явный bootstrap: вызывающий код получает `PluginRuntimeSet` и передает его в `CalculationCore`. CLI/UI для управления плагинами пока не реализованы.
 
 ## Общая схема
 
@@ -55,7 +55,7 @@ flowchart LR
     Importer --> Manager
     Manager --> DraftRegistry --> RuntimeSet
 
-    RuntimeSet -. "пока не подключено" .-> Core["CalculationCore lifecycle"]
+    RuntimeSet --> Core["CalculationCore(plugin_runtime=...)"]
 ```
 
 ## Назначение модуля
@@ -93,10 +93,27 @@ from calcchain_core.plugin_api import CalcChainPlugin, PluginContext
 Для кода приложения и инфраструктуры используется пакет:
 
 ```python
-from calcchain_core.plugins import PluginDiscovery, PluginActivationPlanner, PluginManager
+from calcchain_core.plugins import activate_plugins
 ```
 
-`calcchain_core.plugins` лениво экспортирует стабильные инфраструктурные классы: discovery, repository, settings, activation planner, dependency planner, environment lock, environment manager, importer и manager.
+`activate_plugins(...)` является caller-facing helper для штатного explicit flow. Он последовательно вызывает discovery, загрузку settings, activation planning, dependency planning, environment preparation и `PluginManager.activate(...)`, возвращая `PluginRuntimeSet`. Более низкоуровневые классы discovery, repository, settings, activation planner, dependency planner, environment lock, environment manager, importer и manager также остаются лениво экспортированными из `calcchain_core.plugins`.
+
+```python
+from pathlib import Path
+
+from calcchain_core import CalculationCore
+from calcchain_core.plugins import activate_plugins
+
+
+runtime_set = activate_plugins(
+    [Path("plugins")],
+    Path("plugins.json"),
+    Path("plugin_envs"),
+)
+core = CalculationCore(Path("job"), plugin_runtime=runtime_set)
+```
+
+`CalculationCore.__init__` не выполняет discovery, dependency install, import или activation самостоятельно. Без переданного `plugin_runtime` доступны только built-in capabilities, например `local`; bundled `svn` становится доступным только после явной активации плагина `calcchain.svn`.
 
 ## Структура пакета плагина
 
@@ -200,6 +217,7 @@ sequenceDiagram
     Plugin-->>Manager: registrations
     Manager->>Manager: validate snapshot
     Manager-->>Caller: PluginRuntimeSet
+    Caller->>Core: CalculationCore(job_dir, plugin_runtime=runtime_set)
 ```
 
 ## Политики и решения
@@ -269,7 +287,7 @@ class DemoPlugin(CalcChainPlugin):
 - `report`;
 - `auth`.
 
-На текущей версии эти возможности фиксируются в runtime snapshot, но еще не подключены к исполнению расчетного workflow.
+На текущей версии эти возможности фиксируются в runtime snapshot и подключаются к расчетному workflow только при явной передаче `PluginRuntimeSet` в `CalculationCore`.
 
 ## Сценарии использования
 
@@ -347,25 +365,29 @@ class DemoPlugin(CalcChainPlugin):
 ## Текущие ограничения и не-цели
 
 - Нет sandboxing для недоверенного кода.
-- Нет интеграции зарегистрированных возможностей в `CalculationCore`.
+- Нет implicit activation в `CalculationCore`; runtime capabilities подключаются только через явно переданный `PluginRuntimeSet`.
 - Нет CLI/UI для управления плагинами.
+- Нет persistent credential store или UI prompts; текущие credentials остаются runtime-only.
+- Нет обязательного real SVN/network gate в regression suite; SVN покрыт fake-client/plugin-level тестами.
 - Нет миграции или расширения пользовательского config-формата за пределами `PluginSettingsStore`.
 - Нет собственного dependency resolver.
 - Redaction остается pattern-based.
 - `plugin_id` пока используется как opaque repository key без отдельной грамматики идентификатора.
 - Путь к settings-файлу задается вызывающим кодом, global allowlist путей не реализован.
 - Очистка устаревших окружений `plugin_envs` не входит в текущий модуль.
+- Deferred future work: SVN target temp-file write-failure cleanup hardening остается вне текущего набора стадий.
 
 ## Проверенное поведение
 
-Текущая реализация покрыта модульными тестами инфраструктуры плагинов. Последняя зафиксированная проверка:
+Текущая реализация покрыта полной core regression suite и локальным manual demo без сетевых операций. Последняя зафиксированная проверка:
 
 ```text
-python -m unittest discover -s tests -p "test_core_plugin*.py"
-Ran 66 tests ... OK
-
 python -m unittest discover -s tests -p "test_core_*.py"
-Ran 151 tests ... OK
+Ran 198 tests in 5.780s
+OK
+
+1..20 | ForEach-Object { "" } | python examples/test_workspace/run_demo.py
+local build/run/publish/restore/cleanup demo completed successfully
 ```
 
-Эти проверки подтверждают поведение public API, metadata/discovery, activation planning, dependency/environment flow, importer/manager и инфраструктурных экспортов на текущем этапе.
+Эти проверки подтверждают поведение public API, metadata/discovery, activation planning, dependency/environment flow, importer/manager, source/target lifecycle, runtime auth bridge, report runtime, explicit bootstrap и local end-to-end flow на текущем этапе.

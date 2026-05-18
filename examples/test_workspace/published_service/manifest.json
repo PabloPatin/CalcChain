@@ -1,0 +1,226 @@
+{
+  "schema_version": "1.0",
+  "job": {
+    "id": "job",
+    "job_dir": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job",
+    "status": "Published"
+  },
+  "build": {
+    "lock": {
+      "sha256": "bd6a8324be7aea291d5c2df3d9a8e847d7c2549f1a1a74fc5a1b62bbe9643b62",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job\\.calcchain\\build\\build_lock.json"
+        }
+      ]
+    },
+    "code": {
+      "name": "code",
+      "tree_sha256": "17f83a33a95c14cd0a425cd677e7a4cfc4dcb97f0747431900f18e84860750eb",
+      "map": [
+        {
+          "sha256": "528043b760d579113768151aaa91522fcbf672dc7cedf0a9c5f5572fc35baea4",
+          "source_path": "solver.py",
+          "work_path": "solver.py"
+        }
+      ],
+      "source": {
+        "type": "local",
+        "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\code"
+      }
+    },
+    "inputs": [
+      {
+        "name": "input",
+        "tree_sha256": "c3a505d7c37767059f307f3bc2d094455c12dee67241913e7769608d956e3188",
+        "map": [
+          {
+            "sha256": "f532699275b509acc1ab9b1b678375abe0f35033d5747baee7282dd5f6cb2b4b",
+            "source_path": "input/mesh.txt",
+            "work_path": "input/mesh.txt"
+          }
+        ],
+        "source": {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\sources\\input"
+        }
+      },
+      {
+        "name": "frozen_inputs",
+        "tree_sha256": "eb95d709075050768bb319ce8ab02d54409b4797419ea3500fd8daf73e402eef",
+        "source": {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job\\.calcchain\\frozen_inputs"
+        },
+        "map": [
+          {
+            "sha256": "b4a3c425740bdad1e170aa1d7b95e63f369a283c7b03a1d79eff1a663c45cb31",
+            "source_path": "input/mesh.txt",
+            "work_path": "input/mesh.txt",
+            "target_path": "input/mesh.txt"
+          }
+        ]
+      }
+    ]
+  },
+  "snapshots": {
+    "build": {
+      "sha256": "5508f6417296ef342be05105656047ab7578debc77f4fdc53ffb95f890ee979f",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job\\.calcchain\\snapshots\\build_snapshot.json"
+        }
+      ]
+    },
+    "pre_run": {
+      "sha256": "c7e9f2cf1c04f3fbcf530271fe16fa3f9e8781e51272a324dcbc2dfdda25adef",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job\\.calcchain\\snapshots\\pre_run_snapshot.json"
+        }
+      ]
+    },
+    "post_run": {
+      "sha256": "fdd5b042cd076b3a9e550e568a1a698b7f1ccca0eee09e288e290cc6545a6692",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job\\.calcchain\\snapshots\\post_run_snapshot.json"
+        }
+      ]
+    }
+  },
+  "run": {
+    "command": [
+      "C:\\Program Files\\Python312\\python.exe",
+      "solver.py"
+    ],
+    "cwd": ".",
+    "timeout_seconds": 10,
+    "encoding": "utf-8",
+    "env": {},
+    "stdin": {
+      "mode": "none"
+    },
+    "status": "Succeeded",
+    "return_code": 0,
+    "file_groups": {
+      "code": [
+        "solver.py"
+      ],
+      "inputs": [
+        "input/mesh.txt"
+      ],
+      "outputs": [
+        "results/value.txt"
+      ],
+      "logs": [
+        "logs/solver.log"
+      ],
+      "temp": [],
+      "ignored": [],
+      "unknown": [],
+      "deleted": []
+    },
+    "started_at": "2026-05-18T15:01:52.499656+00:00",
+    "finished_at": "2026-05-18T15:01:52.553035+00:00",
+    "stdout": {
+      "log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sources": [
+          {
+            "type": "local",
+            "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job\\.calcchain\\logs\\stdout.txt"
+          },
+          {
+            "type": "local",
+            "path": "D:/AI_Coding/CalcChain/examples/test_workspace/published_service/_calcchain/logs/stdout.txt"
+          }
+        ]
+      }
+    },
+    "stderr": {
+      "log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sources": [
+          {
+            "type": "local",
+            "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\job\\.calcchain\\logs\\stderr.txt"
+          },
+          {
+            "type": "local",
+            "path": "D:/AI_Coding/CalcChain/examples/test_workspace/published_service/_calcchain/logs/stderr.txt"
+          }
+        ]
+      }
+    }
+  },
+  "publication": {
+    "lock": {
+      "sha256": "c3e23c6a1bdada755eb48e110a555d09a26478703f0f6150386618d909b51363",
+      "sources": [
+        {
+          "type": "local",
+          "path": "D:/AI_Coding/CalcChain/examples/test_workspace/published_service/publish.lock.toml"
+        }
+      ]
+    },
+    "outputs": [
+      {
+        "name": "outputs_standard_outputs",
+        "tree_sha256": "8ecd54445c75799370b26ff1c4b81bc4355147c9f50a70f0fc702c892b1512e5",
+        "target": {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_outputs"
+        },
+        "rules": {
+          "set": "standard_outputs",
+          "status": "stable"
+        },
+        "map": [
+          {
+            "sha256": "6078cd0eda44a7a7453f1b9116cabb0c61730ed76fa08c78f6edcb24f774427f",
+            "work_path": "results/value.txt",
+            "target_path": "value.txt"
+          }
+        ],
+        "published_sources": {
+          "value.txt": {
+            "type": "local",
+            "path": "D:/AI_Coding/CalcChain/examples/test_workspace/published_outputs/value.txt"
+          }
+        }
+      }
+    ],
+    "logs": [
+      {
+        "name": "logs_standard_logs",
+        "tree_sha256": "d2b0f3a92f40153ea66d216f98569ea688ec1b8109ce795df7b0afa35fe98fa2",
+        "target": {
+          "type": "local",
+          "path": "D:\\AI_Coding\\CalcChain\\examples\\test_workspace\\published_logs"
+        },
+        "rules": {
+          "set": "standard_logs",
+          "status": "stable"
+        },
+        "map": [
+          {
+            "sha256": "a4c3ed04a95a3da14a9d235c83d868bed7c0f45cf7f3faa751ee8f50598d2211",
+            "work_path": "logs/solver.log",
+            "target_path": "solver.log"
+          }
+        ],
+        "published_sources": {
+          "solver.log": {
+            "type": "local",
+            "path": "D:/AI_Coding/CalcChain/examples/test_workspace/published_logs/solver.log"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -17,6 +17,7 @@ from calcchain_core.models import (
 from calcchain_core.plugins.manager import PluginRuntimeSet
 from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.sources import SourceRegistry
+from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 
 
 class MemoryAdapter:
@@ -30,6 +31,15 @@ class MemoryAdapter:
 
     def read_file(self, source, relative_path):
         return self.trees[source.path][relative_path]
+
+    def validate_config(self, source):
+        pass
+
+    def resolve_lock_ref(self, source):
+        return self.resolve_revision(source)
+
+    def validate_lock_ref(self, source):
+        pass
 
     def resolve_revision(self, source):
         if source.revision == 'HEAD':
@@ -123,17 +133,38 @@ def build_config(*, code_rule='code_all', input_rule='input_all', input_svn=Fals
 def registry(*, input_tree=None, code_tree=None):
     code_tree = code_tree or {'solver.py': b'print("ok")\n', 'lib/math.txt': b'math'}
     input_tree = input_tree or {'mesh.msh': b'mesh'}
-    return SourceRegistry(
-        {
-            'local': MemoryAdapter(
-                {
-                    'code': code_tree,
-                    'input': input_tree,
-                    'rules.json': {'rules.json': b'{}'},
-                },
-            ),
-            'svn': MemoryAdapter({'input': input_tree}, versionable=True, resolved_revision=1842),
-        },
+    return _source_registry(
+        local=MemoryAdapter(
+            {
+                'code': code_tree,
+                'input': input_tree,
+                'rules.json': {'rules.json': b'{}'},
+            },
+        ),
+        svn=MemoryAdapter({'input': input_tree}, versionable=True, resolved_revision=1842),
+    )
+
+
+def _source_registry(**adapters):
+    source_registry = SourceRegistry()
+    for source_type, adapter in adapters.items():
+        source_registry.register(source_type, adapter, override=source_type == 'local')
+    return source_registry
+
+
+def _runtime_svn_registry(adapter):
+    return SourceRegistry.from_runtime(
+        PluginRuntimeSet(
+            active_plugin_ids=('calcchain.svn',),
+            environment=object(),
+            capabilities={
+                CapabilityKey('source', 'svn'): CapabilityRecord(
+                    key=CapabilityKey('source', 'svn'),
+                    capability=adapter,
+                    owner='calcchain.svn',
+                ),
+            },
+        ),
     )
 
 
@@ -402,9 +433,11 @@ class TestCoreBuildPlan(unittest.TestCase):
         with self.assertRaises(BuildPlanError):
             validate_build_lock(unresolved_lock, registry(), None)
 
-    def test_create_build_lock_rejects_unsafe_svn_refs_before_registry(self):
-        svn_adapter = FailIfCalledAdapter()
-        data_registry = SourceRegistry({'svn': svn_adapter})
+    def test_create_build_lock_rejects_unsafe_svn_refs_via_plugin_adapter_before_client(self):
+        client_calls = []
+        data_registry = _runtime_svn_registry(
+            BundledSvnSourceAdapter(client_factory=lambda location, **kwargs: client_calls.append(location)),
+        )
         unsafe_sources = (
             {
                 'type': 'svn',
@@ -446,11 +479,13 @@ class TestCoreBuildPlan(unittest.TestCase):
                     create_build_lock(build, data_registry, None)
                 self.assertNotIn('secret', str(caught.exception))
 
-        self.assertEqual(svn_adapter.calls, [])
+        self.assertEqual(client_calls, [])
 
-    def test_validate_build_lock_rejects_unsafe_svn_refs_before_registry(self):
-        svn_adapter = FailIfCalledAdapter()
-        data_registry = SourceRegistry({'svn': svn_adapter})
+    def test_validate_build_lock_rejects_unsafe_svn_refs_via_plugin_adapter_before_client(self):
+        client_calls = []
+        data_registry = _runtime_svn_registry(
+            BundledSvnSourceAdapter(client_factory=lambda location, **kwargs: client_calls.append(location)),
+        )
         unsafe_sources = (
             {
                 'type': 'svn',
@@ -502,7 +537,7 @@ class TestCoreBuildPlan(unittest.TestCase):
                     validate_build_lock(lock, data_registry, None)
 
                 self.assertNotIn('secret', str(caught.exception))
-        self.assertEqual(svn_adapter.calls, [])
+        self.assertEqual(client_calls, [])
 
 
 if __name__ == '__main__':
