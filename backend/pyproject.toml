@@ -1,0 +1,16 @@
+[project]
+name = "calcchain-backend"
+version = "0.1.0"
+description = "CalcChain backend with LAN pairing-code authentication"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.111.0",
+  "uvicorn[standard]>=0.30.0",
+]
+
+[project.scripts]
+calcchain-backend = "calcchain_backend.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

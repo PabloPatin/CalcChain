@@ -78,20 +78,32 @@ export function EdgeLayer({
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
   return (
-    <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
-      <defs>
-        <marker
-          id="edge-arrow"
-          viewBox="0 0 10 10"
-          refX="9"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
-        >
-          <path d="M 0 0 L 10 5 L 0 10 z" className="fill-slate-500" />
-        </marker>
-      </defs>
+    <svg className="pointer-events-none absolute inset-0 z-30 h-full w-full overflow-visible">
+        <defs>
+            <marker
+            id="edge-arrow-default"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+            >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+            </marker>
+
+            <marker
+            id="edge-arrow-selected"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+            >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a" />
+            </marker>
+        </defs>
 
       {edges.map((edge) => {
         const fromNode = nodeById.get(edge.from.nodeId);
@@ -155,7 +167,7 @@ export function EdgeLayer({
               fill="none"
               strokeWidth={selected ? 3 : 2.25}
               className={selected ? "stroke-slate-950" : "stroke-slate-500"}
-              markerEnd="url(#edge-arrow)"
+              markerEnd={selected ? "url(#edge-arrow-selected)" : "url(#edge-arrow-default)"}
             />
           </g>
         );
