@@ -1,4 +1,4 @@
-import json
+﻿import json
 import subprocess
 import tempfile
 import unittest
@@ -6,25 +6,25 @@ from pathlib import Path
 from unittest.mock import patch
 
 from calcchain_core.hash import sha256_file
-from calcchain_core.plugins.activation_plan import PluginActivationPlan
-from calcchain_core.plugins.dependencies import (
+from calcchain_plugin_system.activation_plan import PluginActivationPlan
+from calcchain_plugin_system.dependencies import (
     PluginDependencyPlanner,
     compute_env_hash,
     verify_wheel_hashes,
 )
-from calcchain_core.plugins.environment import (
+from calcchain_plugin_system.environment import (
     PipInstaller,
     PluginEnvironmentManager,
     ResolvedDependencies,
 )
-from calcchain_core.plugins.environment_lock import (
+from calcchain_plugin_system.environment_lock import (
     PLUGIN_ENV_LOCK_NAME,
     PluginEnvLock,
     read_plugin_env_lock,
     write_plugin_env_lock,
 )
-from calcchain_core.plugins.errors import PluginDependencyError
-from calcchain_core.plugins.metadata import PluginDependencies, PluginMetadata, PluginPackage
+from calcchain_capabilities.errors import PluginDependencyError
+from calcchain_plugin_system.metadata import PluginDependencies, PluginMetadata, PluginPackage
 
 
 class FakeInstaller:
@@ -154,7 +154,7 @@ class TestCorePluginEnvironment(unittest.TestCase):
                 stderr='',
             )
 
-            with patch('calcchain_core.plugins.environment.subprocess.run') as run:
+            with patch('calcchain_plugin_system.environment.subprocess.run') as run:
                 run.return_value = completed
                 result = PipInstaller().install(plan, target, allow_online=False)
 
@@ -181,7 +181,7 @@ class TestCorePluginEnvironment(unittest.TestCase):
                 stderr='failed password=secret',
             )
 
-            with patch('calcchain_core.plugins.environment.subprocess.run') as run:
+            with patch('calcchain_plugin_system.environment.subprocess.run') as run:
                 run.return_value = completed
                 with self.assertRaises(PluginDependencyError) as caught:
                     PipInstaller().install(plan, root / 'target', allow_online=False)

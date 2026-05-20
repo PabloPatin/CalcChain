@@ -1,26 +1,26 @@
-import json
+﻿import json
 import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
 
 from calcchain_core.hash import sha256_file
-from calcchain_core.plugins.activation_plan import PluginActivationPlan
-from calcchain_core.plugins.dependencies import (
+from calcchain_plugin_system.activation_plan import PluginActivationPlan
+from calcchain_plugin_system.dependencies import (
     PluginDependencyPlanner,
     WheelLockReader,
     compute_env_hash,
     verify_wheel_hashes,
 )
-from calcchain_core.plugins.environment_lock import (
+from calcchain_plugin_system.environment_lock import (
     PLUGIN_ENV_LOCK_NAME,
     PluginEnvLock,
     read_plugin_env_lock,
     verify_plugin_env_lock,
     write_plugin_env_lock,
 )
-from calcchain_core.plugins.errors import PluginDependencyError
-from calcchain_core.plugins.metadata import PluginDependencies, PluginMetadata, PluginPackage
+from calcchain_capabilities.errors import PluginDependencyError
+from calcchain_plugin_system.metadata import PluginDependencies, PluginMetadata, PluginPackage
 
 
 class TestCorePluginDependencies(unittest.TestCase):

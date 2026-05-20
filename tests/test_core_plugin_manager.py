@@ -1,26 +1,26 @@
-import sys
+﻿import sys
 import tempfile
 import unittest
 from types import ModuleType
 from pathlib import Path
 from uuid import uuid4
 
-from calcchain_core.plugin_api import CapabilityKey, create_plugin_context
-from calcchain_core.plugins.activation_plan import (
+from calcchain_capabilities import CapabilityKey, create_plugin_context
+from calcchain_plugin_system.activation_plan import (
     PlannedCapabilityDeclaration,
     PluginActivationPlan,
 )
-from calcchain_core.plugins.environment import PluginEnvironment
-from calcchain_core.plugins.errors import (
+from calcchain_plugin_system.environment import PluginEnvironment
+from calcchain_capabilities.errors import (
     PluginActivationError,
     PluginCapabilityConflictError,
     PluginDependencyError,
     PluginEntrypointError,
 )
-from calcchain_core.plugins.environment_lock import PluginEnvLock, write_plugin_env_lock
-from calcchain_core.plugins.importer import PluginImporter
-from calcchain_core.plugins.manager import PluginManager
-from calcchain_core.plugins.metadata import (
+from calcchain_plugin_system.environment_lock import PluginEnvLock, write_plugin_env_lock
+from calcchain_plugin_system.importer import PluginImporter
+from calcchain_plugin_system.manager import PluginManager
+from calcchain_plugin_system.metadata import (
     DeclaredCapability,
     PluginDependencies,
     PluginMetadata,

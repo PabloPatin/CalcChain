@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import json
@@ -12,10 +12,10 @@ from calcchain_core.config import read_publish, write_manifest
 from calcchain_core.errors import ConfigFormatError, PublishError
 from calcchain_core.hash import sha256_file
 from calcchain_core.models import Manifest, PublishConfig, RuleSetType, RulesFile, SourceType, TargetRef
-from calcchain_core.plugin_runtime import AuthCredentials, AuthField, AuthRequirement
-from calcchain_core.plugin_runtime import PublishedRef as RuntimePublishedRef
-from calcchain_core.plugins.manager import PluginRuntimeSet
-from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
+from calcchain_capabilities import AuthCredentials, AuthField, AuthRequirement
+from calcchain_capabilities import PublishedRef as RuntimePublishedRef
+from calcchain_capabilities import PluginRuntimeSet
+from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.publish import build_publish_plan, create_publish_lock, execute_publish_plan
 from calcchain_core.restore import RestoreRequest, restore_from_manifest
 from calcchain_core.sources import SourceRegistry

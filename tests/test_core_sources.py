@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+﻿from types import SimpleNamespace
 import json
 import tempfile
 import unittest
@@ -8,9 +8,9 @@ from calcchain_core.auth import AuthService
 from calcchain_core.api import CalculationCore
 from calcchain_core.errors import SourceError
 from calcchain_core.models import SourceRef
-from calcchain_core.plugin_runtime import AuthCredentials, AuthField, AuthRequirement
-from calcchain_core.plugins.manager import PluginRuntimeSet
-from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
+from calcchain_capabilities import AuthCredentials, AuthField, AuthRequirement
+from calcchain_capabilities import PluginRuntimeSet
+from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.sources import LocalSourceAdapter, SourceRegistry
 from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 

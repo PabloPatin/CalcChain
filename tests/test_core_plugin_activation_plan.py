@@ -1,18 +1,18 @@
-import json
+﻿import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.plugins.activation_plan import PluginActivationPlanner
-from calcchain_core.plugins.errors import PluginError
-from calcchain_core.plugins.metadata import (
+from calcchain_plugin_system.activation_plan import PluginActivationPlanner
+from calcchain_capabilities.errors import PluginError
+from calcchain_plugin_system.metadata import (
     DeclaredCapability,
     PluginDependencies,
     PluginMetadata,
     PluginPackage,
 )
-from calcchain_core.plugins.repository import PluginRepository
-from calcchain_core.plugins.settings import PluginSettings, PluginSettingsStore
+from calcchain_plugin_system.repository import PluginRepository
+from calcchain_plugin_system.settings import PluginSettings, PluginSettingsStore
 
 
 class TestCorePluginActivationPlan(unittest.TestCase):

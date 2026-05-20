@@ -1,10 +1,9 @@
-from dataclasses import fields
+﻿from dataclasses import fields
 import inspect
 import unittest
 
 from calcchain_core.auth import AuthError, AuthService
-from calcchain_core.errors import CalcChainError
-from calcchain_core.plugin_api import (
+from calcchain_capabilities import (
     PLUGIN_API_VERSION,
     PLUGIN_DIAGNOSTIC_PHASES,
     AuthAdapter,
@@ -40,7 +39,7 @@ from calcchain_core.plugin_api import (
     create_plugin_context,
     redact_secrets,
 )
-from calcchain_core.plugins.manager import PluginRuntimeSet
+from calcchain_capabilities import PluginRuntimeSet
 
 
 class DummyPlugin:
@@ -55,7 +54,7 @@ class DummyPlugin:
 class TestCorePluginApi(unittest.TestCase):
     def test_public_import_path_exports_stage_one_contract(self):
         self.assertEqual(PLUGIN_API_VERSION, '1.0')
-        self.assertTrue(issubclass(PluginError, CalcChainError))
+        self.assertTrue(issubclass(PluginError, Exception))
         self.assertEqual(
             PLUGIN_DIAGNOSTIC_PHASES,
             (
@@ -281,13 +280,13 @@ class TestCorePluginApi(unittest.TestCase):
             with self.subTest(registrar_type=registrar_type.__name__):
                 signature = inspect.signature(registrar_type.register)
                 self.assertEqual(list(signature.parameters), ['self', 'id', 'capability', 'owner'])
-                self.assertEqual(signature.parameters['id'].annotation, 'str')
-                self.assertEqual(signature.parameters['capability'].annotation, 'object')
+                self.assertEqual(signature.parameters['id'].annotation, str)
+                self.assertEqual(signature.parameters['capability'].annotation, object)
                 self.assertIs(
                     signature.parameters['owner'].kind,
                     inspect.Parameter.KEYWORD_ONLY,
                 )
-                self.assertEqual(signature.parameters['owner'].annotation, 'str')
+                self.assertEqual(signature.parameters['owner'].annotation, str)
 
     def test_plugin_protocol_and_limited_context_register_capabilities(self):
         context, registry = create_plugin_context(owner='example.plugin')

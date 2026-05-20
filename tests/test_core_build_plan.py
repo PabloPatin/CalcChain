@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import unittest
 
 from calcchain_core.build_plan import create_build_lock, validate_build_lock
@@ -14,8 +14,8 @@ from calcchain_core.models import (
     RulesFile,
     SourceRef,
 )
-from calcchain_core.plugins.manager import PluginRuntimeSet
-from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
+from calcchain_capabilities import PluginRuntimeSet
+from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.sources import SourceRegistry
 from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 

@@ -1,0 +1,10 @@
+extend = "ruff.common.toml"
+
+lint.extend-ignore = [
+    "RUF002" # Ruff-specific/ambiguous-unicode-character-string
+]
+
+extend-exclude = [
+    '*/test/*',
+    '__init__.py'
+]

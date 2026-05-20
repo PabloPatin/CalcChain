@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import tempfile
@@ -7,9 +7,9 @@ from pathlib import Path
 
 from calcchain_core.api import CalculationCore
 from calcchain_core.errors import ReportError
-from calcchain_core.plugin_runtime import ReportDescriptor, ReportRequest, ReportResult
-from calcchain_core.plugins.manager import PluginRuntimeSet
-from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
+from calcchain_capabilities import ReportDescriptor, ReportRequest, ReportResult
+from calcchain_capabilities import PluginRuntimeSet
+from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
 
 
 class FakeReportAdapter:

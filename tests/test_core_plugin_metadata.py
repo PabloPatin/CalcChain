@@ -1,17 +1,17 @@
-import json
+﻿import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.plugins.discovery import PluginDiscovery
-from calcchain_core.plugins.errors import PluginCompatibilityError, PluginMetadataError
-from calcchain_core.plugins.metadata import (
+from calcchain_plugin_system.discovery import PluginDiscovery
+from calcchain_capabilities.errors import PluginCompatibilityError, PluginMetadataError
+from calcchain_plugin_system.metadata import (
     PluginMetadataReader,
     PluginPackage,
     PluginValidator,
 )
-from calcchain_core.plugins.repository import PluginRepository
+from calcchain_plugin_system.repository import PluginRepository
 
 
 class TestCorePluginMetadata(unittest.TestCase):

@@ -1,13 +1,11 @@
-from __future__ import annotations
-
-from pathlib import Path, PurePosixPath
+﻿from pathlib import Path, PurePosixPath
 import tempfile
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 
-from calcchain_core.plugin_api import AuthField, AuthRequirement, PluginContext
-from calcchain_core.plugin_runtime import PublishedRef
-from svn.client import SvnClient
+from calcchain_capabilities import AuthField, AuthRequirement, PluginContext
+from calcchain_capabilities import PublishedRef
+from svn_client.client import SvnClient
 
 PLUGIN_ID = 'calcchain.svn'
 PLUGIN_VERSION = '0.1.0'

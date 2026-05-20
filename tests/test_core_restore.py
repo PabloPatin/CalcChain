@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import tempfile
@@ -10,8 +10,8 @@ from calcchain_core.errors import RestoreError
 from calcchain_core.hash import sha256_file, tree_sha256
 from calcchain_core.layout import JobLayout
 from calcchain_core.models import Manifest
-from calcchain_core.plugins.manager import PluginRuntimeSet
-from calcchain_core.plugins.registrars import CapabilityKey, CapabilityRecord
+from calcchain_capabilities import PluginRuntimeSet
+from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.restore import RestoreRequest, restore_from_manifest
 from calcchain_core.sources import SourceRegistry
 

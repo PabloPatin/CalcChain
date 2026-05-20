@@ -1,4 +1,4 @@
-import inspect
+﻿import inspect
 import io
 import json
 import sys
@@ -9,13 +9,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 import calcchain_core
-import calcchain_core.plugins.bootstrap as bootstrap_module
-import calcchain_core.plugins as plugin_infrastructure
+import calcchain_plugin_system.bootstrap as bootstrap_module
+import calcchain_plugin_system as plugin_infrastructure
 from calcchain_core.api import CalculationCore
-from calcchain_core.plugin_api import CapabilityKey
-from calcchain_core.plugins.manager import PluginRuntimeSet
-from calcchain_core.plugins.registrars import CapabilityRecord
-from calcchain_core.plugins import (
+from calcchain_capabilities import CapabilityKey
+from calcchain_capabilities import PluginRuntimeSet
+from calcchain_capabilities.registrars import CapabilityRecord
+from calcchain_plugin_system import (
     PluginActivationError,
     PluginActivationPlanner,
     PluginDiscovery,
@@ -51,7 +51,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
                 self.calls = []
 
             def install(self, plan, target_site_packages: Path, *, allow_online: bool):
-                from calcchain_core.plugins.environment import ResolvedDependencies
+                from calcchain_plugin_system.environment import ResolvedDependencies
 
                 self.calls.append((plan, target_site_packages, allow_online))
                 target_site_packages.mkdir(parents=True, exist_ok=True)
@@ -168,7 +168,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
 
     def test_calculation_core_constructor_does_not_call_explicit_bootstrap(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with patch('calcchain_core.plugins.bootstrap.PluginDiscovery') as discovery:
+            with patch('calcchain_plugin_system.bootstrap.PluginDiscovery') as discovery:
                 CalculationCore(Path(tmp))
 
         discovery.assert_not_called()
@@ -204,7 +204,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
         self.assertFalse(envs_dir.exists())
 
     def test_demo_main_uses_explicit_bootstrap_without_network_operations(self):
-        import examples.plugin_system_demo as demo
+        import examples.plugin_system.plugin_system_demo as demo
 
         runtime_set = PluginRuntimeSet(active_plugin_ids=('plugin.demo',), environment=object(), capabilities={})
 
