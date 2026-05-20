@@ -1,21 +1,12 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 from calcchain_core.errors import ConfigFormatError, RulesError
+from calcchain_core.mapping.trans_map import TranslationMapError, create_file_translation_map
 from calcchain_core.models import FileMapEntry, RuleSet, RuleSetType, RulesFile
-
-_TRANS_MAP_PATH = Path(__file__).resolve().parents[1] / 'workspace_management' / 'mapping' / 'trans_map.py'
-_TRANS_MAP_SPEC = importlib.util.spec_from_file_location('_calcchain_trans_map', _TRANS_MAP_PATH)
-if _TRANS_MAP_SPEC is None or _TRANS_MAP_SPEC.loader is None:
-    raise ImportError(f'unable to load translation map module from {_TRANS_MAP_PATH}')
-_TRANS_MAP = importlib.util.module_from_spec(_TRANS_MAP_SPEC)
-_TRANS_MAP_SPEC.loader.exec_module(_TRANS_MAP)
-TranslationMapError = _TRANS_MAP.TranslationMapError
-create_file_translation_map = _TRANS_MAP.create_file_translation_map
 
 
 def load_rules(path: Path) -> RulesFile:
