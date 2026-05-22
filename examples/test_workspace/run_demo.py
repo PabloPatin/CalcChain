@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import shutil
@@ -15,7 +15,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from calcchain_core.api import CalculationCore  # noqa: E402
 from calcchain_core.models import RuleSetType  # noqa: E402
-from calcchain_core.restore import RestoreRequest  # noqa: E402
+from calcchain_core.restore.restore import RestoreRequest  # noqa: E402
 
 
 JOB = WORKSPACE / 'job'

@@ -1,44 +1,74 @@
-from collections.abc import Mapping
+﻿from collections.abc import Mapping
 from dataclasses import dataclass, field
+from logging import Logger
 from types import MappingProxyType
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from calcchain_capabilities.diagnostics import PluginDiagnostic
-from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
+from calcchain_capabilities.registrars import CapabilityKey, CapabilityOwner, CapabilityRecord
 
 
 @dataclass(frozen=True)
 class SourceContext:
-    plugin_id: str | None
+    owner: CapabilityOwner | None
     capability_id: str
-    operation: str
-    auth: object | None = None
-    logger: object | None = None
+    auth: 'AuthServiceProtocol | None' = None
+    logger: Logger | None = None
+
+    @property
+    def owner_id(self) -> str | None:
+        return self.owner.id if self.owner is not None else None
+
+    @property
+    def owner_version(self) -> str | None:
+        return self.owner.version if self.owner is not None else None
 
 
 @dataclass(frozen=True)
 class TargetContext:
-    plugin_id: str | None
+    owner: CapabilityOwner | None
     capability_id: str
-    operation: str
-    auth: object | None = None
-    logger: object | None = None
+    auth: 'AuthServiceProtocol | None' = None
+    logger: Logger | None = None
+
+    @property
+    def owner_id(self) -> str | None:
+        return self.owner.id if self.owner is not None else None
+
+    @property
+    def owner_version(self) -> str | None:
+        return self.owner.version if self.owner is not None else None
 
 
 @dataclass(frozen=True)
 class AuthContext:
-    plugin_id: str | None
+    owner: CapabilityOwner | None
     capability_id: str
-    operation: str
-    logger: object | None = None
+    logger: Logger | None = None
+
+    @property
+    def owner_id(self) -> str | None:
+        return self.owner.id if self.owner is not None else None
+
+    @property
+    def owner_version(self) -> str | None:
+        return self.owner.version if self.owner is not None else None
 
 
 @dataclass(frozen=True)
 class ReportContext:
-    plugin_id: str | None
+    owner: CapabilityOwner | None
     capability_id: str
     manifest: Mapping[str, Any]
-    logger: object | None = None
+    logger: Logger | None = None
+
+    @property
+    def owner_id(self) -> str | None:
+        return self.owner.id if self.owner is not None else None
+
+    @property
+    def owner_version(self) -> str | None:
+        return self.owner.version if self.owner is not None else None
 
 
 @dataclass(frozen=True)
@@ -77,7 +107,7 @@ class AuthRequirement:
     scheme: str
     scope: Mapping[str, Any] = field(default_factory=dict)
     fields: tuple[AuthField, ...] = ()
-    persistence: str = 'forbidden'
+    persistence: Literal['forbidden', 'allowed'] = 'forbidden'
     optional: bool = False
 
     def __post_init__(self) -> None:
@@ -104,6 +134,14 @@ class AuthCredentials:
 
     def __str__(self) -> str:
         return repr(self)
+
+
+class AuthServiceProtocol(Protocol):
+    def has_provider(self, requirement: AuthRequirement) -> bool:
+        ...
+
+    def get_credentials(self, requirement: AuthRequirement) -> AuthCredentials:
+        ...
 
 
 @dataclass(frozen=True)
@@ -228,17 +266,14 @@ class RuntimeCapabilities:
         object.__setattr__(self, 'diagnostics', tuple(self.diagnostics))
 
 
-PluginRuntimeSet = RuntimeCapabilities
-
-
 __all__ = [
     'AuthAdapter',
     'AuthContext',
     'AuthCredentials',
     'AuthField',
+    'AuthServiceProtocol',
     'AuthRequirement',
     'PluginRefMetadata',
-    'PluginRuntimeSet',
     'PublishedRef',
     'ReportAdapter',
     'ReportContext',

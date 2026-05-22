@@ -6,20 +6,20 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.auth import AuthService
+from calcchain_core.io.auth import AuthService
 from calcchain_core.api import CalculationCore
 from calcchain_core.config import read_publish, write_manifest
-from calcchain_core.errors import ConfigFormatError, PublishError
-from calcchain_core.hash import sha256_file
+from calcchain_core.common.errors import ConfigFormatError, PublishError
+from calcchain_core.common.hash import sha256_file
 from calcchain_core.models import Manifest, PublishConfig, RuleSetType, RulesFile, SourceType, TargetRef
 from calcchain_capabilities import AuthCredentials, AuthField, AuthRequirement
 from calcchain_capabilities import PublishedRef as RuntimePublishedRef
 from calcchain_capabilities import PluginRuntimeSet
 from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
-from calcchain_core.publish import build_publish_plan, create_publish_lock, execute_publish_plan
-from calcchain_core.restore import RestoreRequest, restore_from_manifest
-from calcchain_core.sources import SourceRegistry
-from calcchain_core.targets import LocalTargetAdapter, PublishedRef, TargetRegistry
+from calcchain_core.publish.publish import build_publish_plan, create_publish_lock, execute_publish_plan
+from calcchain_core.restore.restore import RestoreRequest, restore_from_manifest
+from calcchain_core.io.sources import SourceRegistry
+from calcchain_core.io.targets import LocalTargetAdapter, PublishedRef, TargetRegistry
 from plugins.svn.calcchain_svn_plugin.plugin import SvnTargetAdapter as BundledSvnTargetAdapter
 
 
@@ -410,7 +410,7 @@ class TestCorePublish(unittest.TestCase):
         )
         for call in adapter.calls:
             context = call[-1]
-            self.assertEqual(context.plugin_id, 'plugin.publisher')
+            self.assertEqual(context.owner_id, 'plugin.publisher')
             self.assertEqual(context.capability_id, 'artifact-store')
             self.assertIs(context.auth, auth)
 
@@ -442,21 +442,21 @@ class TestCorePublish(unittest.TestCase):
                 self.calls = []
 
             def validate_config(self, ref, context):
-                self.calls.append(('validate_config', ref['type'], context.operation))
+                self.calls.append(('validate_config', ref['type']))
 
             def resolve_lock_ref(self, ref, context):
-                self.calls.append(('resolve_lock_ref', ref['type'], context.operation))
+                self.calls.append(('resolve_lock_ref', ref['type']))
                 return {'type': 'artifact-store', 'path': ref['path'], 'revision': 5, 'bucket': ref['bucket']}
 
             def validate_lock_ref(self, ref, context):
-                self.calls.append(('validate_lock_ref', ref['revision'], context.operation))
+                self.calls.append(('validate_lock_ref', ref['revision']))
 
             def ensure_root(self, ref, context):
-                self.calls.append(('ensure_root', ref['path'], context.operation))
+                self.calls.append(('ensure_root', ref['path']))
                 return dict(ref)
 
             def write_file(self, ref, relative_path, data, context):
-                self.calls.append(('write_file', relative_path, context.operation))
+                self.calls.append(('write_file', relative_path))
                 return RuntimePublishedRef(
                     ref={
                         'type': 'artifact-source',
@@ -1000,7 +1000,7 @@ def artifact(path: Path) -> dict:
 
 
 def target_to_source(target: TargetRef, relative_path: str):
-    from calcchain_core.artifacts import published_source
+    from calcchain_core.workspace.artifacts import published_source
 
     return published_source(target, relative_path)
 

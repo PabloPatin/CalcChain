@@ -6,14 +6,14 @@ import unittest
 from pathlib import Path
 
 from calcchain_core.config import write_manifest
-from calcchain_core.errors import RestoreError
-from calcchain_core.hash import sha256_file, tree_sha256
-from calcchain_core.layout import JobLayout
+from calcchain_core.common.errors import RestoreError
+from calcchain_core.common.hash import sha256_file, tree_sha256
+from calcchain_core.workspace.layout import JobLayout
 from calcchain_core.models import Manifest
 from calcchain_capabilities import PluginRuntimeSet
 from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
-from calcchain_core.restore import RestoreRequest, restore_from_manifest
-from calcchain_core.sources import SourceRegistry
+from calcchain_core.restore.restore import RestoreRequest, restore_from_manifest
+from calcchain_core.io.sources import SourceRegistry
 
 
 class TestCoreRestore(unittest.TestCase):

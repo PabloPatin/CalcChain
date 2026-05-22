@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from calcchain_core.api import CalculationCore
-from calcchain_core.errors import ReportError
+from calcchain_core.common.errors import ReportError
 from calcchain_capabilities import ReportDescriptor, ReportRequest, ReportResult
 from calcchain_capabilities import PluginRuntimeSet
 from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
@@ -65,7 +65,7 @@ class TestCoreReports(unittest.TestCase):
         self.assertEqual(result.content, 'case-1:ok')
         self.assertEqual(result.metadata, {'rows': 1})
         render_context = adapter.contexts[-1]
-        self.assertEqual(render_context.plugin_id, 'plugin.reports')
+        self.assertEqual(render_context.owner_id, 'plugin.reports')
         self.assertEqual(render_context.capability_id, 'summary')
         self.assertFalse(hasattr(render_context, 'sources'))
         self.assertFalse(hasattr(render_context, 'targets'))

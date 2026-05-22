@@ -1,8 +1,8 @@
 ﻿import hashlib
 import unittest
 
-from calcchain_core.build_plan import create_build_lock, validate_build_lock
-from calcchain_core.errors import BuildPlanError
+from calcchain_core.build.plan import create_build_lock, validate_build_lock
+from calcchain_core.common.errors import BuildPlanError
 from calcchain_core.models import (
     BuildConfig,
     BuildInfo,
@@ -16,7 +16,7 @@ from calcchain_core.models import (
 )
 from calcchain_capabilities import PluginRuntimeSet
 from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
-from calcchain_core.sources import SourceRegistry
+from calcchain_core.io.sources import SourceRegistry
 from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 
 
@@ -204,25 +204,25 @@ class TestCoreBuildPlan(unittest.TestCase):
                 self.calls = []
 
             def validate_config(self, ref, context):
-                self.calls.append(('validate_config', ref['type'], context.operation))
+                self.calls.append(('validate_config', ref['type']))
 
             def resolve_lock_ref(self, ref, context):
-                self.calls.append(('resolve_lock_ref', ref['type'], context.operation))
+                self.calls.append(('resolve_lock_ref', ref['type']))
                 return {'type': 'demo-source', 'path': ref['path'], 'revision': 7, 'dataset': ref['dataset']}
 
             def validate_lock_ref(self, ref, context):
-                self.calls.append(('validate_lock_ref', ref['revision'], context.operation))
+                self.calls.append(('validate_lock_ref', ref['revision']))
 
             def list_files(self, ref, context):
-                self.calls.append(('list_files', ref['revision'], context.operation))
+                self.calls.append(('list_files', ref['revision']))
                 return ['solver.py'] if ref['path'] == 'code' else ['mesh.dat']
 
             def read_file(self, ref, relative_path, context):
-                self.calls.append(('read_file', relative_path, context.operation))
+                self.calls.append(('read_file', relative_path))
                 return b'print("plugin")\n' if relative_path == 'solver.py' else b'mesh'
 
             def is_versionable(self, ref, context):
-                self.calls.append(('is_versionable', ref['revision'], context.operation))
+                self.calls.append(('is_versionable', ref['revision']))
                 return True
 
         adapter = PluginSourceAdapter()
@@ -266,11 +266,11 @@ class TestCoreBuildPlan(unittest.TestCase):
         self.assertEqual(lock.code.source.revision, 7)
         by_work_path = {entry.work_path: entry for entry in plan.entries}
         self.assertEqual(by_work_path['solver.py'].sha256, hashlib.sha256(b'print("plugin")\n').hexdigest())
-        self.assertIn(('validate_config', 'demo-source', 'validate_config'), adapter.calls)
-        self.assertIn(('resolve_lock_ref', 'demo-source', 'resolve_lock_ref'), adapter.calls)
-        self.assertIn(('validate_lock_ref', 7, 'validate_lock_ref'), adapter.calls)
-        self.assertIn(('list_files', 7, 'list_files'), adapter.calls)
-        self.assertIn(('read_file', 'solver.py', 'read_file'), adapter.calls)
+        self.assertIn(('validate_config', 'demo-source'), adapter.calls)
+        self.assertIn(('resolve_lock_ref', 'demo-source'), adapter.calls)
+        self.assertIn(('validate_lock_ref', 7), adapter.calls)
+        self.assertIn(('list_files', 7), adapter.calls)
+        self.assertIn(('read_file', 'solver.py'), adapter.calls)
 
     def test_plugin_source_lifecycle_exception_is_wrapped_and_redacted(self):
         class FailingPluginSourceAdapter:

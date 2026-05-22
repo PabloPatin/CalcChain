@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 import json
@@ -6,17 +6,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.artifacts import artifact_ref, published_source
-from calcchain_core.builder import BuildResult, RulesArtifact
-from calcchain_core.errors import ConfigFormatError
-from calcchain_core.layout import JobLayout
-from calcchain_core.manifest import ManifestWriter, write_manifest
-from calcchain_core.maps import FileSetMap
+from calcchain_core.workspace.artifacts import artifact_ref, published_source
+from calcchain_core.build.builder import BuildResult, RulesArtifact
+from calcchain_core.common.errors import ConfigFormatError
+from calcchain_core.workspace.layout import JobLayout
+from calcchain_core.workspace.manifest import ManifestWriter, write_manifest
+from calcchain_core.workspace.maps import FileSetMap
 from calcchain_core.models import FileMapEntry, Manifest, RuleUse, SourceRef, SourceType, TargetRef
-from calcchain_core.output_classifier import FileGroups
-from calcchain_core.runner import RunResult
-from calcchain_core.snapshot import Snapshot
-from calcchain_core.hash import tree_sha256
+from calcchain_core.workspace.output_classifier import FileGroups
+from calcchain_core.run.runner import RunResult
+from calcchain_core.workspace.snapshot import Snapshot
+from calcchain_core.common.hash import tree_sha256
 from calcchain_core.models import RunStatus
 
 

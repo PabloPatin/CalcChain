@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from calcchain_core.hash import sha256_file
+from calcchain_core.common.hash import sha256_file
 from calcchain_plugin_system.activation_plan import PluginActivationPlan
 from calcchain_plugin_system.dependencies import (
     PluginDependencyPlanner,

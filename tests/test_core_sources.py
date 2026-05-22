@@ -4,14 +4,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.auth import AuthService
+from calcchain_core.io.auth import AuthService
 from calcchain_core.api import CalculationCore
-from calcchain_core.errors import SourceError
+from calcchain_core.common.errors import SourceError
 from calcchain_core.models import SourceRef
 from calcchain_capabilities import AuthCredentials, AuthField, AuthRequirement
 from calcchain_capabilities import PluginRuntimeSet
 from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
-from calcchain_core.sources import LocalSourceAdapter, SourceRegistry
+from calcchain_core.io.sources import LocalSourceAdapter, SourceRegistry
 from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 
 
@@ -333,7 +333,7 @@ class TestCoreSources(unittest.TestCase):
         )
         for call in adapter.calls:
             context = call[-1]
-            self.assertEqual(context.plugin_id, 'plugin.demo')
+            self.assertEqual(context.owner_id, 'plugin.demo')
             self.assertEqual(context.capability_id, 'demo')
             self.assertIs(context.auth, auth)
 

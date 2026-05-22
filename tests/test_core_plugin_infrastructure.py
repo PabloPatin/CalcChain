@@ -27,8 +27,8 @@ from calcchain_plugin_system import (
     activate_plugins,
     write_plugin_env_lock,
 )
-from calcchain_core.sources import SourceRegistry
-from calcchain_core.targets import TargetRegistry
+from calcchain_core.io.sources import SourceRegistry
+from calcchain_core.io.targets import TargetRegistry
 
 
 class TestCorePluginInfrastructure(unittest.TestCase):

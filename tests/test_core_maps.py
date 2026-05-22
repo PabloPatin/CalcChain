@@ -1,8 +1,8 @@
-import unittest
+﻿import unittest
 
-from calcchain_core.build_plan import BuildPlanEntry
-from calcchain_core.hash import tree_sha256
-from calcchain_core.maps import create_file_set_map
+from calcchain_core.build.plan import BuildPlanEntry
+from calcchain_core.common.hash import tree_sha256
+from calcchain_core.workspace.maps import create_file_set_map
 from calcchain_core.models import RuleUse, SourceRef
 
 

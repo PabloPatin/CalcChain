@@ -1,8 +1,8 @@
-import tempfile
+﻿import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.snapshot import create_snapshot, diff_snapshots
+from calcchain_core.workspace.snapshot import create_snapshot, diff_snapshots
 
 
 class TestCoreSnapshot(unittest.TestCase):

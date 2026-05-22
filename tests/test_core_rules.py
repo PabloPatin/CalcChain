@@ -1,11 +1,11 @@
-import json
+﻿import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.errors import ConfigFormatError, RulesError
+from calcchain_core.common.errors import ConfigFormatError, RulesError
 from calcchain_core.models import RuleSetType, RulesFile
-from calcchain_core.rules import apply_rule_set, get_rule_set, load_rules
+from calcchain_core.config.rules_config import apply_rule_set, get_rule_set, load_rules
 
 
 def rules_file() -> RulesFile:

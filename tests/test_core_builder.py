@@ -1,13 +1,13 @@
-import hashlib
+﻿import hashlib
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.build_plan import BuildPlan, BuildPlanEntry
-from calcchain_core.builder import EnvironmentBuilder
-from calcchain_core.layout import JobLayout
-from calcchain_core.manifest import ManifestWriter
+from calcchain_core.build.plan import BuildPlan, BuildPlanEntry
+from calcchain_core.build.builder import EnvironmentBuilder
+from calcchain_core.workspace.layout import JobLayout
+from calcchain_core.workspace.manifest import ManifestWriter
 from calcchain_core.models import (
     BuildInfo,
     BuildLock,
@@ -18,7 +18,7 @@ from calcchain_core.models import (
     RulesReference,
     SourceRef,
 )
-from calcchain_core.sources import SourceRegistry
+from calcchain_core.io.sources import SourceRegistry
 
 
 class MemoryAdapter:

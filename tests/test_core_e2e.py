@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import sys
@@ -10,7 +10,7 @@ import tomlkit
 
 from calcchain_core.api import CalculationCore
 from calcchain_core.models import RuleSetType
-from calcchain_core.restore import RestoreRequest
+from calcchain_core.restore.restore import RestoreRequest
 
 
 class TestCoreEndToEnd(unittest.TestCase):

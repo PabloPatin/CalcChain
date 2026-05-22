@@ -9,16 +9,17 @@
     write_publish_lock,
 )
 from calcchain_core.api import CalculationCore
-from calcchain_core.cleanup import CleanupResult, cleanup_work_dir
-from calcchain_core.errors import CalcChainError, ConfigFormatError, ReportError, UnsupportedSchemaVersionError
-from calcchain_core.hash import sha256_file, tree_sha256
-from calcchain_core.layout import JobLayout, PublicationServiceLayout
+from calcchain_core.cleanup.cleanup import CleanupResult, cleanup_work_dir
+from calcchain_core.common.errors import CalcChainError, ConfigFormatError, ReportError, UnsupportedSchemaVersionError
+from calcchain_core.common.hash import sha256_file, tree_sha256
+from calcchain_core.workspace.layout import JobLayout, PublicationServiceLayout
 from calcchain_core.models import (
     ArtifactRef,
     BuildConfig,
     BuildLock,
     FileMapEntry,
     JobStatus,
+    LocalSourceRef,
     Manifest,
     PublishConfig,
     PublishLock,
@@ -27,8 +28,8 @@ from calcchain_core.models import (
     RulesFile,
     RunConfig,
     RunStatus,
-    SourceRef,
     SourceType,
+    SvnSourceRef,
     TargetRef,
 )
 from calcchain_capabilities import PLUGIN_API_VERSION, CalcChainPlugin, PluginContext
@@ -43,8 +44,8 @@ from calcchain_capabilities import (
     PluginRegistrationError,
 )
 from calcchain_capabilities import ReportDescriptor, ReportRequest, ReportResult
-from calcchain_core.reports import ReportRegistry
-from calcchain_core.restore import RestoreRequest, RestoreResult, restore_from_manifest
+from calcchain_core.reports.registry import ReportRegistry
+from calcchain_core.restore.restore import RestoreRequest, RestoreResult, restore_from_manifest
 
 __all__ = [
     'ArtifactRef',
@@ -58,6 +59,7 @@ __all__ = [
     'FileMapEntry',
     'JobLayout',
     'JobStatus',
+    'LocalSourceRef',
     'Manifest',
     'PLUGIN_API_VERSION',
     'PluginActivationError',
@@ -84,8 +86,8 @@ __all__ = [
     'ReportResult',
     'RestoreRequest',
     'RestoreResult',
-    'SourceRef',
     'SourceType',
+    'SvnSourceRef',
     'TargetRef',
     'UnsupportedSchemaVersionError',
     'cleanup_work_dir',

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+﻿from dataclasses import dataclass
 from typing import Protocol
 
 from calcchain_capabilities.diagnostics import (
@@ -20,6 +20,7 @@ from calcchain_capabilities.errors import (
 from calcchain_capabilities.registrars import (
     AuthRegistrar,
     CapabilityKey,
+    CapabilityOwner,
     CapabilityRecord,
     CapabilityRegistrar,
     CapabilityRegistry,
@@ -33,9 +34,9 @@ from calcchain_capabilities.runtime import (
     AuthContext,
     AuthCredentials,
     AuthField,
+    AuthServiceProtocol,
     AuthRequirement,
     PluginRefMetadata,
-    PluginRuntimeSet,
     PublishedRef,
     ReportAdapter,
     ReportContext,
@@ -90,10 +91,12 @@ __all__ = [
     'AuthContext',
     'AuthCredentials',
     'AuthField',
+    'AuthServiceProtocol',
     'AuthRegistrar',
     'AuthRequirement',
     'CalcChainPlugin',
     'CapabilityKey',
+    'CapabilityOwner',
     'CapabilityRecord',
     'CapabilityRegistrar',
     'CapabilityRegistry',
@@ -109,7 +112,6 @@ __all__ = [
     'PluginMetadataError',
     'PluginRefMetadata',
     'PluginRegistrationError',
-    'PluginRuntimeSet',
     'PublishedRef',
     'ReportAdapter',
     'ReportContext',

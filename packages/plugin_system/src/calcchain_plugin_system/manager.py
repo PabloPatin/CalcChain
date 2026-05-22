@@ -85,38 +85,39 @@ def _validate_capability_snapshot(
         plugin_id: set() for plugin_id in enabled_plugin_ids
     }
     for key, record in snapshot.items():
+        owner_id = record.owner_id
         if key.namespace not in _ALLOWED_CAPABILITY_NAMESPACES:
             raise PluginActivationError(
                 'Registered capability namespace is unsupported',
-                plugin_id=record.owner,
+                plugin_id=owner_id,
                 phase='activation_commit',
                 code='plugin_capability_namespace_unsupported',
-                safe_details={'namespace': key.namespace, 'id': key.id, 'owner': record.owner},
+                safe_details={'namespace': key.namespace, 'id': key.id, 'owner': owner_id},
             )
-        if not record.owner:
+        if not owner_id:
             raise PluginActivationError(
                 'Registered capability owner is missing',
                 phase='activation_commit',
                 code='plugin_capability_owner_missing',
                 safe_details={'namespace': key.namespace, 'id': key.id},
             )
-        if record.owner not in enabled_plugin_ids:
+        if owner_id not in enabled_plugin_ids:
             raise PluginActivationError(
                 'Registered capability owner is not in active plugin set',
-                plugin_id=record.owner,
+                plugin_id=owner_id,
                 phase='activation_commit',
                 code='plugin_capability_owner_unknown',
-                safe_details={'namespace': key.namespace, 'id': key.id, 'owner': record.owner},
+                safe_details={'namespace': key.namespace, 'id': key.id, 'owner': owner_id},
             )
         if record.key != key:
             raise PluginActivationError(
                 'Registered capability key does not match snapshot key',
-                plugin_id=record.owner,
+                plugin_id=owner_id,
                 phase='activation_commit',
                 code='plugin_capability_key_mismatch',
-                safe_details={'namespace': key.namespace, 'id': key.id, 'owner': record.owner},
+                safe_details={'namespace': key.namespace, 'id': key.id, 'owner': owner_id},
             )
-        actual_by_plugin[record.owner].add((key.namespace, key.id))
+        actual_by_plugin[owner_id].add((key.namespace, key.id))
 
     declared_by_plugin = _declared_capabilities_by_plugin(plan)
     for package in plan.enabled_packages:

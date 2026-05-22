@@ -2,7 +2,7 @@
 import inspect
 import unittest
 
-from calcchain_core.auth import AuthError, AuthService
+from calcchain_core.io.auth import AuthError, AuthService
 from calcchain_capabilities import (
     PLUGIN_API_VERSION,
     PLUGIN_DIAGNOSTIC_PHASES,
@@ -78,19 +78,19 @@ class TestCorePluginApi(unittest.TestCase):
     def test_runtime_contexts_and_value_objects_are_public(self):
         self.assertEqual(
             [field.name for field in fields(SourceContext)],
-            ['plugin_id', 'capability_id', 'operation', 'auth', 'logger'],
+            ['owner_id', 'capability_id', 'auth', 'logger'],
         )
         self.assertEqual(
             [field.name for field in fields(TargetContext)],
-            ['plugin_id', 'capability_id', 'operation', 'auth', 'logger'],
+            ['owner_id', 'capability_id', 'auth', 'logger'],
         )
         self.assertEqual(
             [field.name for field in fields(AuthContext)],
-            ['plugin_id', 'capability_id', 'operation', 'logger'],
+            ['owner_id', 'capability_id', 'logger'],
         )
         self.assertEqual(
             [field.name for field in fields(ReportContext)],
-            ['plugin_id', 'capability_id', 'manifest', 'logger'],
+            ['owner_id', 'capability_id', 'manifest', 'logger'],
         )
 
         metadata = PluginRefMetadata.from_dict({'id': 'plugin.one', 'version': '1.2.3'})
@@ -137,14 +137,14 @@ class TestCorePluginApi(unittest.TestCase):
                 self.calls = []
 
             def can_handle(self, requirement, context):
-                self.calls.append(('can_handle', requirement.scheme, context.operation))
+                self.calls.append(('can_handle', requirement.scheme))
                 return requirement.scheme == 'token'
 
             def validate_requirement(self, requirement, context):
-                self.calls.append(('validate_requirement', requirement.scope['repo'], context.operation))
+                self.calls.append(('validate_requirement', requirement.scope['repo']))
 
             def get_credentials(self, requirement, context):
-                self.calls.append(('get_credentials', requirement.scope['repo'], context.operation))
+                self.calls.append(('get_credentials', requirement.scope['repo']))
                 return AuthCredentials({'token': 'secret-token'})
 
         provider = AuthProvider()
@@ -175,10 +175,10 @@ class TestCorePluginApi(unittest.TestCase):
         self.assertEqual(
             provider.calls,
             [
-                ('can_handle', 'token', 'can_handle'),
-                ('validate_requirement', 'repo', 'get_credentials'),
-                ('get_credentials', 'repo', 'get_credentials'),
-                ('can_handle', 'token', 'can_handle'),
+                ('can_handle', 'token'),
+                ('validate_requirement', 'repo'),
+                ('get_credentials', 'repo'),
+                ('can_handle', 'token'),
             ],
         )
 

@@ -22,10 +22,32 @@ class CapabilityKey:
 
 
 @dataclass(frozen=True)
-class CapabilityRecord:
+class CapabilityOwner:
+    id: str
+    version: str | None = None
+
+
+@dataclass(frozen=True)
+class CapabilityRecord[_T]:
     key: CapabilityKey
-    capability: object
-    owner: str
+    adapter: _T
+    owner: CapabilityOwner | None = None
+
+    @property
+    def capability(self) -> _T:
+        return self.adapter
+
+    @property
+    def capability_id(self) -> str:
+        return self.key.id
+
+    @property
+    def owner_id(self) -> str | None:
+        return self.owner.id if self.owner is not None else None
+
+    @property
+    def owner_version(self) -> str | None:
+        return self.owner.version if self.owner is not None else None
 
 
 class CapabilityRegistrar(Protocol):
@@ -55,7 +77,7 @@ class CapabilityRegistry:
                     'existing_owner': existing.owner,
                 },
             )
-        self._records[key] = CapabilityRecord(key=key, capability=capability, owner=owner)
+        self._records[key] = CapabilityRecord(key=key, adapter=capability, owner=CapabilityOwner(owner))
 
     def snapshot(self) -> Mapping[CapabilityKey, CapabilityRecord]:
         return MappingProxyType(dict(self._records))
@@ -123,6 +145,7 @@ __all__ = [
     'AuthRegistrar',
     'BaseRegistrar',
     'CapabilityKey',
+    'CapabilityOwner',
     'CapabilityRecord',
     'CapabilityRegistrar',
     'CapabilityRegistry',

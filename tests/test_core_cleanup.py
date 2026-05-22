@@ -1,12 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.cleanup import cleanup_work_dir
-from calcchain_core.errors import CleanupError
-from calcchain_core.layout import JobLayout
+from calcchain_core.cleanup.cleanup import cleanup_work_dir
+from calcchain_core.common.errors import CleanupError
+from calcchain_core.workspace.layout import JobLayout
 
 
 class TestCoreCleanup(unittest.TestCase):

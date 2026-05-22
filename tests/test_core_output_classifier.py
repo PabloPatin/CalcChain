@@ -1,13 +1,13 @@
-import tempfile
+﻿import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.build_plan import BuildPlanEntry
-from calcchain_core.builder import BuildResult
-from calcchain_core.maps import create_file_set_map
+from calcchain_core.build.plan import BuildPlanEntry
+from calcchain_core.build.builder import BuildResult
+from calcchain_core.workspace.maps import create_file_set_map
 from calcchain_core.models import Rule, RuleSet, RuleSetType, RulesFile, SourceRef
-from calcchain_core.output_classifier import classify_files
-from calcchain_core.snapshot import create_snapshot
+from calcchain_core.workspace.output_classifier import classify_files
+from calcchain_core.workspace.snapshot import create_snapshot
 
 
 def _build_result():

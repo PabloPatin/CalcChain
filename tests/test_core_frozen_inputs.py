@@ -1,12 +1,12 @@
-import hashlib
+﻿import hashlib
 import tempfile
 import unittest
 from pathlib import Path
 
-from calcchain_core.build_plan import BuildPlan, BuildPlanEntry
-from calcchain_core.builder import EnvironmentBuilder
-from calcchain_core.frozen_inputs import freeze_effective_inputs
-from calcchain_core.layout import JobLayout
+from calcchain_core.build.plan import BuildPlan, BuildPlanEntry
+from calcchain_core.build.builder import EnvironmentBuilder
+from calcchain_core.build.frozen_inputs import freeze_effective_inputs
+from calcchain_core.workspace.layout import JobLayout
 from calcchain_core.models import (
     BuildInfo,
     BuildLock,
@@ -15,8 +15,8 @@ from calcchain_core.models import (
     LockMetadata,
     SourceRef,
 )
-from calcchain_core.snapshot import create_snapshot
-from calcchain_core.sources import SourceRegistry
+from calcchain_core.workspace.snapshot import create_snapshot
+from calcchain_core.io.sources import SourceRegistry
 
 
 class MemoryAdapter:

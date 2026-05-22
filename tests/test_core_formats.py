@@ -1,4 +1,4 @@
-import json
+﻿import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,9 +15,9 @@ from calcchain_core.config import (
     write_manifest,
     write_publish_lock,
 )
-from calcchain_core.errors import ConfigFormatError
-from calcchain_core.hash import sha256_file, tree_sha256
-from calcchain_core.layout import JobLayout, PublicationServiceLayout
+from calcchain_core.common.errors import ConfigFormatError
+from calcchain_core.common.hash import sha256_file, tree_sha256
+from calcchain_core.workspace.layout import JobLayout, PublicationServiceLayout
 from calcchain_core.models import (
     BuildConfig,
     BuildLock,
@@ -30,7 +30,7 @@ from calcchain_core.models import (
     TargetRef,
 )
 
-EXAMPLES_DIR = Path(__file__).resolve().parents[1] / 'format_examples'
+EXAMPLES_DIR = Path(__file__).resolve().parents[1] / 'examples' / 'configs'
 
 
 class TestCoreFormats(unittest.TestCase):

@@ -6,23 +6,18 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from calcchain_core.auth import NoAuthService
-from calcchain_core.build_plan import BuildPlan, create_build_lock, validate_build_lock
-from calcchain_core.builder import BuildResult, EnvironmentBuilder, RulesArtifact
-from calcchain_core.cleanup import CleanupResult, cleanup_work_dir
-from calcchain_core.config import (
-    read_build,
-    read_build_lock,
-    read_publish,
-    read_rules,
-    read_run,
-    write_build_lock,
-    write_manifest,
-    write_publish_lock,
-)
-from calcchain_core.layout import JobLayout
-from calcchain_core.manifest import ManifestWriter
-from calcchain_core.maps import FileSetMap
+from calcchain_core.io.auth import NoAuthService
+from calcchain_capabilities import AuthServiceProtocol
+from calcchain_core.build.builder import BuildResult, EnvironmentBuilder, RulesArtifact
+from calcchain_core.build.plan import BuildPlan, create_build_lock, validate_build_lock
+from calcchain_core.cleanup.cleanup import CleanupResult, cleanup_work_dir
+from calcchain_core.config.build_config import read_build, read_build_lock, write_build_lock
+from calcchain_core.config.publish_config import read_publish, write_publish_lock
+from calcchain_core.config.rules_config import read_rules
+from calcchain_core.config.run_config import read_run
+from calcchain_core.workspace.layout import JobLayout
+from calcchain_core.workspace.manifest import ManifestWriter, write_manifest
+from calcchain_core.workspace.maps import FileSetMap
 from calcchain_core.models import (
     BuildLock,
     FileMapEntry,
@@ -32,16 +27,16 @@ from calcchain_core.models import (
     RunConfig,
     SourceRef,
 )
-from calcchain_core.output_classifier import classify_files
-from calcchain_capabilities import PluginRuntimeSet
-from calcchain_core.publish import PublishResult, build_publish_plan, create_publish_lock, execute_publish_plan
-from calcchain_core.reports import ReportRegistry, export_report_result, read_report_manifest
+from calcchain_core.workspace.output_classifier import classify_files
+from calcchain_capabilities import RuntimeCapabilities
+from calcchain_core.publish.publish import PublishResult, build_publish_plan, create_publish_lock, execute_publish_plan
+from calcchain_core.reports.registry import ReportRegistry, export_report_result, read_report_manifest
 from calcchain_capabilities import ReportDescriptor, ReportRequest, ReportResult
-from calcchain_core.restore import RestoreRequest, RestoreResult, restore_from_manifest
-from calcchain_core.runner import CancelToken, ProcessRunner, RunResult
-from calcchain_core.snapshot import Snapshot, SnapshotEntry
-from calcchain_core.sources import SourceRegistry
-from calcchain_core.targets import TargetRegistry
+from calcchain_core.restore.restore import RestoreRequest, RestoreResult, restore_from_manifest
+from calcchain_core.run.runner import CancelToken, ProcessRunner, RunResult
+from calcchain_core.workspace.snapshot import Snapshot, SnapshotEntry
+from calcchain_core.io.sources import SourceRegistry
+from calcchain_core.io.targets import TargetRegistry
 
 
 class CalculationCore:
@@ -49,10 +44,10 @@ class CalculationCore:
         self,
         job_dir: Path,
         *,
-        plugin_runtime: PluginRuntimeSet | None = None,
+        plugin_runtime: RuntimeCapabilities | None = None,
         source_registry: SourceRegistry | None = None,
         target_registry: TargetRegistry | None = None,
-        auth_service: object | None = None,
+        auth_service: AuthServiceProtocol | None = None,
     ):
         self.job_dir = Path(job_dir)
         self.layout = JobLayout.from_job_dir(self.job_dir)
@@ -102,7 +97,7 @@ class CalculationCore:
             plan,
         )
         if pre_run.blockers:
-            from calcchain_core.errors import RunExecutionError
+            from calcchain_core.common.errors import RunExecutionError
 
             raise RunExecutionError('; '.join(pre_run.blockers))
         run_result = ProcessRunner().run(self.layout, request)
