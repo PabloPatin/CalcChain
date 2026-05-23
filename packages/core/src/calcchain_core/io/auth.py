@@ -11,6 +11,7 @@ from calcchain_core.helpers.protocols import ProtocolCompatibilityError, ensure_
 from calcchain_capabilities import AuthAdapter, AuthContext, AuthCredentials, AuthServiceProtocol, AuthRequirement
 from calcchain_capabilities import RuntimeCapabilities
 from calcchain_capabilities.registrars import CapabilityRecord
+from calcchain_capabilities.types import CapabilityType
 
 _SECRET_ASSIGNMENT_RE = re.compile(r'(?i)\b(secret|token|password|passwd|api[_-]?key)=([^\s,;]+)')
 
@@ -60,16 +61,10 @@ class AuthService:
         providers: list[AuthProvider] = []
         if runtime is not None:
             for key, record in runtime.capabilities.items():
-                if key.namespace != 'auth':
+                if key.namespace != CapabilityType.AUTH:
                     continue
-                adapter = _auth_adapter_from_capability(record.adapter, capability_id=key.id)
-                providers.append(
-                    AuthProvider(
-                        key=key,
-                        adapter=adapter,
-                        owner=record.owner,
-                    ),
-                )
+                _validate_auth_adapter(record.adapter, capability_id=key.id)
+                providers.append(cast(AuthProvider, record))
         return cls(providers, policy=policy, logger=logger)
 
     def has_provider(self, requirement: AuthRequirement) -> bool:
@@ -132,14 +127,14 @@ def _redact_auth_message(message: str, requirement: AuthRequirement | None = Non
     return _SECRET_ASSIGNMENT_RE.sub(r'\1=[redacted]', redacted)
 
 
-def _auth_adapter_from_capability(capability: object, *, capability_id: str) -> AuthAdapter:
+def _validate_auth_adapter(adapter: object, *, capability_id: str) -> None:
     try:
-        ensure_protocol_methods(AuthAdapter, capability)
+        ensure_protocol_methods(AuthAdapter, adapter)
     except ProtocolCompatibilityError as err:
         missing = ', '.join(err.missing_methods)
-        raise AuthError(f"auth capability {capability_id!r} does not implement: {missing}") from err
-    return cast(AuthAdapter, capability)
-
+        raise AuthError(
+            f"auth capability {capability_id!r} does not implement AuthAdapter: {missing}"
+        ) from err
 
 def _redact_field_value(message: str, field_name: str) -> str:
     escaped = re.escape(field_name)

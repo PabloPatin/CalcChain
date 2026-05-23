@@ -3,16 +3,21 @@ from types import MappingProxyType
 from typing import ClassVar, Mapping, Protocol
 
 from calcchain_capabilities.errors import PluginCapabilityConflictError, PluginRegistrationError
-
+from calcchain_capabilities.types import CapabilityType
 
 @dataclass(frozen=True)
 class CapabilityKey:
-    namespace: str
+    namespace: CapabilityType
     id: str
 
     def __post_init__(self) -> None:
-        if not self.namespace:
-            raise PluginRegistrationError('Capability namespace is required')
+        try:
+            object.__setattr__(self, 'namespace', CapabilityType(self.namespace))
+        except ValueError as err:
+            raise PluginRegistrationError(
+                'Unknown capability namespace',
+                safe_details={'namespace': self.namespace, 'id': self.id},
+            ) from err
         if not self.id:
             raise PluginRegistrationError('Capability id is required')
 
@@ -59,7 +64,7 @@ class CapabilityRegistry:
     def __init__(self) -> None:
         self._records: dict[CapabilityKey, CapabilityRecord] = {}
 
-    def register(self, namespace: str, id: str, capability: object, *, owner: str) -> None:
+    def register(self, namespace: CapabilityType | str, id: str, adapter: object, *, owner: str) -> None:
         if not owner:
             raise PluginRegistrationError(
                 'Capability owner is required',
@@ -77,7 +82,7 @@ class CapabilityRegistry:
                     'existing_owner': existing.owner,
                 },
             )
-        self._records[key] = CapabilityRecord(key=key, adapter=capability, owner=CapabilityOwner(owner))
+        self._records[key] = CapabilityRecord(key=key, adapter=adapter, owner=CapabilityOwner(owner))
 
     def snapshot(self) -> Mapping[CapabilityKey, CapabilityRecord]:
         return MappingProxyType(dict(self._records))

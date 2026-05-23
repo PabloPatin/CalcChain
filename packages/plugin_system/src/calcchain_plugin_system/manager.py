@@ -1,6 +1,6 @@
 ﻿from typing import Mapping
 
-from calcchain_capabilities import PluginRuntimeSet, create_plugin_context
+from calcchain_capabilities import RuntimeCapabilities, create_plugin_context
 from calcchain_plugin_system.activation_plan import (
     PlannedCapabilityDeclaration,
     PluginActivationPlan,
@@ -22,17 +22,17 @@ _ALLOWED_CAPABILITY_NAMESPACES = frozenset({'source', 'target', 'report', 'auth'
 class PluginManager:
     def __init__(self, *, importer: PluginImporter | None = None) -> None:
         self._importer = importer or PluginImporter()
-        self._active_set: PluginRuntimeSet | None = None
+        self._active_set: RuntimeCapabilities | None = None
 
     @property
-    def active_set(self) -> PluginRuntimeSet | None:
+    def active_set(self) -> RuntimeCapabilities | None:
         return self._active_set
 
     def activate(
         self,
         plan: PluginActivationPlan,
         environment: PluginEnvironment,
-    ) -> PluginRuntimeSet:
+    ) -> RuntimeCapabilities:
         if plan.has_errors:
             raise PluginActivationError(
                 'Plugin activation plan contains diagnostics',
@@ -66,7 +66,7 @@ class PluginManager:
 
         snapshot = draft_registry.snapshot()
         _validate_capability_snapshot(snapshot, plan)
-        runtime_set = PluginRuntimeSet(
+        runtime_set = RuntimeCapabilities(
             active_plugin_ids=plan.enabled_plugin_ids,
             environment=environment,
             capabilities=snapshot,
