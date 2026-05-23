@@ -1,0 +1,17 @@
+{
+  "map": [
+    {
+      "sha256": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213",
+      "source_path": "main.py",
+      "work_path": "main.py"
+    }
+  ],
+  "name": "code",
+  "sources": [
+    {
+      "path": "code",
+      "type": "memory"
+    }
+  ],
+  "tree_sha256": "6e5d72604d9304d7a1c98beeb34853d56785c688a7b7e9565b9ce64e1163b9b0"
+}

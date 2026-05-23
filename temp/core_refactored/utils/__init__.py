@@ -9,7 +9,9 @@ from .validation import (
     optional_str,
     required_list,
     required_mapping,
+    required_sha256,
     required_str,
+    string_mapping,
     string_value,
 )
 
@@ -24,7 +26,9 @@ __all__ = [
     'read_toml',
     'required_list',
     'required_mapping',
+    'required_sha256',
     'required_str',
+    'string_mapping',
     'string_value',
     'write_json',
     'write_toml',

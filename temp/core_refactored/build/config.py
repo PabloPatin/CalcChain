@@ -8,9 +8,10 @@ from ..utils.validation import (
     optional_list,
     optional_mapping,
     optional_str,
+    required_sha256,
     required_mapping,
 )
-from ..config import BUILD_CONFIG_SCHEMA_VERSION
+from ..config import BUILD_CONFIG_SCHEMA_VERSION, RULES_FILE_SCHEMA_VERSION
 
 
 @dataclass(frozen=True)
@@ -95,7 +96,13 @@ class RulesReference:
         if data is None:
             return None
         source = SourceRef.from_dict(dict(required_mapping(data, 'source'))) if 'source' in data else None
-        resolved = dict(required_mapping(data, 'resolved')) if 'resolved' in data else None
+        resolved = None
+        if 'resolved' in data:
+            resolved_data = required_mapping(data, 'resolved')
+            resolved = {
+                'schema_version': optional_str(resolved_data, 'schema_version') or RULES_FILE_SCHEMA_VERSION,
+                'sha256': required_sha256(resolved_data, 'sha256'),
+            }
         return cls(source=source, resolved=resolved)
 
     def to_dict(self) -> dict[str, Any]:

@@ -1,0 +1,18 @@
+{
+  "created_at": "2026-05-23T15:13:07.590613+00:00",
+  "entries": [
+    {
+      "kind": "file",
+      "path": "data/input.txt",
+      "sha256": "7d3f9b6284c6f36e77b425cac882e8fbbcc97a4727ec20790853076d0f463453",
+      "size": 6
+    },
+    {
+      "kind": "file",
+      "path": "main.py",
+      "sha256": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213",
+      "size": 9
+    }
+  ],
+  "schema_version": "1.0"
+}

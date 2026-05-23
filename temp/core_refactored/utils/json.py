@@ -8,7 +8,7 @@ def read_json(path: Path) -> dict[str, Any]:
         return json.load(file)
 
 
-def write_json(data: dict[str, Any], path: Path) -> None:
+def write_json(data: Any, path: Path) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(

@@ -1,0 +1,19 @@
+[
+  {
+    "map": [
+      {
+        "sha256": "7d3f9b6284c6f36e77b425cac882e8fbbcc97a4727ec20790853076d0f463453",
+        "source_path": "data/input.txt",
+        "work_path": "data/input.txt"
+      }
+    ],
+    "name": "input",
+    "sources": [
+      {
+        "path": "inputs",
+        "type": "memory"
+      }
+    ],
+    "tree_sha256": "8976a45063e878341e63fe15ae8cecdefc49f29771ee1a81fca02de02dd2a9c2"
+  }
+]
