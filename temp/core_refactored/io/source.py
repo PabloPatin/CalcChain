@@ -6,13 +6,13 @@ SourceRef = ExternalRef
 
 
 class SourceRegistry:
-    def __init__(self, runtime=None, *, auth=None):
+    def __init__(self, runtime=None, *, secrets_resolver=None):
         self.runtime = runtime
-        self.auth = auth
+        self.secrets_resolver = secrets_resolver
 
     @classmethod
-    def from_runtime(cls, runtime=None, *, auth=None):
-        return cls(runtime, auth=auth)
+    def from_runtime(cls, runtime=None, *, secrets_resolver=None):
+        return cls(runtime, secrets_resolver=secrets_resolver)
 
     def validate_config(self, source: SourceRef) -> None:
         return None

@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-05-23T15:55:27.847297+00:00",
+  "entries": [
+    {
+      "kind": "file",
+      "path": "out.txt",
+      "sha256": "2689367b205c16ce32ed4200942b8b8b1e262dfc70d9bc9fbc77c49699a4f1df",
+      "size": 2
+    }
+  ],
+  "schema_version": "1.0"
+}

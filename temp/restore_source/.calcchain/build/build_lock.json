@@ -1,0 +1,29 @@
+{
+  "build": {
+    "description": "",
+    "name": ""
+  },
+  "code": {
+    "name": "code",
+    "source": {
+      "path": "code",
+      "type": "memory"
+    },
+    "version": ""
+  },
+  "inputs": [
+    {
+      "name": "input",
+      "source": {
+        "path": "inputs",
+        "type": "memory"
+      }
+    }
+  ],
+  "lock": {
+    "build_toml_sha256": "a7ce28f27ed08c032ea0df984c427d2a9688dacf8919d74bbc64206dafbc3a8d",
+    "created_at": "2026-05-23T19:49:25.094142+00:00",
+    "created_from": "build.toml"
+  },
+  "schema_version": "1.0"
+}

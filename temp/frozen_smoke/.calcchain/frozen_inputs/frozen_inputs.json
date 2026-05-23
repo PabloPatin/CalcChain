@@ -1,0 +1,18 @@
+{
+  "map": [
+    {
+      "sha256": "c490595b3eacb7256f98f2ee40f45e3c3ce8c82b37804bc45a771ee38aa56898",
+      "source_path": "input.txt",
+      "target_path": "input.txt",
+      "work_path": "input.txt"
+    }
+  ],
+  "name": "frozen_inputs",
+  "sources": [
+    {
+      "path": "temp\\frozen_smoke\\.calcchain\\frozen_inputs",
+      "type": "local"
+    }
+  ],
+  "tree_sha256": "36a3cfd3fe80c297e0ea13dcf1867dbd734f01c270840a6e60328c9149c42864"
+}

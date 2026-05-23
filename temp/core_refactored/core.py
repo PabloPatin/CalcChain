@@ -3,19 +3,20 @@ from typing import Any
 
 from calcchain_capabilities import ReportDescriptor, ReportRequest, ReportResult
 from calcchain_core.build.builder import BuildResult
-from calcchain_core.cleanup.cleanup import CleanupResult
 from calcchain_core.models import Manifest, PublishLock
 from calcchain_core.publish.publish import PublishResult
 from calcchain_core.reports.registry import ReportRegistry
 from calcchain_core.restore.restore import RestoreRequest, RestoreResult
 
-from .auth.auth_service import AuthService as AuthServiceProtocol, NoAuthService
-from .build.config import BuildConfig, read_toml, write_toml
+from .build.config import BuildConfig
 from .build.lock import BuildLock
 from .build.plan import BuildPlan, create_build_lock
 from .capabilities.runtime import RuntimeCapabilities
+from .cleanup import CleanupResult, cleanup_work_dir
 from .io.source import SourceRegistry
 from .io.target import TargetRegistry
+from .secrets import NoSecretsResolver, SecretsResolver
+from .utils.toml import read_toml, write_toml
 from .workspace.layout import JobLayout
 
 
@@ -25,13 +26,13 @@ class CalculationCore:
         job_dir: Path,
         *,
         runtime: RuntimeCapabilities | None = None,
-        auth_service: AuthServiceProtocol | None = None,
+        secrets_resolver: SecretsResolver | None = None,
     ):
         self.job_dir = Path(job_dir)
         self.layout = JobLayout.from_job_dir(self.job_dir)
-        self.auth_service = auth_service if auth_service is not None else NoAuthService()
-        self.source_registry = SourceRegistry.from_runtime(runtime, auth=self.auth_service)
-        self.target_registry = TargetRegistry.from_runtime(runtime, auth=self.auth_service)
+        self.secrets_resolver = secrets_resolver if secrets_resolver is not None else NoSecretsResolver()
+        self.source_registry = SourceRegistry.from_runtime(runtime, secrets_resolver=self.secrets_resolver)
+        self.target_registry = TargetRegistry.from_runtime(runtime, secrets_resolver=self.secrets_resolver)
         self.report_registry = ReportRegistry.from_runtime(runtime)
         self._last_plan: BuildPlan | None = None
         self._last_build_result: BuildResult | None = None
@@ -62,7 +63,7 @@ class CalculationCore:
         ...
 
     def cleanup(self, *, dry_run: bool = False) -> CleanupResult:
-        ...
+        return cleanup_work_dir(self.layout, dry_run=dry_run)
 
     def list_reports(self) -> list[ReportDescriptor]:
         ...

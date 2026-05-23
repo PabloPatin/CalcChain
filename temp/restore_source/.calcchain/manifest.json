@@ -1,0 +1,56 @@
+{
+  "build": {
+    "code": {
+      "map": [
+        {
+          "sha256": "cc42155088fca5730758db72b2a5bca33112a941dfaa2d43098ec422ce4ea213",
+          "source_path": "main.py",
+          "work_path": "main.py"
+        }
+      ],
+      "name": "code",
+      "sources": [
+        {
+          "path": "code",
+          "type": "memory"
+        }
+      ],
+      "tree_sha256": "6e5d72604d9304d7a1c98beeb34853d56785c688a7b7e9565b9ce64e1163b9b0"
+    },
+    "inputs": [
+      {
+        "map": [
+          {
+            "sha256": "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f",
+            "source_path": "input.txt",
+            "work_path": "input.txt"
+          }
+        ],
+        "name": "input",
+        "sources": [
+          {
+            "path": "inputs",
+            "type": "memory"
+          }
+        ],
+        "tree_sha256": "31a95d851f653ca4a36f575a5c7337fbdeb376bd6b311a28569ccc7de737d38b"
+      }
+    ],
+    "lock": {
+      "path": "temp/restore_source/.calcchain/build/build_lock.json",
+      "sha256": "f12dc9ffb37eda81ca4d5d5aec9c8254b2af761b44bd7114e70a4cdb2c959e2a"
+    }
+  },
+  "job": {
+    "id": "restore_source",
+    "job_dir": "temp\\restore_source",
+    "status": "Built"
+  },
+  "schema_version": "1.0",
+  "snapshots": {
+    "build": {
+      "path": "temp/restore_source/.calcchain/snapshots/build_snapshot.json",
+      "sha256": "f5422d6d2b8f2131c5b9273030507d4eb30af6dd2be379481168406e37110a90"
+    }
+  }
+}

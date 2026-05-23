@@ -79,6 +79,9 @@ def _build_dict(job, build_result) -> dict[str, Any]:
         result['lock'] = lock
     result['code'] = _file_set_dict(_value(build_result, 'code_set'))
     result['inputs'] = [_file_set_dict(item) for item in _value(build_result, 'input_sets') or []]
+    frozen_inputs = _value(build_result, 'frozen_inputs')
+    if frozen_inputs is not None:
+        result['inputs'].append(_file_set_dict(frozen_inputs))
     return result
 
 

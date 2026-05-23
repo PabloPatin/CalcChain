@@ -66,6 +66,22 @@ class Snapshot:
         }
 
 
+@dataclass(frozen=True)
+class SnapshotDiff:
+    added: list[SnapshotEntry]
+    modified: list[SnapshotEntry]
+    deleted: list[SnapshotEntry]
+    unchanged: list[SnapshotEntry]
+
+    def to_dict(self) -> dict[str, list[dict[str, Any]]]:
+        return {
+            'added': [entry.to_dict() for entry in self.added],
+            'modified': [entry.to_dict() for entry in self.modified],
+            'deleted': [entry.to_dict() for entry in self.deleted],
+            'unchanged': [entry.to_dict() for entry in self.unchanged],
+        }
+
+
 def create_snapshot(root: Path) -> Snapshot:
     root = Path(root)
     entries = [
@@ -88,6 +104,29 @@ def write_snapshot(snapshot: Snapshot, path: Path) -> None:
     write_json(snapshot.to_dict(), path)
 
 
+def diff_snapshots(before: Snapshot, after: Snapshot) -> SnapshotDiff:
+    before_entries = {entry.path: entry for entry in before.entries}
+    after_entries = {entry.path: entry for entry in after.entries}
+    added = [entry for path, entry in after_entries.items() if path not in before_entries]
+    deleted = [entry for path, entry in before_entries.items() if path not in after_entries]
+    modified = [
+        after_entry
+        for path, after_entry in after_entries.items()
+        if path in before_entries and _entry_changed(before_entries[path], after_entry)
+    ]
+    unchanged = [
+        after_entry
+        for path, after_entry in after_entries.items()
+        if path in before_entries and not _entry_changed(before_entries[path], after_entry)
+    ]
+    return SnapshotDiff(
+        added=sorted(added, key=lambda entry: entry.path),
+        modified=sorted(modified, key=lambda entry: entry.path),
+        deleted=sorted(deleted, key=lambda entry: entry.path),
+        unchanged=sorted(unchanged, key=lambda entry: entry.path),
+    )
+
+
 def _snapshot_entry(root: Path, file: Path) -> SnapshotEntry:
     relative_path = normalize_path(file.relative_to(root).as_posix())
     return SnapshotEntry(
@@ -95,3 +134,7 @@ def _snapshot_entry(root: Path, file: Path) -> SnapshotEntry:
         sha256=sha256_file(file),
         size=file.stat().st_size,
     )
+
+
+def _entry_changed(before: SnapshotEntry, after: SnapshotEntry) -> bool:
+    return before.sha256 != after.sha256 or before.size != after.size or before.kind != after.kind

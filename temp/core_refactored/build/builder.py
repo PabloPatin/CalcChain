@@ -5,6 +5,7 @@ import shutil
 from typing import Any
 
 from ..common.errors import BuildExecutionError, SourceError
+from ..common.hash import sha256_dict
 from ..common.status import RuntimeStatus, write_runtime_status
 from ..io.source import SourceRegistry
 from ..utils.json import write_json
@@ -30,6 +31,7 @@ class BuildResult:
     code_set: FileSetMap
     input_sets: list[FileSetMap]
     build_snapshot: Snapshot
+    build_lock_sha256: str | None = None
     rules_artifact: RulesArtifact | None = None
     warnings: list[str] = field(default_factory=list)
     runtime_status: RuntimeStatus | None = None
@@ -61,12 +63,14 @@ class EnvironmentBuilder:
             file_set_from_entries(name, items)
             for name, items in sorted(input_entries_by_name.items())
         ]
+        build_lock_sha256 = sha256_dict(plan.lock.to_dict())
 
         if dry_run:
             return BuildResult(
                 code_set=code_set,
                 input_sets=input_sets,
                 build_snapshot=Snapshot(schema_version='1.0', created_at='', entries=[]),
+                build_lock_sha256=build_lock_sha256,
                 warnings=warnings,
                 dry_run=True,
                 preview=preview,
@@ -93,6 +97,7 @@ class EnvironmentBuilder:
             code_set=code_set,
             input_sets=input_sets,
             build_snapshot=build_snapshot,
+            build_lock_sha256=build_lock_sha256,
             rules_artifact=rules_artifact,
             warnings=warnings,
             runtime_status=runtime_status,
