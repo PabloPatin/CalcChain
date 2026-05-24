@@ -1,20 +1,20 @@
 [project]
 name = "calcchain-backend"
 version = "0.1.0"
-description = "CalcChain backend with LAN pairing-code authentication"
+description = "Backend API for CalcChain"
 requires-python = ">=3.11"
 dependencies = [
-  "fastapi>=0.111.0",
-  "pydantic>=2.0",
-  "uvicorn[standard]>=0.30.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
 ]
 
 [project.scripts]
 calcchain-backend = "calcchain_backend.cli:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/calcchain_backend"]
+[tool.setuptools.packages.find]
+where = ["src"]

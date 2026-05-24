@@ -1,3 +1,3 @@
-__all__ = ["__version__"]
+"""CalcChain backend package."""
 
 __version__ = "0.1.0"
