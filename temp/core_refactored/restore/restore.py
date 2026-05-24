@@ -10,7 +10,7 @@ from ..utils.json import read_json
 from ..utils.validation import mapping_value, optional_list, optional_mapping, required_mapping, required_str
 from ..workspace.file_map import FileMapEntry
 from ..workspace.layout import JobLayout
-from ..workspace.manifest import Manifest
+from ..manifest import Manifest
 
 
 @dataclass(frozen=True)

@@ -9,6 +9,7 @@ from .errors import (
     RestoreError,
     RulesError,
     RunExecutionError,
+    SecretsError,
     SourceError,
     UnsupportedSchemaVersionError,
 )
@@ -31,6 +32,7 @@ __all__ = [
     'RunExecutionError',
     'RunStatus',
     'RuntimeStatus',
+    'SecretsError',
     'SourceError',
     'UnsupportedSchemaVersionError',
     'decode_process_stream',

@@ -1,6 +1,0 @@
-class AuthService:
-    ...
-
-
-class NoAuthService:
-    ...

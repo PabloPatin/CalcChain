@@ -9,8 +9,9 @@ from ..common.hash import sha256_dict
 from ..common.status import RuntimeStatus, write_runtime_status
 from ..io.source import SourceRegistry
 from ..utils.json import write_json
-from ..workspace import JobLayout, Snapshot, create_snapshot, file_set_from_entries, write_snapshot
-from ..workspace.maps import FileSetMap
+from ..workspace.layout import JobLayout
+from ..workspace.maps import FileSetMap, file_set_from_entries
+from ..workspace.snapshot import Snapshot, create_snapshot, write_snapshot
 from .plan import BuildPlan, BuildPlanEntry
 
 

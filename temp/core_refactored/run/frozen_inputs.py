@@ -1,5 +1,5 @@
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING
+from typing import Protocol
 
 from ..common.errors import RunExecutionError
 from ..io.source import SourceRef, SourceRegistry
@@ -9,13 +9,15 @@ from ..workspace.layout import JobLayout
 from ..workspace.maps import FileSetMap
 from ..workspace.snapshot import Snapshot, diff_snapshots
 
-if TYPE_CHECKING:
-    from ..build.builder import BuildResult
+
+class FrozenInputsBuildSource(Protocol):
+    build_snapshot: Snapshot
+    input_sets: list[FileSetMap]
 
 
 def freeze_effective_inputs(
     layout: JobLayout,
-    build_result: 'BuildResult',
+    build_result: FrozenInputsBuildSource,
     pre_run_snapshot: Snapshot,
     *,
     freeze_non_versionable: bool = True,
@@ -56,7 +58,7 @@ def freeze_effective_inputs(
     return frozen_set
 
 
-def _input_paths(build_result: 'BuildResult') -> set[str]:
+def _input_paths(build_result: FrozenInputsBuildSource) -> set[str]:
     return {
         entry.work_path
         for input_set in build_result.input_sets
@@ -65,7 +67,7 @@ def _input_paths(build_result: 'BuildResult') -> set[str]:
     }
 
 
-def _non_versionable_input_paths(build_result: 'BuildResult', registry: SourceRegistry | None) -> set[str]:
+def _non_versionable_input_paths(build_result: FrozenInputsBuildSource, registry: SourceRegistry | None) -> set[str]:
     if registry is None or not hasattr(registry, 'is_versionable'):
         return set()
     result: set[str] = set()
