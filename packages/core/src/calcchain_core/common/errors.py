@@ -14,6 +14,10 @@ class SourceError(CalcChainError):
     """Raised when a source cannot be read or resolved."""
 
 
+class SecretsError(CalcChainError):
+    """Raised when a secret cannot be resolved safely."""
+
+
 class RulesError(CalcChainError):
     """Raised when rules cannot be loaded or applied safely."""
 

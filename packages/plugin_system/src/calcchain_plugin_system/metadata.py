@@ -10,10 +10,10 @@ from typing import Any, Mapping
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
 
-from calcchain_capabilities import PLUGIN_API_VERSION
-from calcchain_capabilities.errors import PluginCompatibilityError, PluginMetadataError
+from calcchain_plugin_system.api import PLUGIN_API_VERSION
+from calcchain_plugin_system.errors import PluginCompatibilityError, PluginMetadataError
 
-_ALLOWED_CAPABILITY_NAMESPACES = frozenset({'source', 'target', 'report', 'auth'})
+_ALLOWED_CAPABILITY_NAMESPACES = frozenset({'source', 'target', 'report', 'secrets'})
 _SUPPORTED_DEPENDENCY_MODE = 'wheels'
 
 

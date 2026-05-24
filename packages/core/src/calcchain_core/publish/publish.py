@@ -4,30 +4,22 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 from typing import Any
+from collections.abc import Mapping
 
 import tomlkit
 
-from calcchain_core.common.errors import ConfigFormatError, PublishError, RulesError
-from calcchain_core.common.hash import sha256_file, tree_sha256
-from calcchain_core.workspace.layout import PublicationServiceLayout
-from calcchain_core.workspace.manifest import ManifestWriter
-from calcchain_core.models import (
-    ArtifactRef,
-    FileMapEntry,
-    LockMetadata,
-    Manifest,
-    PublishConfig,
-    PublishLock,
-    PublishTarget,
-    RuleSetType,
-    RuleUse,
-    RulesFile,
-    SourceRef,
-    SourceType,
-    TargetRef,
-)
-from calcchain_core.config.rules_config import apply_rule_set, get_rule_set
-from calcchain_core.io.targets import PublishedRef, TargetRegistry
+from ..build.lock import LockMetadata
+from ..common.errors import ConfigFormatError, PublishError, RulesError
+from ..common.hash import sha256_dict, sha256_file, tree_sha256
+from ..io.source import SourceRef
+from ..io.target import PublishedRef, TargetRef, TargetRegistry
+from ..rules import RuleSetType, RuleUse, RulesFile, get_rule_set
+from ..utils.validation import mapping_value, optional_list, optional_mapping, required_mapping, required_str
+from ..workspace.artifacts import ArtifactRef
+from ..workspace.file_map import FileMapEntry, apply_rule_set
+from ..manifest import Manifest, ManifestWriter
+from .config import PublishConfig, PublishTarget
+from .lock import PublishLock
 
 
 @dataclass(frozen=True)
@@ -104,7 +96,7 @@ def create_publish_lock(config: PublishConfig, target_registry: TargetRegistry) 
         lock=LockMetadata(
             created_at=datetime.now(timezone.utc).isoformat(),
             created_from='publish.toml',
-            source_sha256=_stable_sha256(config.to_dict()),
+            source_sha256=sha256_dict(config.to_dict()),
             source_sha256_field='publish_toml_sha256',
         ),
         message=config.message,
@@ -113,11 +105,16 @@ def create_publish_lock(config: PublishConfig, target_registry: TargetRegistry) 
     )
 
 
-def build_publish_plan(manifest: Manifest, lock: PublishLock, rules: RulesFile | None) -> PublishPlan:
+def build_publish_plan(
+    manifest: Manifest,
+    lock: PublishLock,
+    rules: RulesFile | None,
+    *,
+    target_registry: TargetRegistry | None = None,
+) -> PublishPlan:
     data = manifest.to_dict()
-    job_dir = Path(_required_str(_required_mapping(data, 'job'), 'job_dir'))
+    job_dir = Path(required_str(required_mapping(data, 'job'), 'job_dir'))
     work_dir = job_dir / 'work'
-    registry = TargetRegistry()
     groups = _publication_groups(data, work_dir, lock, rules)
     service_artifacts = _service_artifacts(data, lock.service_target, lock)
     return PublishPlan(
@@ -125,8 +122,8 @@ def build_publish_plan(manifest: Manifest, lock: PublishLock, rules: RulesFile |
         lock=lock,
         groups=groups,
         service_artifacts=service_artifacts,
-        manifest_path=PublicationServiceLayout().manifest_name,
-        target_registry=registry,
+        manifest_path='manifest.json',
+        target_registry=target_registry or TargetRegistry(),
     )
 
 
@@ -151,7 +148,7 @@ def execute_publish_plan(plan: PublishPlan, *, dry_run: bool = False) -> Publish
         group_sources: dict[str, SourceRef] = {}
         for file in group.files:
             ref = registry.write_file(file.target, file.relative_path, file.data)
-            _validate_published_source(ref.source)
+            _validate_published_ref(ref)
             group_sources[file.relative_path] = ref.source
         published_group_sources[group.name] = group_sources
     published_groups = [
@@ -164,12 +161,12 @@ def execute_publish_plan(plan: PublishPlan, *, dry_run: bool = False) -> Publish
         published_service_refs.append(registry.write_file(file.target, file.relative_path, file.data))
 
     publish_lock_ref = _published_artifact_from_write(
-        _required_published_ref(published_service_refs, plan.service_artifacts, PublicationServiceLayout().publish_lock_name),
+        _required_published_ref(published_service_refs, plan.service_artifacts, 'publish.lock.toml'),
         _publish_lock_bytes(plan.lock),
     )
     service_artifacts = [
-        _published_artifact_from_write(ref, _file.data)
-        for ref, _file in zip(published_service_refs, plan.service_artifacts, strict=True)
+        _published_artifact_from_write(ref, file.data)
+        for ref, file in zip(published_service_refs, plan.service_artifacts, strict=True)
     ]
     interim = PublishResult(
         publish_lock_artifact=publish_lock_ref,
@@ -180,28 +177,16 @@ def execute_publish_plan(plan: PublishPlan, *, dry_run: bool = False) -> Publish
         dry_run=False,
     )
     updated_manifest = ManifestWriter.create_after_publish(plan.manifest, interim)
-    manifest_bytes = _manifest_bytes(updated_manifest)
-    registry.write_file(plan.lock.service_target, plan.manifest_path, manifest_bytes)
-    return PublishResult(
-        publish_lock_artifact=publish_lock_ref,
-        groups=published_groups,
-        service_artifacts=service_artifacts,
-        updated_manifest=updated_manifest,
-        service_target=plan.lock.service_target,
-        dry_run=False,
-    )
+    registry.write_file(plan.lock.service_target, plan.manifest_path, _manifest_bytes(updated_manifest))
+    return replace(interim, updated_manifest=updated_manifest)
 
 
 def _resolve_target_for_lock(target: TargetRef, registry: TargetRegistry) -> TargetRef:
     registry.validate_config(target)
     resolved = registry.resolve_lock_ref(target)
-    _validate_serializable_lock_ref(resolved)
+    TargetRef.from_dict(resolved.to_dict())
     registry.validate_lock_ref(resolved)
     return resolved
-
-
-def _validate_serializable_lock_ref(target: TargetRef) -> None:
-    TargetRef.from_dict(target.to_dict(), resolved_revision=_type_id(target.type) == SourceType.SVN.value)
 
 
 def _publication_groups(
@@ -214,7 +199,7 @@ def _publication_groups(
         return []
     if rules is None:
         raise PublishError('rules are required when result targets are configured')
-    file_groups = _required_mapping(_required_mapping(manifest_data, 'run'), 'file_groups')
+    file_groups = required_mapping(required_mapping(manifest_data, 'run'), 'file_groups')
     groups: list[PublishPlanGroup] = []
     for publish_target in lock.targets:
         for rule_set_name in publish_target.rule_sets:
@@ -223,7 +208,10 @@ def _publication_groups(
             files = [_normalize_relative_path(item, field=f'{category} file') for item in file_groups.get(category, [])]
             if not files:
                 continue
-            translated = apply_rule_set(files, rule_set)
+            try:
+                translated = apply_rule_set(files, rule_set)
+            except RulesError as err:
+                raise PublishError(str(err)) from err
             entries: list[FileMapEntry] = []
             plan_files: list[PublishPlanFile] = []
             for entry in translated:
@@ -236,13 +224,7 @@ def _publication_groups(
                     raise PublishError(f'publication source file not found: {work_path}')
                 digest = sha256_file(source_path)
                 entries.append(FileMapEntry(sha256=digest, work_path=work_path, target_path=target_path))
-                plan_files.append(
-                    PublishPlanFile(
-                        target=publish_target.target,
-                        relative_path=target_path,
-                        data=source_path.read_bytes(),
-                    ),
-                )
+                plan_files.append(PublishPlanFile(target=publish_target.target, relative_path=target_path, data=source_path.read_bytes()))
             groups.append(
                 PublishPlanGroup(
                     name=f'{publish_target.name}_{rule_set_name}',
@@ -259,45 +241,31 @@ def _publication_groups(
 
 
 def _service_artifacts(manifest_data: dict[str, Any], service_target: TargetRef, lock: PublishLock) -> list[PublishPlanFile]:
-    layout = PublicationServiceLayout()
     result: list[PublishPlanFile] = [
-        PublishPlanFile(
-            target=service_target,
-            relative_path=layout.publish_lock_name,
-            data=_publish_lock_bytes(lock),
-        ),
+        PublishPlanFile(target=service_target, relative_path='publish.lock.toml', data=_publish_lock_bytes(lock)),
     ]
-    build_lock = _optional_mapping(_optional_mapping(manifest_data, 'build') or {}, 'lock')
+    build_lock = optional_mapping(optional_mapping(manifest_data, 'build') or {}, 'lock')
     if build_lock is not None:
-        result.extend(_artifact_files(build_lock, service_target, layout.build_lock_name))
+        result.extend(_artifact_files(build_lock, service_target, 'build/build_lock.json'))
 
     for relative_path, source_path in _frozen_input_files(manifest_data):
         result.append(
             PublishPlanFile(
                 target=service_target,
-                relative_path=_join_relative(layout.frozen_inputs_dir_name, relative_path),
+                relative_path=_join_relative('frozen_inputs', relative_path),
                 data=source_path.read_bytes(),
             ),
         )
 
-    for snapshot_name, artifact in (_optional_mapping(manifest_data, 'snapshots') or {}).items():
-        snapshot_data = _mapping_value(artifact, f'snapshot {snapshot_name}')
+    for snapshot_name, artifact in (optional_mapping(manifest_data, 'snapshots') or {}).items():
+        snapshot_data = mapping_value(artifact, f'snapshot {snapshot_name}')
         snapshot_source = _first_local_source_path(snapshot_data)
         snapshot_file_name = snapshot_source.name if snapshot_source is not None else f'{snapshot_name}.json'
-        result.extend(
-            _artifact_files(
-                snapshot_data,
-                service_target,
-                _join_relative(layout.snapshots_dir_name, snapshot_file_name),
-            ),
-        )
-
-    for log_name, artifact in _run_log_artifacts(manifest_data):
-        result.extend(_artifact_files(artifact, service_target, _join_relative(layout.logs_dir_name, log_name)))
+        result.extend(_artifact_files(snapshot_data, service_target, _join_relative('snapshots', snapshot_file_name)))
     return _deduplicate_plan_files(result)
 
 
-def _artifact_files(artifact: dict[str, Any], target: TargetRef, relative_path: str) -> list[PublishPlanFile]:
+def _artifact_files(artifact: Mapping[str, Any], target: TargetRef, relative_path: str) -> list[PublishPlanFile]:
     source_path = _first_local_source_path(artifact)
     if source_path is None or not source_path.is_file():
         return []
@@ -306,9 +274,9 @@ def _artifact_files(artifact: dict[str, Any], target: TargetRef, relative_path: 
 
 def _frozen_input_files(manifest_data: dict[str, Any]) -> list[tuple[str, Path]]:
     result: list[tuple[str, Path]] = []
-    build = _optional_mapping(manifest_data, 'build') or {}
-    for item in _optional_list(build, 'inputs'):
-        item_data = _mapping_value(item, 'build input')
+    build = optional_mapping(manifest_data, 'build') or {}
+    for item in optional_list(build, 'inputs'):
+        item_data = mapping_value(item, 'build input')
         if item_data.get('name') != 'frozen_inputs':
             continue
         root = _first_local_source_path(item_data)
@@ -319,53 +287,38 @@ def _frozen_input_files(manifest_data: dict[str, Any]) -> list[tuple[str, Path]]
     return result
 
 
-def _run_log_artifacts(manifest_data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
-    result: list[tuple[str, dict[str, Any]]] = []
-    run = _optional_mapping(manifest_data, 'run') or {}
-    for stream in ('stdin', 'stdout', 'stderr'):
-        container = _optional_mapping(run, stream)
-        if container is None:
-            continue
-        log = _optional_mapping(container, 'log')
-        if log is not None:
-            path = _first_local_source_path(log)
-            result.append((path.name if path is not None else f'{stream}.log', dict(log)))
-    return result
-
-
-def _first_local_source_path(artifact_or_set: dict[str, Any]) -> Path | None:
+def _first_local_source_path(artifact_or_set: Mapping[str, Any]) -> Path | None:
+    path = artifact_or_set.get('path')
+    if isinstance(path, str):
+        return Path(path)
     sources = artifact_or_set.get('sources')
     if isinstance(sources, list):
         for source in sources:
-            source_ref = SourceRef.from_dict(_mapping_value(source, 'source'), reject_userinfo=True)
-            if _type_id(source_ref.type) == SourceType.LOCAL.value:
-                return Path(source_ref.path)
+            source_ref = SourceRef.from_dict(dict(mapping_value(source, 'source')))
+            if source_ref.data.get('type') == 'local' and isinstance(source_ref.data.get('path'), str):
+                return Path(source_ref.data['path'])
     source = artifact_or_set.get('source')
-    if isinstance(source, dict):
-        source_ref = SourceRef.from_dict(source, reject_userinfo=True)
-        if _type_id(source_ref.type) == SourceType.LOCAL.value:
-            return Path(source_ref.path)
+    if isinstance(source, Mapping):
+        source_ref = SourceRef.from_dict(dict(source))
+        if source_ref.data.get('type') == 'local' and isinstance(source_ref.data.get('path'), str):
+            return Path(source_ref.data['path'])
     return None
 
 
 def _published_artifact_from_write(ref: PublishedRef, data: bytes) -> ArtifactRef:
-    _validate_published_source(ref.source)
+    _validate_published_ref(ref)
     return ArtifactRef(sha256=hashlib.sha256(data).hexdigest(), sources=[ref.source])
 
 
-def _required_published_ref(
-    refs: list[PublishedRef],
-    files: list[PublishPlanFile],
-    relative_path: str,
-) -> PublishedRef:
+def _required_published_ref(refs: list[PublishedRef], files: list[PublishPlanFile], relative_path: str) -> PublishedRef:
     for ref, file in zip(refs, files, strict=True):
         if file.relative_path == relative_path:
             return ref
     raise PublishError(f'published service artifact was not written: {relative_path}')
 
 
-def _validate_published_source(source: SourceRef) -> None:
-    SourceRef.from_dict(source.to_dict())
+def _validate_published_ref(ref: PublishedRef) -> None:
+    SourceRef.from_dict(ref.source.to_dict())
 
 
 def _publish_lock_bytes(lock: PublishLock) -> bytes:
@@ -395,9 +348,9 @@ def _category_for_rule_set(rule_type: RuleSetType) -> str:
 
 def _deduplicate_plan_files(files: list[PublishPlanFile]) -> list[PublishPlanFile]:
     result: list[PublishPlanFile] = []
-    seen: set[tuple[str, str, str | None, str]] = set()
+    seen: set[tuple[str, str]] = set()
     for file in files:
-        key = (_type_id(file.target.type), file.target.path, file.target.location, file.relative_path)
+        key = (sha256_dict(file.target.to_dict()), file.relative_path)
         if key in seen:
             continue
         seen.add(key)
@@ -407,25 +360,20 @@ def _deduplicate_plan_files(files: list[PublishPlanFile]) -> list[PublishPlanFil
 
 def _unique_targets(targets: list[TargetRef]) -> list[TargetRef]:
     result: list[TargetRef] = []
-    seen: set[tuple[str, str, str | None]] = set()
+    seen: set[str] = set()
     for target in targets:
-        key = (_type_id(target.type), target.path, target.location)
+        key = sha256_dict(target.to_dict())
         if key not in seen:
             seen.add(key)
             result.append(target)
     return result
 
 
-def _stable_sha256(data: Any) -> str:
-    payload = json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')
-    return hashlib.sha256(payload).hexdigest()
-
-
 def _safe_join(root: Path, relative_path: str) -> Path:
     normalized = _normalize_relative_path(relative_path, field='work path')
     result = root.joinpath(*PurePosixPath(normalized).parts)
     try:
-        result.resolve(strict=False).relative_to(root.resolve())
+        result.resolve(strict=False).relative_to(root.resolve(strict=False))
     except ValueError as err:
         raise PublishError(f'work path escapes work dir: {relative_path}') from err
     return result
@@ -450,41 +398,3 @@ def _normalize_relative_path(value: str, *, field: str) -> str:
 
 def _has_windows_drive(value: str) -> bool:
     return len(value) >= 2 and value[1] == ':' and value[0].isalpha()
-
-
-def _type_id(value: SourceType | str) -> str:
-    if isinstance(value, SourceType):
-        return value.value
-    return value
-
-
-def _required_mapping(data: dict[str, Any], key: str) -> dict[str, Any]:
-    if key not in data or not isinstance(data[key], dict):
-        raise PublishError(f'missing required object: {key}')
-    return data[key]
-
-
-def _optional_mapping(data: dict[str, Any], key: str) -> dict[str, Any] | None:
-    if key not in data:
-        return None
-    return _mapping_value(data[key], key)
-
-
-def _mapping_value(value: Any, field: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise PublishError(f'{field} must be an object')
-    return value
-
-
-def _optional_list(data: dict[str, Any], key: str) -> list[Any]:
-    if key not in data:
-        return []
-    if not isinstance(data[key], list):
-        raise PublishError(f'{key} must be a list')
-    return data[key]
-
-
-def _required_str(data: dict[str, Any], key: str) -> str:
-    if key not in data or not isinstance(data[key], str):
-        raise PublishError(f'missing required string: {key}')
-    return data[key]

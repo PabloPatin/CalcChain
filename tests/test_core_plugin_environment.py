@@ -1,4 +1,4 @@
-﻿import json
+import json
 import subprocess
 import tempfile
 import unittest
@@ -23,7 +23,7 @@ from calcchain_plugin_system.environment_lock import (
     read_plugin_env_lock,
     write_plugin_env_lock,
 )
-from calcchain_capabilities.errors import PluginDependencyError
+from calcchain_plugin_system.errors import PluginDependencyError
 from calcchain_plugin_system.metadata import PluginDependencies, PluginMetadata, PluginPackage
 
 

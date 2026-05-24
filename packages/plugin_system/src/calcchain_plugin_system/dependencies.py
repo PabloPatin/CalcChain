@@ -8,7 +8,7 @@ from pathlib import Path, PurePosixPath
 from typing import Mapping
 
 from calcchain_plugin_system.activation_plan import PluginActivationPlan
-from calcchain_capabilities.errors import PluginDependencyError
+from calcchain_plugin_system.errors import PluginDependencyError
 from calcchain_plugin_system.metadata import PluginPackage
 
 

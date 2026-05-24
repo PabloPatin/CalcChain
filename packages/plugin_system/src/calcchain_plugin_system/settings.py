@@ -6,7 +6,7 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import Mapping
 
-from calcchain_capabilities.errors import PluginError
+from calcchain_plugin_system.errors import PluginError
 
 
 @dataclass(frozen=True)

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import json
@@ -12,10 +12,10 @@ from calcchain_core.config import read_publish, write_manifest
 from calcchain_core.common.errors import ConfigFormatError, PublishError
 from calcchain_core.common.hash import sha256_file
 from calcchain_core.models import Manifest, PublishConfig, RuleSetType, RulesFile, SourceType, TargetRef
-from calcchain_capabilities import AuthCredentials, AuthField, AuthRequirement
-from calcchain_capabilities import PublishedRef as RuntimePublishedRef
-from calcchain_capabilities import PluginRuntimeSet
-from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
+from calcchain_plugin_system import AuthCredentials, AuthField, AuthRequirement
+from calcchain_plugin_system import PublishedRef as RuntimePublishedRef
+from calcchain_plugin_system import PluginRuntimeSet
+from calcchain_plugin_system.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.publish.publish import build_publish_plan, create_publish_lock, execute_publish_plan
 from calcchain_core.restore.restore import RestoreRequest, restore_from_manifest
 from calcchain_core.io.sources import SourceRegistry
@@ -382,7 +382,7 @@ class TestCorePublish(unittest.TestCase):
 
         adapter = PluginTargetAdapter()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.publisher',),
+            active_owner_ids=('plugin.publisher',),
             environment=object(),
             capabilities={
                 CapabilityKey('target', 'artifact-store'): CapabilityRecord(
@@ -417,7 +417,7 @@ class TestCorePublish(unittest.TestCase):
     def test_target_registry_from_runtime_does_not_override_builtin_local(self):
         adapter = object()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.publisher',),
+            active_owner_ids=('plugin.publisher',),
             environment=object(),
             capabilities={
                 CapabilityKey('target', 'local'): CapabilityRecord(
@@ -471,7 +471,7 @@ class TestCorePublish(unittest.TestCase):
             adapter = PluginTargetAdapter()
             registry = TargetRegistry.from_runtime(
                 PluginRuntimeSet(
-                    active_plugin_ids=('plugin.publisher',),
+                    active_owner_ids=('plugin.publisher',),
                     environment=object(),
                     capabilities={
                         CapabilityKey('target', 'artifact-store'): CapabilityRecord(
@@ -584,7 +584,7 @@ class TestCorePublish(unittest.TestCase):
 
         registry = TargetRegistry.from_runtime(
             PluginRuntimeSet(
-                active_plugin_ids=('plugin.publisher',),
+                active_owner_ids=('plugin.publisher',),
                 environment=object(),
                 capabilities={
                     CapabilityKey('target', 'artifact-store'): CapabilityRecord(
@@ -647,7 +647,7 @@ class TestCorePublish(unittest.TestCase):
             with self.subTest(operation=operation):
                 registry = TargetRegistry.from_runtime(
                     PluginRuntimeSet(
-                        active_plugin_ids=('plugin.publisher',),
+                        active_owner_ids=('plugin.publisher',),
                         environment=object(),
                         capabilities={
                             CapabilityKey('target', 'artifact-store'): CapabilityRecord(
@@ -721,7 +721,7 @@ class TestCorePublish(unittest.TestCase):
                 )
 
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.secure',),
+            active_owner_ids=('plugin.secure',),
             environment=object(),
             capabilities={
                 CapabilityKey('target', 'secure-target'): CapabilityRecord(
@@ -785,7 +785,7 @@ class TestCorePublish(unittest.TestCase):
                 )
 
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.secure',),
+            active_owner_ids=('plugin.secure',),
             environment=object(),
             capabilities={
                 CapabilityKey('target', 'secure-target'): CapabilityRecord(
@@ -855,7 +855,7 @@ class TestCorePublish(unittest.TestCase):
 
         provider = AuthProvider()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.secure',),
+            active_owner_ids=('plugin.secure',),
             environment=object(),
             capabilities={
                 CapabilityKey('target', 'secure-target'): CapabilityRecord(
@@ -982,7 +982,7 @@ def local_lock(root: Path, *, targets=None):
 
 def _svn_target_registry(adapter, *, auth=None) -> TargetRegistry:
     runtime = PluginRuntimeSet(
-        active_plugin_ids=('calcchain.svn',),
+        active_owner_ids=('calcchain.svn',),
         environment=object(),
         capabilities={
             CapabilityKey('target', 'svn'): CapabilityRecord(

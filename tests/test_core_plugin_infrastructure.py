@@ -1,4 +1,4 @@
-﻿import inspect
+import inspect
 import io
 import json
 import sys
@@ -12,9 +12,9 @@ import calcchain_core
 import calcchain_plugin_system.bootstrap as bootstrap_module
 import calcchain_plugin_system as plugin_infrastructure
 from calcchain_core.api import CalculationCore
-from calcchain_capabilities import CapabilityKey
-from calcchain_capabilities import PluginRuntimeSet
-from calcchain_capabilities.registrars import CapabilityRecord
+from calcchain_plugin_system import CapabilityKey
+from calcchain_plugin_system import PluginRuntimeSet
+from calcchain_plugin_system.registrars import CapabilityRecord
 from calcchain_plugin_system import (
     PluginActivationError,
     PluginActivationPlanner,
@@ -73,7 +73,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
             )
             core = CalculationCore(root / 'job', plugin_runtime=runtime_set)
 
-        self.assertEqual(runtime_set.active_plugin_ids, ('plugin.demo',))
+        self.assertEqual(runtime_set.active_owner_ids, ('plugin.demo',))
         self.assertEqual(
             sorted(key.qualified_id for key in runtime_set.capabilities),
             ['report:summary', 'source:demo'],
@@ -90,7 +90,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
         activation_plan = type('ActivationPlan', (), {'has_errors': False, 'diagnostics': ()})()
         dependency_plan = object()
         environment = object()
-        runtime_set = PluginRuntimeSet(active_plugin_ids=('plugin.demo',), environment=environment, capabilities={})
+        runtime_set = PluginRuntimeSet(active_owner_ids=('plugin.demo',), environment=environment, capabilities={})
 
         class FakeDiscovery:
             def discover(self, roots):
@@ -206,7 +206,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
     def test_demo_main_uses_explicit_bootstrap_without_network_operations(self):
         import examples.plugin_system.plugin_system_demo as demo
 
-        runtime_set = PluginRuntimeSet(active_plugin_ids=('plugin.demo',), environment=object(), capabilities={})
+        runtime_set = PluginRuntimeSet(active_owner_ids=('plugin.demo',), environment=object(), capabilities={})
 
         with patch.object(demo, 'activate_plugins', return_value=runtime_set) as activate:
             output = io.StringIO()
@@ -233,7 +233,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
             self.assertFalse(plan.has_errors)
             runtime_set = PluginManager().activate(plan, environment)
 
-            self.assertEqual(runtime_set.active_plugin_ids, ('plugin.demo',))
+            self.assertEqual(runtime_set.active_owner_ids, ('plugin.demo',))
             self.assertEqual(
                 sorted(key.qualified_id for key in runtime_set.capabilities),
                 ['report:summary', 'source:demo'],
@@ -262,7 +262,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
     def test_calculation_core_builds_registries_from_supplied_runtime_only(self):
         auth_service = object()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.demo',),
+            active_owner_ids=('plugin.demo',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'demo-source'): CapabilityRecord(
@@ -292,7 +292,7 @@ class TestCorePluginInfrastructure(unittest.TestCase):
 
     def test_calculation_core_injected_registries_override_plugin_runtime_factories(self):
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.demo',),
+            active_owner_ids=('plugin.demo',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'demo-source'): CapabilityRecord(

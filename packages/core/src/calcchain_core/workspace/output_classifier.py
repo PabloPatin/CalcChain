@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 import re
 
-from calcchain_core.build.builder import BuildResult
-from calcchain_core.models import RuleSetType, RulesFile
-from calcchain_core.workspace.snapshot import Snapshot, SnapshotDiff, SnapshotEntry, diff_snapshots
+from ..common.errors import RulesError
+from ..rules import RuleSetType, RulesFile
+from .snapshot import Snapshot, SnapshotDiff, diff_snapshots
 
 
 @dataclass(frozen=True)
@@ -32,7 +32,7 @@ class FileGroups:
 
 
 def classify_files(
-    build_result: BuildResult,
+    build_result,
     pre_run_snapshot: Snapshot,
     post_run_snapshot: Snapshot,
     rules: RulesFile | None,
@@ -80,14 +80,17 @@ def _classify_changed_path(path: str, rules: RulesFile | None) -> str | None:
 
 
 def _matches_any_rule_set(path: str, rules: RulesFile, rule_type: RuleSetType) -> bool:
-    return any(
-        rule_set.type is rule_type and any(re.fullmatch(rule.source, path) for rule in rule_set.rules)
-        for rule_set in rules.rule_sets.values()
-    )
+    try:
+        return any(
+            rule_set.type == rule_type and any(re.fullmatch(rule.source, path) for rule in rule_set.rules)
+            for rule_set in rules.rule_sets.values()
+        )
+    except re.error as err:
+        raise RulesError(f'invalid output classification regex: {err}') from err
 
 
 def _has_rule_type(rules: RulesFile | None, rule_type: RuleSetType) -> bool:
-    return rules is not None and any(rule_set.type is rule_type for rule_set in rules.rule_sets.values())
+    return rules is not None and any(rule_set.type == rule_type for rule_set in rules.rule_sets.values())
 
 
 def _work_paths_from_map(entries) -> list[str]:

@@ -3,8 +3,7 @@ import tempfile
 from typing import Any, Mapping
 from urllib.parse import urlsplit
 
-from calcchain_capabilities import AuthField, AuthRequirement, PluginContext
-from calcchain_capabilities import PublishedRef
+from calcchain_plugin_system import PluginContext
 from svn_client.client import SvnClient
 
 PLUGIN_ID = 'calcchain.svn'
@@ -70,8 +69,8 @@ class SvnSourceAdapter:
             return self._client_factory(ref['location'])
         return self._client_factory(
             ref['location'],
-            username=credentials.values.get('username'),
-            password=credentials.values.get('password'),
+            username=credentials.get('username'),
+            password=credentials.get('password'),
         )
 
 
@@ -103,7 +102,7 @@ class SvnTargetAdapter:
             raise RuntimeError(_sanitize_svn_error(f'svn mkdir failed: {err}', ref)) from err
         return dict(ref)
 
-    def write_file(self, ref: Mapping[str, Any], relative_path: str, data: bytes, context) -> PublishedRef:
+    def write_file(self, ref: Mapping[str, Any], relative_path: str, data: bytes, context) -> Mapping[str, Any]:
         self.validate_lock_ref(ref, context)
         safe_path = _normalize_relative_path(relative_path, field='svn target file')
         target_path = _join_ref_path(ref['path'], safe_path)
@@ -117,15 +116,15 @@ class SvnTargetAdapter:
                 tmp_path.unlink(missing_ok=True)
         except Exception as err:
             raise RuntimeError(_sanitize_svn_error(f'svn import failed: {err}', ref)) from err
-        return PublishedRef(
-            ref={
+        return {
+            'source': {
                 'type': 'svn',
                 'location': ref['location'],
                 'path': target_path,
                 'revision': ref['revision'],
-                'plugin': {'id': PLUGIN_ID, 'version': PLUGIN_VERSION},
             },
-        )
+            'relative_path': safe_path,
+        }
 
     def is_versionable(self, ref: Mapping[str, Any], context) -> bool:
         self.validate_lock_ref(ref, context)
@@ -137,8 +136,8 @@ class SvnTargetAdapter:
             return self._client_factory(ref['location'])
         return self._client_factory(
             ref['location'],
-            username=credentials.values.get('username'),
-            password=credentials.values.get('password'),
+            username=credentials.get('username'),
+            password=credentials.get('password'),
         )
 
 
@@ -152,21 +151,16 @@ class SvnPlugin:
 
 
 def _credentials_for(ref: Mapping[str, Any], context, *, kind: str):
-    auth_config = _auth_config(ref)
-    if not auth_config:
+    credentials = getattr(context, 'credentials', None)
+    if credentials is None:
         return None
-    if context.auth is None:
-        raise RuntimeError('auth service is not configured')
-    if not isinstance(auth_config, Mapping):
-        raise RuntimeError('svn auth config must be an object')
-    requirement = AuthRequirement(
-        scheme='username_password',
-        scope={f'{kind}_type': 'svn', 'location': ref['location']},
-        fields=(AuthField('username', False), AuthField('password', True)),
-        persistence=auth_config.get('persistence', 'forbidden'),
-        optional=bool(auth_config.get('optional', False)),
-    )
-    return context.auth.get_credentials(requirement)
+    public = getattr(credentials, 'public', {})
+    secrets = getattr(credentials, 'secrets', {})
+    username = public.get('username') or secrets.get('username')
+    password = secrets.get('password') or public.get('password')
+    if username is None and password is None:
+        return None
+    return {'username': username, 'password': password}
 
 
 def _validate_svn_ref(ref: Mapping[str, Any], *, field: str, require_concrete_revision: bool) -> None:
@@ -181,7 +175,6 @@ def _validate_svn_ref(ref: Mapping[str, Any], *, field: str, require_concrete_re
     if not isinstance(path, str) or not path:
         raise RuntimeError(f'svn {field} requires path')
     _normalize_relative_path(path, field=f'svn {field} path')
-    _auth_config(ref)
     revision = ref.get('revision')
     if require_concrete_revision:
         if isinstance(revision, int) and revision >= 0:
@@ -205,32 +198,7 @@ def _safe_lock_ref(ref: Mapping[str, Any], *, revision: int | str) -> dict[str, 
         'path': ref['path'],
         'revision': revision,
     }
-    auth_config = _auth_config(ref)
-    if auth_config is not None:
-        lock_ref['auth'] = auth_config
     return lock_ref
-
-
-def _auth_config(ref: Mapping[str, Any]) -> dict[str, Any] | None:
-    auth_config = ref.get('auth')
-    if not auth_config:
-        return None
-    if not isinstance(auth_config, Mapping):
-        raise RuntimeError('svn auth config must be an object')
-    allowed_keys = {'scheme', 'persistence', 'optional'}
-    unexpected = sorted(str(key) for key in auth_config if key not in allowed_keys)
-    if unexpected:
-        raise RuntimeError(f'svn auth config contains unsupported fields: {", ".join(unexpected)}')
-    scheme = auth_config.get('scheme', 'username_password')
-    if scheme != 'username_password':
-        raise RuntimeError('svn auth scheme must be username_password')
-    persistence = auth_config.get('persistence', 'forbidden')
-    if persistence not in {'forbidden', 'allowed'}:
-        raise RuntimeError('svn auth persistence must be forbidden or allowed')
-    optional = auth_config.get('optional', False)
-    if not isinstance(optional, bool):
-        raise RuntimeError('svn auth optional must be boolean')
-    return {'scheme': scheme, 'persistence': persistence, 'optional': optional}
 
 
 def _default_client_factory(location: str, *, username: str | None = None, password: str | None = None) -> SvnClient:

@@ -9,9 +9,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from calcchain_core.api import CalculationCore  # noqa: E402
+from calcchain_core import CalculationCore  # noqa: E402
 from calcchain_plugin_system import activate_plugins  # noqa: E402
-from calcchain_capabilities.errors import PluginError  # noqa: E402
+from calcchain_plugin_system.errors import PluginError  # noqa: E402
 
 
 PLUGIN_ROOTS = (REPO_ROOT / 'plugins',)
@@ -34,14 +34,14 @@ def main() -> int:
         print_plugin_error(exc)
         return 2
 
-    print(f'active plugin ids: {runtime_set.active_plugin_ids}')
+    print(f'active plugin ids: {runtime_set.active_owner_ids}')
     print('runtime capabilities:')
     for key, record in sorted(runtime_set.capabilities.items(), key=lambda item: item[0].qualified_id):
         print(f'  - {key.qualified_id} owner={record.owner}')
 
     with tempfile.TemporaryDirectory() as tmp:
         job_dir = Path(tmp) / 'job'
-        core = CalculationCore(job_dir, plugin_runtime=runtime_set)
+        core = CalculationCore(job_dir, runtime=runtime_set)
         print()
         print('CalculationCore constructed with explicit PluginRuntimeSet')
         print(f'source types: {sorted(core.source_registry._entries)}')

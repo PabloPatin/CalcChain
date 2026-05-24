@@ -1,4 +1,4 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 import json
 import tempfile
 import unittest
@@ -8,9 +8,9 @@ from calcchain_core.io.auth import AuthService
 from calcchain_core.api import CalculationCore
 from calcchain_core.common.errors import SourceError
 from calcchain_core.models import SourceRef
-from calcchain_capabilities import AuthCredentials, AuthField, AuthRequirement
-from calcchain_capabilities import PluginRuntimeSet
-from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
+from calcchain_plugin_system import AuthCredentials, AuthField, AuthRequirement
+from calcchain_plugin_system import PluginRuntimeSet
+from calcchain_plugin_system.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.io.sources import LocalSourceAdapter, SourceRegistry
 from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 
@@ -54,7 +54,7 @@ class StaticAuthService:
 
 def _svn_source_registry(adapter, *, auth=None) -> SourceRegistry:
     runtime = PluginRuntimeSet(
-        active_plugin_ids=('calcchain.svn',),
+        active_owner_ids=('calcchain.svn',),
         environment=object(),
         capabilities={
             CapabilityKey('source', 'svn'): CapabilityRecord(
@@ -297,7 +297,7 @@ class TestCoreSources(unittest.TestCase):
 
         adapter = PluginSourceAdapter()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.demo',),
+            active_owner_ids=('plugin.demo',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'demo'): CapabilityRecord(
@@ -340,7 +340,7 @@ class TestCoreSources(unittest.TestCase):
     def test_source_registry_from_runtime_does_not_override_builtin_local(self):
         adapter = object()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.demo',),
+            active_owner_ids=('plugin.demo',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'local'): CapabilityRecord(
@@ -394,7 +394,7 @@ class TestCoreSources(unittest.TestCase):
                 return True
 
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.secure',),
+            active_owner_ids=('plugin.secure',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'secure-source'): CapabilityRecord(
@@ -461,7 +461,7 @@ class TestCoreSources(unittest.TestCase):
 
         provider = AuthProvider()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.secure',),
+            active_owner_ids=('plugin.secure',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'secure-source'): CapabilityRecord(

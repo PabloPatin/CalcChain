@@ -158,7 +158,7 @@ packages/core/src/calcchain_core/
 - build/run/publish/restore;
 - manifest/snapshot/layout;
 - правила mapping;
-- интеграция runtime capabilities через `calcchain_capabilities`.
+- интеграция runtime capabilities через `calcchain_core.capabilities`.
 
 `calcchain_core` не должен зависеть от `calcchain_plugin_system`.
 

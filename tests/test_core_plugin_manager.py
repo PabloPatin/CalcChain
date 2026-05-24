@@ -1,17 +1,17 @@
-﻿import sys
+import sys
 import tempfile
 import unittest
 from types import ModuleType
 from pathlib import Path
 from uuid import uuid4
 
-from calcchain_capabilities import CapabilityKey, create_plugin_context
+from calcchain_plugin_system import CapabilityKey, create_plugin_context
 from calcchain_plugin_system.activation_plan import (
     PlannedCapabilityDeclaration,
     PluginActivationPlan,
 )
 from calcchain_plugin_system.environment import PluginEnvironment
-from calcchain_capabilities.errors import (
+from calcchain_plugin_system.errors import (
     PluginActivationError,
     PluginCapabilityConflictError,
     PluginDependencyError,
@@ -60,7 +60,7 @@ class TestCorePluginManager(unittest.TestCase):
             runtime_set = manager.activate(self._activation_plan(package), environment)
 
             self.assertIs(manager.active_set, runtime_set)
-            self.assertEqual(runtime_set.active_plugin_ids, ('plugin.demo',))
+            self.assertEqual(runtime_set.active_owner_ids, ('plugin.demo',))
             self.assertEqual(
                 sorted(key.qualified_id for key in runtime_set.capabilities),
                 ['report:summary', 'source:git'],

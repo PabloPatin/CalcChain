@@ -1,9 +1,9 @@
-﻿from dataclasses import fields
+from dataclasses import fields
 import inspect
 import unittest
 
 from calcchain_core.io.auth import AuthError, AuthService
-from calcchain_capabilities import (
+from calcchain_plugin_system import (
     PLUGIN_API_VERSION,
     PLUGIN_DIAGNOSTIC_PHASES,
     AuthAdapter,
@@ -39,7 +39,7 @@ from calcchain_capabilities import (
     create_plugin_context,
     redact_secrets,
 )
-from calcchain_capabilities import PluginRuntimeSet
+from calcchain_plugin_system import PluginRuntimeSet
 
 
 class DummyPlugin:
@@ -149,7 +149,7 @@ class TestCorePluginApi(unittest.TestCase):
 
         provider = AuthProvider()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.auth',),
+            active_owner_ids=('plugin.auth',),
             environment=object(),
             capabilities={
                 CapabilityKey('auth', 'pat'): CapabilityRecord(
@@ -204,7 +204,7 @@ class TestCorePluginApi(unittest.TestCase):
                 raise AssertionError('must not be called')
 
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.auth', 'plugin.failing'),
+            active_owner_ids=('plugin.auth', 'plugin.failing'),
             environment=object(),
             capabilities={
                 CapabilityKey('auth', 'token'): CapabilityRecord(

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import tempfile
@@ -10,8 +10,8 @@ from calcchain_core.common.errors import RestoreError
 from calcchain_core.common.hash import sha256_file, tree_sha256
 from calcchain_core.workspace.layout import JobLayout
 from calcchain_core.models import Manifest
-from calcchain_capabilities import PluginRuntimeSet
-from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
+from calcchain_plugin_system import PluginRuntimeSet
+from calcchain_plugin_system.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.restore.restore import RestoreRequest, restore_from_manifest
 from calcchain_core.io.sources import SourceRegistry
 
@@ -129,7 +129,7 @@ class TestCoreRestore(unittest.TestCase):
             manifest_path = root / 'manifest.json'
             write_manifest(manifest, manifest_path)
             runtime = PluginRuntimeSet(
-                active_plugin_ids=('plugin.restore',),
+                active_owner_ids=('plugin.restore',),
                 environment=object(),
                 capabilities={
                     CapabilityKey('source', 'plugin-store'): CapabilityRecord(

@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 import platform
 
-from calcchain_capabilities import PLUGIN_API_VERSION
-from calcchain_capabilities.diagnostics import PluginDiagnostic
-from calcchain_capabilities.errors import PluginError
+from calcchain_plugin_system.api import PLUGIN_API_VERSION
+from calcchain_plugin_system.diagnostics import PluginDiagnostic
+from calcchain_plugin_system.errors import PluginError
 from calcchain_plugin_system.metadata import DeclaredCapability, PluginPackage, PluginValidator
 from calcchain_plugin_system.repository import PluginRepository
 from calcchain_plugin_system.settings import PluginSettings

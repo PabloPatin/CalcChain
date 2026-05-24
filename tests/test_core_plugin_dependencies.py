@@ -1,4 +1,4 @@
-﻿import json
+import json
 import tempfile
 import unittest
 from dataclasses import replace
@@ -19,7 +19,7 @@ from calcchain_plugin_system.environment_lock import (
     verify_plugin_env_lock,
     write_plugin_env_lock,
 )
-from calcchain_capabilities.errors import PluginDependencyError
+from calcchain_plugin_system.errors import PluginDependencyError
 from calcchain_plugin_system.metadata import PluginDependencies, PluginMetadata, PluginPackage
 
 

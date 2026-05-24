@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import tempfile
@@ -7,9 +7,9 @@ from pathlib import Path
 
 from calcchain_core.api import CalculationCore
 from calcchain_core.common.errors import ReportError
-from calcchain_capabilities import ReportDescriptor, ReportRequest, ReportResult
-from calcchain_capabilities import PluginRuntimeSet
-from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
+from calcchain_plugin_system import ReportDescriptor, ReportRequest, ReportResult
+from calcchain_plugin_system import PluginRuntimeSet
+from calcchain_plugin_system.registrars import CapabilityKey, CapabilityRecord
 
 
 class FakeReportAdapter:
@@ -158,7 +158,7 @@ class TestCoreReports(unittest.TestCase):
 
 def _runtime(adapter) -> PluginRuntimeSet:
     return PluginRuntimeSet(
-        active_plugin_ids=('plugin.reports',),
+        active_owner_ids=('plugin.reports',),
         environment=object(),
         capabilities={
             CapabilityKey('report', 'summary'): CapabilityRecord(

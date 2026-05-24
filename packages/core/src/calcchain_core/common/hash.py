@@ -1,6 +1,15 @@
 from collections.abc import Iterable
 import hashlib
+import json
 from pathlib import Path
+from typing import Any
+
+from ..utils.files import normalize_path
+
+
+def sha256_dict(data: dict[str, Any]) -> str:
+    payload = json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 
 def sha256_file(path: Path) -> str:
@@ -14,7 +23,7 @@ def sha256_file(path: Path) -> str:
 def tree_sha256(entries: Iterable[tuple[str, str]]) -> str:
     hasher = hashlib.sha256()
     normalized_entries = sorted(
-        (_normalize_work_path(work_path), file_hash.lower()) for work_path, file_hash in entries
+        (normalize_path(work_path), file_hash.lower()) for work_path, file_hash in entries
     )
     for work_path, file_hash in normalized_entries:
         hasher.update(work_path.encode('utf-8'))
@@ -22,7 +31,3 @@ def tree_sha256(entries: Iterable[tuple[str, str]]) -> str:
         hasher.update(file_hash.encode('ascii'))
         hasher.update(b'\n')
     return hasher.hexdigest()
-
-
-def _normalize_work_path(path: str) -> str:
-    return path.replace('\\', '/').strip('/')

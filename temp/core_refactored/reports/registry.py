@@ -20,8 +20,8 @@ from .types import (
 @dataclass(frozen=True)
 class RegisteredReportCapability:
     adapter: ReportAdapter
-    plugin_id: str | None = None
-    plugin_version: str | None = None
+    owner_id: str | None = None
+    owner_version: str | None = None
 
 
 class ReportRegistry:
@@ -42,8 +42,8 @@ class ReportRegistry:
             adapter = _validate_report_adapter(report_id, _record_adapter(record))
             entries[report_id] = RegisteredReportCapability(
                 adapter=adapter,
-                plugin_id=_record_owner_id(record),
-                plugin_version=_record_owner_version(record),
+                owner_id=_record_owner_id(record),
+                owner_version=_record_owner_version(record),
             )
         return cls(entries)
 
@@ -52,16 +52,16 @@ class ReportRegistry:
         report_id: str,
         adapter: ReportAdapter,
         *,
-        plugin_id: str | None = None,
-        plugin_version: str | None = None,
+        owner_id: str | None = None,
+        owner_version: str | None = None,
     ) -> None:
         _validate_report_id(report_id)
         if report_id in self._entries:
             raise ReportError(f"report id {report_id!r} is already registered")
         self._entries[report_id] = RegisteredReportCapability(
             adapter=_validate_report_adapter(report_id, adapter),
-            plugin_id=plugin_id,
-            plugin_version=plugin_version,
+            owner_id=owner_id,
+            owner_version=owner_version,
         )
 
     def list_reports(self) -> list[ReportDescriptor]:
@@ -73,7 +73,7 @@ class ReportRegistry:
         try:
             descriptor = adapter.describe(self._context(report_id, entry, manifest={}))
         except Exception as err:
-            raise ReportError(_sanitize_report_error(f'plugin report describe failed: {err}')) from err
+            raise ReportError(_sanitize_report_error(f'report capability describe failed: {err}')) from err
         if not isinstance(descriptor, ReportDescriptor):
             raise ReportError(f"report {report_id!r} describe must return ReportDescriptor")
         if descriptor.id != report_id:
@@ -87,7 +87,7 @@ class ReportRegistry:
         try:
             result = adapter.render(request, context)
         except Exception as err:
-            raise ReportError(_sanitize_report_error(f'plugin report render failed: {err}')) from err
+            raise ReportError(_sanitize_report_error(f'report capability render failed: {err}')) from err
         if not isinstance(result, ReportResult):
             raise ReportError(f"report {request.report_id!r} render must return ReportResult")
         if result.path is not None:
@@ -110,8 +110,8 @@ class ReportRegistry:
         manifest: Mapping[str, Any],
     ) -> ReportContext:
         owner = None
-        if entry.plugin_id is not None:
-            owner = ReportOwner(id=entry.plugin_id, version=entry.plugin_version)
+        if entry.owner_id is not None:
+            owner = ReportOwner(id=entry.owner_id, version=entry.owner_version)
         return ReportContext(owner=owner, capability_id=report_id, manifest=manifest)
 
 

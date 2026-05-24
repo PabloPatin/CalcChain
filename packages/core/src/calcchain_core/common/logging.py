@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-class Utf8LogWriter:
+class LogWriter:
     def __init__(self, path: Path):
         self.path = Path(path)
 
@@ -17,7 +17,7 @@ def decode_process_stream(data: bytes, encoding: str) -> str:
 
 
 def write_stdin_text(logs_dir: Path, text: str) -> Path:
-    return Utf8LogWriter(Path(logs_dir) / 'stdin.txt').write_text(text)
+    return LogWriter(Path(logs_dir) / 'stdin.txt').write_text(text)
 
 
 def write_process_stream(
@@ -32,4 +32,4 @@ def write_process_stream(
     for secret_value in secret_values or []:
         if secret_value:
             text = text.replace(secret_value, '[secret]')
-    return Utf8LogWriter(Path(logs_dir) / name).write_text(text)
+    return LogWriter(Path(logs_dir) / name).write_text(text)

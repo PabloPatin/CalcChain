@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Plugin discovery, dependency environments, and activation flow for CalcChain"
 requires-python = ">=3.11"
 dependencies = [
-  "calcchain-capabilities==0.1.0",
+  "calcchain-core==0.1.0",
   "packaging>=24.0",
 ]
 

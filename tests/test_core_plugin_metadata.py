@@ -1,11 +1,11 @@
-﻿import json
+import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from calcchain_plugin_system.discovery import PluginDiscovery
-from calcchain_capabilities.errors import PluginCompatibilityError, PluginMetadataError
+from calcchain_plugin_system.errors import PluginCompatibilityError, PluginMetadataError
 from calcchain_plugin_system.metadata import (
     PluginMetadataReader,
     PluginPackage,

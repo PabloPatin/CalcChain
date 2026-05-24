@@ -1,22 +1,23 @@
 ﻿from typing import Mapping
 
-from calcchain_capabilities import RuntimeCapabilities, create_plugin_context
+from calcchain_core.capabilities import RuntimeCapabilities
+from calcchain_plugin_system.api import create_plugin_context
 from calcchain_plugin_system.activation_plan import (
     PlannedCapabilityDeclaration,
     PluginActivationPlan,
 )
-from calcchain_capabilities.diagnostics import PluginDiagnostic
+from calcchain_plugin_system.diagnostics import PluginDiagnostic
 from calcchain_plugin_system.environment import PluginEnvironment
-from calcchain_capabilities.errors import PluginActivationError, PluginError
+from calcchain_plugin_system.errors import PluginActivationError, PluginError
 from calcchain_plugin_system.importer import PluginImporter
 from calcchain_plugin_system.metadata import PluginPackage
-from calcchain_capabilities.registrars import (
+from calcchain_plugin_system.registrars import (
     CapabilityKey,
     CapabilityRecord,
     CapabilityRegistry,
 )
 
-_ALLOWED_CAPABILITY_NAMESPACES = frozenset({'source', 'target', 'report', 'auth'})
+_ALLOWED_CAPABILITY_NAMESPACES = frozenset({'source', 'target', 'report', 'secrets'})
 
 
 class PluginManager:
@@ -67,7 +68,7 @@ class PluginManager:
         snapshot = draft_registry.snapshot()
         _validate_capability_snapshot(snapshot, plan)
         runtime_set = RuntimeCapabilities(
-            active_plugin_ids=plan.enabled_plugin_ids,
+            active_owner_ids=plan.enabled_plugin_ids,
             environment=environment,
             capabilities=snapshot,
             diagnostics=plan.diagnostics,
@@ -158,4 +159,4 @@ def _qualified_capabilities(capabilities: set[tuple[str, str]]) -> tuple[str, ..
     return tuple(f'{namespace}:{id}' for namespace, id in sorted(capabilities))
 
 
-__all__ = ['PluginManager', 'PluginRuntimeSet']
+__all__ = ['PluginManager']

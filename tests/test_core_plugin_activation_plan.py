@@ -1,10 +1,10 @@
-﻿import json
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from calcchain_plugin_system.activation_plan import PluginActivationPlanner
-from calcchain_capabilities.errors import PluginError
+from calcchain_plugin_system.errors import PluginError
 from calcchain_plugin_system.metadata import (
     DeclaredCapability,
     PluginDependencies,

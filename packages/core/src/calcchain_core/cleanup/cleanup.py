@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
 
-from calcchain_core.common.errors import CleanupError
-from calcchain_core.workspace.layout import JobLayout
+from ..common.errors import CleanupError
+from ..workspace.layout import JobLayout
 
 
 @dataclass(frozen=True)

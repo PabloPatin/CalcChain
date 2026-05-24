@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Mapping
 
 from calcchain_plugin_system.dependencies import PluginDependencyPlan, WheelRecord, compute_env_hash
-from calcchain_capabilities.errors import PluginDependencyError
+from calcchain_plugin_system.errors import PluginDependencyError
 
 PLUGIN_ENV_LOCK_NAME = 'plugin-env.lock.json'
 

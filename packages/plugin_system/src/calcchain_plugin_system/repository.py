@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from types import MappingProxyType
 from typing import Mapping
 
-from calcchain_capabilities.errors import PluginMetadataError
+from calcchain_plugin_system.errors import PluginMetadataError
 from calcchain_plugin_system.metadata import PluginPackage
 
 

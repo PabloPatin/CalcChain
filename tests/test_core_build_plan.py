@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import unittest
 
 from calcchain_core.build.plan import create_build_lock, validate_build_lock
@@ -14,8 +14,8 @@ from calcchain_core.models import (
     RulesFile,
     SourceRef,
 )
-from calcchain_capabilities import PluginRuntimeSet
-from calcchain_capabilities.registrars import CapabilityKey, CapabilityRecord
+from calcchain_plugin_system import PluginRuntimeSet
+from calcchain_plugin_system.registrars import CapabilityKey, CapabilityRecord
 from calcchain_core.io.sources import SourceRegistry
 from plugins.svn.calcchain_svn_plugin.plugin import SvnSourceAdapter as BundledSvnSourceAdapter
 
@@ -155,7 +155,7 @@ def _source_registry(**adapters):
 def _runtime_svn_registry(adapter):
     return SourceRegistry.from_runtime(
         PluginRuntimeSet(
-            active_plugin_ids=('calcchain.svn',),
+            active_owner_ids=('calcchain.svn',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'svn'): CapabilityRecord(
@@ -227,7 +227,7 @@ class TestCoreBuildPlan(unittest.TestCase):
 
         adapter = PluginSourceAdapter()
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.demo',),
+            active_owner_ids=('plugin.demo',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'demo-source'): CapabilityRecord(
@@ -293,7 +293,7 @@ class TestCoreBuildPlan(unittest.TestCase):
                 return True
 
         runtime = PluginRuntimeSet(
-            active_plugin_ids=('plugin.demo',),
+            active_owner_ids=('plugin.demo',),
             environment=object(),
             capabilities={
                 CapabilityKey('source', 'demo-source'): CapabilityRecord(

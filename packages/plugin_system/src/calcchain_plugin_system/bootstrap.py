@@ -8,8 +8,8 @@ from calcchain_plugin_system.activation_plan import PluginActivationPlanner
 from calcchain_plugin_system.dependencies import PluginDependencyPlanner
 from calcchain_plugin_system.discovery import PluginDiscovery
 from calcchain_plugin_system.environment import PipInstaller, PluginEnvironmentManager
-from calcchain_capabilities.errors import PluginActivationError, PluginDependencyError
-from calcchain_capabilities import PluginRuntimeSet
+from calcchain_plugin_system.errors import PluginActivationError, PluginDependencyError
+from calcchain_plugin_system.api import PluginRuntimeSet
 from calcchain_plugin_system.manager import PluginManager
 from calcchain_plugin_system.settings import PluginSettingsStore
 

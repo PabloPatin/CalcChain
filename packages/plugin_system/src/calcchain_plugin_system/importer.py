@@ -4,10 +4,10 @@ from pathlib import Path
 import sys
 from typing import Iterator, cast
 
-from calcchain_capabilities import CalcChainPlugin
+from calcchain_plugin_system.api import CalcChainPlugin
 from calcchain_plugin_system.environment import PluginEnvironment
 from calcchain_plugin_system.environment_lock import verify_plugin_env_lock
-from calcchain_capabilities.errors import (
+from calcchain_plugin_system.errors import (
     PluginActivationError,
     PluginDependencyError,
     PluginEntrypointError,

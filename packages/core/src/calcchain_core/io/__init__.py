@@ -1,40 +1,19 @@
-from calcchain_capabilities import AuthServiceProtocol, CapabilityOwner, CapabilityRecord, SourceAdapter
-from calcchain_core.io.auth import AuthCapability, AuthError, AuthService, CredentialPolicy, NoAuthService
-from calcchain_core.io.sources import (
-    LocalSourceAdapter,
-    SourceCapability,
-    SourceRegistry,
-    sanitize_source_error_message,
-)
-from calcchain_core.io.targets import (
-    LocalTargetAdapter,
-    PublishedRef,
-    RegisteredTargetCapability,
-    TargetAdapter,
-    TargetRegistry,
-    sanitize_target_error_message,
-    validate_target_ref,
-)
+from .ref import ExternalRef, RefCredentials
+from .source import LOCAL_SOURCE_TYPE, LocalSourceAdapter, SourceCapability, SourceRef, SourceRegistry
+from .target import LOCAL_TARGET_TYPE, LocalTargetAdapter, PublishedRef, TargetCapability, TargetRef, TargetRegistry
 
 __all__ = [
-    'AuthCapability',
-    'AuthError',
-    'AuthService',
-    'AuthServiceProtocol',
-    'CapabilityOwner',
-    'CapabilityRecord',
-    'CredentialPolicy',
+    'ExternalRef',
+    'LOCAL_SOURCE_TYPE',
+    'LOCAL_TARGET_TYPE',
     'LocalSourceAdapter',
     'LocalTargetAdapter',
-    'NoAuthService',
     'PublishedRef',
-    'RegisteredTargetCapability',
-    'SourceAdapter',
+    'RefCredentials',
     'SourceCapability',
+    'SourceRef',
     'SourceRegistry',
-    'TargetAdapter',
+    'TargetCapability',
+    'TargetRef',
     'TargetRegistry',
-    'sanitize_source_error_message',
-    'sanitize_target_error_message',
-    'validate_target_ref',
 ]

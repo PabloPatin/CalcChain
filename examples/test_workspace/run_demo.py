@@ -13,8 +13,8 @@ REPO_ROOT = WORKSPACE.parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from calcchain_core.api import CalculationCore  # noqa: E402
-from calcchain_core.models import RuleSetType  # noqa: E402
+from calcchain_core import CalculationCore  # noqa: E402
+from calcchain_core.rules import RuleSetType  # noqa: E402
 from calcchain_core.restore.restore import RestoreRequest  # noqa: E402
 
 

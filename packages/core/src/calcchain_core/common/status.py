@@ -1,11 +1,28 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import StrEnum
 import json
 from pathlib import Path
 from typing import Any
 
-from calcchain_core.models import JobStatus, RunStatus
 
+class JobStatus(StrEnum):
+    BUILT = 'Built'
+    SUCCEEDED = 'Succeeded'
+    FAILED = 'Failed'
+    TIMEOUT = 'Timeout'
+    CANCELLED = 'Cancelled'
+    KILLED = 'Killed'
+    PUBLISHED = 'Published'
+
+
+class RunStatus(StrEnum):
+    SUCCEEDED = 'Succeeded'
+    FAILED = 'Failed'
+    TIMEOUT = 'Timeout'
+    CANCELLED = 'Cancelled'
+    KILLED = 'Killed'
+    
 
 @dataclass(frozen=True)
 class RuntimeStatus:
