@@ -21,6 +21,8 @@ logs, events, or artifacts.
    accidentally and keep only `credential_ref`.
 6. Runtime backend code resolves a single secret field through
    `SecretService.resolve_value(session_key, secret_ref, field_name)`.
+7. Core integration uses `BackendSecretsAdapter` registered as the
+   `secrets:backend-session` capability.
 
 ## Stored Value Example
 
@@ -50,14 +52,21 @@ password = "secret:graph:..."
 ```
 
 Then core asks `SecretsResolver` for key `secret:graph:...` with context name
-`password`. The backend secrets adapter should call:
+`password`. The backend secrets adapter calls:
 
 ```python
 secret_service.resolve_value(session_key, secret_ref, field_name)
+```
+
+The runtime helper is:
+
+```python
+runtime = runtime_with_backend_secrets(secret_service, session_key)
 ```
 
 ## Current Limits
 
 - Secrets are session-local in memory.
 - Persistent keyring storage is not connected yet.
-- `RunService` does not yet pass secrets into real `CalculationCore` execution.
+- `RunService` stores the backend `session_key` for each run and can build a
+  runtime with backend secrets, but it still does not execute `CalculationCore`.

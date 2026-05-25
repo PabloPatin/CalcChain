@@ -10,6 +10,7 @@ from calcchain_backend.schemas.catalog import BlockDescriptor, ConnectionRule, P
 from calcchain_backend.schemas.common import Diagnostic, now_utc
 from calcchain_backend.schemas.graph import GraphCompileResponse, GraphDocument, GraphNode, GraphValidateResponse
 from calcchain_backend.services.catalog_service import CatalogService
+from calcchain_backend.services.core_compiler import CoreConfigCompiler
 from calcchain_backend.services.secret_service import secret_ref_for_graph_node
 
 
@@ -128,9 +129,16 @@ class GraphService:
         if not validation.valid:
             return GraphCompileResponse(valid=False, diagnostics=validation.errors, warnings=validation.warnings)
         safe_graph = self.sanitize_graph(graph)
+        core = CoreConfigCompiler(self._catalog_service.get_catalog()).compile(safe_graph, compile_options)
+        if not core.valid:
+            return GraphCompileResponse(
+                valid=False,
+                diagnostics=core.diagnostics,
+                warnings=[*validation.warnings, *core.warnings],
+            )
         compiled = {
             "schema_version": "1.0",
-            "kind": "calcchain.build_config",
+            "kind": "calcchain.graph_config",
             "name": safe_graph.name or "Untitled CalcChain run",
             "graph_digest": self._graph_digest(safe_graph),
             "compiled_at": now_utc().astimezone(timezone.utc).isoformat(),
@@ -140,7 +148,16 @@ class GraphService:
             "edges": [edge.model_dump(mode="json") for edge in safe_graph.edges],
             "execution_plan": self._execution_plan(safe_graph),
         }
-        return GraphCompileResponse(valid=True, build_config=compiled, diagnostics=[], warnings=validation.warnings)
+        return GraphCompileResponse(
+            valid=True,
+            build_config=core.build_config,
+            run_config=core.run_config,
+            publish_config=core.publish_config,
+            rules_config=core.rules_config,
+            graph_config=compiled,
+            diagnostics=[],
+            warnings=[*validation.warnings, *core.warnings],
+        )
 
     def sanitize_graph(self, graph: GraphDocument) -> GraphDocument:
         """Return graph copy without secret field values in node configs."""

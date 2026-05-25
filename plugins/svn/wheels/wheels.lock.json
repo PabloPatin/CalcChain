@@ -3,6 +3,10 @@
     {
       "file": "calcchain_svn-0.1.0-py3-none-any.whl",
       "sha256": "b8c8deb49f100c3b7aef0d19dc7c28e486babdd912ec8578daed96f6d75bd939"
+    },
+    {
+      "file": "svn_client-0.1.0-py3-none-any.whl",
+      "sha256": "4bdb14a49a971d33e567d1baf587d365008b7df745e8b350afe0c801322b17fc"
     }
   ]
 }

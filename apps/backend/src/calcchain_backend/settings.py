@@ -17,6 +17,15 @@ class BackendSettings:
     app_name: str = "CalcChain Backend"
     api_version: str = "v1"
     mode: str = "local"
+    host: str = "127.0.0.1"
+    port: int = 8765
+    pairing_ttl_seconds: int = 300
+    session_ttl_seconds: int = 12 * 60 * 60
+    max_pairing_attempts_per_minute: int = 5
+
+    @property
+    def auth_required(self) -> bool:
+        return self.mode == "lan"
 
     @property
     def state_dir(self) -> Path:
@@ -35,6 +44,12 @@ class BackendSettings:
         return self.state_dir / "runs"
 
 
-def create_settings(project_root: str | Path | None = None, *, mode: str = "local") -> BackendSettings:
+def create_settings(
+    project_root: str | Path | None = None,
+    *,
+    mode: str = "local",
+    host: str = "127.0.0.1",
+    port: int = 8765,
+) -> BackendSettings:
     root = Path(project_root).resolve() if project_root is not None else Path.cwd().resolve()
-    return BackendSettings(project_root=root, mode=mode)
+    return BackendSettings(project_root=root, mode=mode, host=host, port=port)

@@ -57,5 +57,9 @@ class GraphCompileRequest(ApiModel):
 class GraphCompileResponse(ApiModel):
     valid: bool
     build_config: dict[str, Any] | None = None
+    run_config: dict[str, Any] | None = None
+    publish_config: dict[str, Any] | None = None
+    rules_config: dict[str, Any] | None = None
+    graph_config: dict[str, Any] | None = None
     diagnostics: list[Diagnostic] = Field(default_factory=list)
     warnings: list[Diagnostic] = Field(default_factory=list)

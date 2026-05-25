@@ -11,7 +11,14 @@ RunStatus = Literal["queued", "running", "success", "failed", "cancelling", "can
 
 
 class RunCreateRequest(ApiModel):
+    valid: bool | None = None
     build_config: dict[str, Any]
+    run_config: dict[str, Any] | None = None
+    publish_config: dict[str, Any] | None = None
+    rules_config: dict[str, Any] | None = None
+    graph_config: dict[str, Any] | None = None
+    diagnostics: list[Any] = Field(default_factory=list)
+    warnings: list[Any] = Field(default_factory=list)
     run_options: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -27,6 +34,10 @@ class RunSummary(ApiModel):
 class RunDetails(RunSummary):
     progress: dict[str, Any] = Field(default_factory=dict)
     build_config: dict[str, Any] = Field(default_factory=dict)
+    run_config: dict[str, Any] | None = None
+    publish_config: dict[str, Any] | None = None
+    rules_config: dict[str, Any] | None = None
+    graph_config: dict[str, Any] | None = None
     error: str | None = None
 
 

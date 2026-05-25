@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from calcchain_backend.dependencies import get_secret_service
+from calcchain_backend.dependencies import get_secret_service, get_session_key
 from calcchain_backend.schemas.secrets import (
     ClearSessionSecretsResponse,
     DeleteSessionSecretResponse,
@@ -12,17 +12,9 @@ from calcchain_backend.schemas.secrets import (
     StoreSessionSecretRequest,
     StoreSessionSecretResponse,
 )
-from calcchain_backend.services.secret_service import SecretService, session_key_from_token_or_header
+from calcchain_backend.services.secret_service import SecretService
 
 router = APIRouter()
-
-
-def get_session_key(request: Request) -> str:
-    authorization = request.headers.get("authorization")
-    if authorization and authorization.lower().startswith("bearer "):
-        return session_key_from_token_or_header(authorization[7:].strip())
-    explicit_session = request.headers.get("x-calcchain-session-id")
-    return session_key_from_token_or_header(explicit_session)
 
 
 @router.post("/requirements", response_model=SecretRequirementsResponse)

@@ -17,7 +17,7 @@ def get_server_info(settings: BackendSettings = Depends(get_settings)) -> Server
         version=__version__,
         api_version=settings.api_version,
         mode=settings.mode,
-        auth_required=False,
+        auth_required=settings.auth_required,
     )
 
 

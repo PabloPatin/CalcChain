@@ -12,6 +12,8 @@ from calcchain_backend.services.plugin_service import PluginService
 from calcchain_backend.services.project_store import ProjectStore
 from calcchain_backend.services.run_service import RunService
 from calcchain_backend.services.secret_service import SecretService
+from calcchain_backend.services.secret_service import session_key_from_token_or_header
+from calcchain_backend.services.secrets_adapter import runtime_with_backend_secrets
 from calcchain_backend.settings import BackendSettings, create_settings
 
 
@@ -50,3 +52,20 @@ def get_artifact_service(request: Request) -> ArtifactService:
 
 def get_secret_service(request: Request) -> SecretService:
     return request.app.state.secret_service
+
+
+def get_session_key(request: Request) -> str:
+    authorization = request.headers.get("authorization")
+    if authorization and authorization.lower().startswith("bearer "):
+        return session_key_from_token_or_header(authorization[7:].strip())
+    explicit_session = request.headers.get("x-calcchain-session-id")
+    return session_key_from_token_or_header(explicit_session)
+
+
+def get_core_runtime(request: Request):
+    plugin_runtime = request.app.state.plugin_service.runtime_or_empty()
+    return runtime_with_backend_secrets(
+        request.app.state.secret_service,
+        get_session_key(request),
+        base_runtime=plugin_runtime,
+    )

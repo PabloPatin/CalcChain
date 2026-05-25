@@ -32,7 +32,7 @@ from .reports import (
 )
 from .restore import RestoreRequest, RestoreResult, restore_from_manifest
 from .rules import read_rules
-from .run import ProcessRunner, RunConfig
+from .run import CancelToken, ProcessRunner, RunConfig
 from .run.run_preparation import PreRunPreparer
 from .secrets import RuntimeSecretsResolver, SecretPersistencePolicy, SecretStore, SecretsResolver
 from .utils.json import read_json
@@ -105,7 +105,7 @@ class CalculationCore:
             write_manifest(manifest, self.layout.manifest_path)
         return result
 
-    def run(self, run_path: Path | None = None) -> Manifest:
+    def run(self, run_path: Path | None = None, *, cancel_token: CancelToken | None = None) -> Manifest:
         path = Path(run_path) if run_path is not None else self.job_dir / 'run.toml'
         request = RunConfig.from_dict(read_toml(path))
         build_result = self._last_build_result or self._load_build_result()
@@ -113,7 +113,7 @@ class CalculationCore:
         if pre_run.blockers:
             raise RunExecutionError('; '.join(pre_run.blockers))
 
-        run_result = ProcessRunner(self.secrets_resolver).run(self.layout, request)
+        run_result = ProcessRunner(self.secrets_resolver).run(self.layout, request, cancel_token=cancel_token)
         file_groups = classify_files(
             build_result,
             pre_run.pre_run_snapshot,

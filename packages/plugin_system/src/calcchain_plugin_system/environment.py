@@ -43,21 +43,18 @@ class PipInstaller:
         allow_online: bool,
     ) -> ResolvedDependencies:
         target_site_packages.mkdir(parents=True, exist_ok=True)
-        args = _pip_install_args(plan, target_site_packages, allow_online=allow_online)
-        try:
-            result = subprocess.run(
-                args,
-                capture_output=True,
-                text=True,
-                shell=False,
-                check=False,
-            )
-        except OSError as exc:
-            raise _install_error(
-                'Cannot run plugin dependency installer',
-                code='plugin_installer_run_failed',
-                safe_details={'error': str(exc)},
-            ) from exc
+        result = _run_installer(_pip_install_args(plan, target_site_packages, allow_online=allow_online))
+        if _pip_module_missing(result):
+            uv_executable = shutil.which('uv')
+            if uv_executable is not None:
+                result = _run_installer(
+                    _uv_pip_install_args(
+                        plan,
+                        target_site_packages,
+                        allow_online=allow_online,
+                        uv_executable=uv_executable,
+                    ),
+                )
         if result.returncode != 0:
             raise _install_error(
                 'Plugin dependency installer failed',
@@ -158,6 +155,54 @@ def _pip_install_args(
     if plan.shared_wheelhouse is not None:
         args.extend(('--find-links', str(plan.shared_wheelhouse)))
     return args
+
+
+def _uv_pip_install_args(
+    plan: PluginDependencyPlan,
+    target_site_packages: Path,
+    *,
+    allow_online: bool,
+    uv_executable: str,
+) -> list[str]:
+    args = [
+        uv_executable,
+        'pip',
+        'install',
+        '--python',
+        sys.executable,
+        '--target',
+        str(target_site_packages),
+    ]
+    if not allow_online:
+        args.append('--no-index')
+    for requirement in plan.requirements:
+        args.extend(('-r', str(requirement.path)))
+    for wheel_lock in plan.plugin_wheel_locks:
+        args.extend(('--find-links', str(wheel_lock.wheel_dir)))
+    if plan.shared_wheelhouse is not None:
+        args.extend(('--find-links', str(plan.shared_wheelhouse)))
+    return args
+
+
+def _run_installer(args: list[str]) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            shell=False,
+            check=False,
+        )
+    except OSError as exc:
+        raise _install_error(
+            'Cannot run plugin dependency installer',
+            code='plugin_installer_run_failed',
+            safe_details={'error': str(exc)},
+        ) from exc
+
+
+def _pip_module_missing(result: subprocess.CompletedProcess[str]) -> bool:
+    return result.returncode != 0 and 'No module named pip' in f'{result.stdout}\n{result.stderr}'
 
 
 def _can_reuse_environment(root: Path, site_packages: Path, env_hash: str) -> bool:

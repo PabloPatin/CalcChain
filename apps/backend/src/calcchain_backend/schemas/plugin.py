@@ -32,3 +32,19 @@ class PluginListResponse(ApiModel):
 
 class PluginPatchRequest(ApiModel):
     enabled: bool
+
+
+class PluginRuntimeDiagnostic(ApiModel):
+    plugin_id: str | None = None
+    phase: str
+    code: str
+    message: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class PluginRuntimeStatusResponse(ApiModel):
+    active: bool
+    plugin_ids: list[str] = Field(default_factory=list)
+    capabilities: list[PluginCapability] = Field(default_factory=list)
+    diagnostics: list[PluginRuntimeDiagnostic] = Field(default_factory=list)
+    error: str | None = None

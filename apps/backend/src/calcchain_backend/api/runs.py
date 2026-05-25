@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from calcchain_backend.dependencies import get_run_service
+from calcchain_backend.dependencies import get_run_service, get_session_key
 from calcchain_backend.schemas.run import RunCreateRequest, RunCreateResponse, RunDetails, RunListResponse, RunLogsResponse
 from calcchain_backend.services.run_service import RunService
 
@@ -11,8 +11,22 @@ router = APIRouter()
 
 
 @router.post("", response_model=RunCreateResponse, status_code=status.HTTP_201_CREATED)
-async def create_run(request: RunCreateRequest, service: RunService = Depends(get_run_service)) -> RunCreateResponse:
-    run = await service.create_run(request.build_config, request.run_options)
+async def create_run(
+    request: RunCreateRequest,
+    service: RunService = Depends(get_run_service),
+    session_key: str = Depends(get_session_key),
+) -> RunCreateResponse:
+    if request.valid is False:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Compile response is not valid")
+    run = await service.create_run(
+        request.build_config,
+        request.run_options,
+        run_config=request.run_config,
+        publish_config=request.publish_config,
+        rules_config=request.rules_config,
+        graph_config=request.graph_config,
+        session_key=session_key,
+    )
     return RunCreateResponse(run_id=run.id, status=run.status)
 
 

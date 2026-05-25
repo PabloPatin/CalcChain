@@ -45,17 +45,17 @@ The endpoint checks:
 Use it for a `Validate` button and for highlighting graph errors in the UI.
 
 ### `POST /api/graphs/compile`
-Accepts a graph document and returns a build config when validation succeeds.
+Accepts a graph document and returns core configs when validation succeeds.
 
-The current build config is a stable backend contract containing:
+The response contains:
 
-- schema version;
-- graph digest;
-- catalog version;
-- graph nodes and edges;
-- a topological execution plan where possible.
+- `build_config`: CalcChain core `BuildConfig`;
+- `run_config`: CalcChain core `RunConfig`;
+- `publish_config`: CalcChain core `PublishConfig` when publish targets exist;
+- `rules_config`: CalcChain core `RulesFile` when build or publish rules are needed;
+- `graph_config`: sanitized graph metadata, graph digest, catalog version, graph nodes and edges, and a topological execution plan.
 
-Later this service should be replaced or extended with a direct bridge to the CalcChain core compiler.
+Secret field values are stripped from `graph_config` and are never copied into core configs. Core configs receive only `credentials.secrets` references.
 
 ## Projects
 
@@ -67,7 +67,7 @@ Projects are currently stored in `.calcchain_backend/projects.json`.
 ### `POST /api/projects`
 Creates a new project with a name, optional description, and graph document.
 
-Credentials must not be stored in the project graph. This archive intentionally does not implement credentials.
+Secret credential values are stripped before the graph is stored. Projects keep public credential values and secret references only.
 
 ### `GET /api/projects/{project_id}`
 Returns one project by ID.
@@ -87,14 +87,61 @@ Returns `204 No Content` on success or `404` if the project does not exist.
 ## Runs
 
 ### `POST /api/runs`
-Creates a run from a compiled build config.
+Creates a run from compiled core configs and executes it with `CalculationCore`.
 
 The intended UI flow is:
 
 1. `POST /api/graphs/compile`;
-2. if compile succeeds, send the returned `build_config` to `POST /api/runs`.
+2. store required secret values through `/api/secrets/session`;
+3. if compile succeeds, send the compile response to `POST /api/runs`.
 
-The current implementation starts an in-memory async run scaffold. It produces logs, SSE events, progress, and a `manifest.json` artifact. Replace `RunService._execute_run()` with the real CalcChain execution once the final core run contract is fixed.
+Request fields:
+
+- `build_config`: required CalcChain core `BuildConfig`;
+- `run_config`: optional CalcChain core `RunConfig`; when omitted, backend performs build only;
+- `publish_config`: optional CalcChain core `PublishConfig`; when present, backend publishes after run/build;
+- `rules_config`: optional CalcChain core `RulesFile`, written as `rules.json`;
+- `graph_config`: optional sanitized graph metadata, written as `graph.json`;
+- `run_options`: backend options such as display `name`.
+
+`POST /api/runs` accepts the successful `/api/graphs/compile` response as-is. It ignores `diagnostics` and `warnings`; if `valid` is explicitly `false`, it returns `400`.
+
+The backend creates a per-run job directory under `.calcchain_backend/runs/{run_id}/job`, writes core config files, creates and validates the build lock, materializes the working directory, runs the process, optionally publishes, and exposes selected core artifacts through the artifacts endpoints.
+
+## LAN Auth
+
+When the backend runs in LAN mode, API routes except `/api/server/*` and `/api/auth/*` require a bearer session token.
+
+### `GET /api/auth/state`
+
+Returns:
+
+- `auth_required`: whether pairing/session auth is enabled;
+- `authenticated`: whether the current bearer token is valid.
+
+### `POST /api/auth/pair`
+
+Accepts an 8-digit one-time pairing code:
+
+```json
+{
+  "code": "12345678"
+}
+```
+
+Returns a bearer token. The frontend stores this token and sends it as `Authorization: Bearer <token>`.
+
+### `POST /api/auth/logout`
+
+Revokes the current bearer token.
+
+Pairing codes are generated through the local-only control socket:
+
+```bash
+calcchain-backend pair
+```
+
+The control socket is bound to `127.0.0.1` and protected by a per-process secret in the user profile. It is not exposed over the LAN HTTP API.
 
 ### `GET /api/runs`
 Returns a list of known runs with IDs, names, statuses, and timestamps.
@@ -105,7 +152,7 @@ Returns detailed run state: status, progress, timestamps, build config, and erro
 ### `POST /api/runs/{run_id}/cancel`
 Requests cancellation of a running or queued run.
 
-The current scaffold marks the run as `cancelling` and then `cancelled` when the execution loop observes the cancellation flag.
+Cancellation is observed between core phases and by the core process runner while a command is running.
 
 ### `GET /api/runs/{run_id}/events`
 Streams run events using Server-Sent Events.
@@ -132,7 +179,7 @@ Use it both after completion and as a fallback if SSE is unavailable.
 ### `GET /api/runs/{run_id}/artifacts`
 Returns artifact metadata for a run.
 
-The current scaffold creates `manifest.json` when a run completes successfully.
+Typical artifacts include `manifest.json`, `run.json`, core config/lock files, `runtime_status.json`, and process `stdout.txt`/`stderr.txt` logs when available.
 
 ### `GET /api/runs/{run_id}/artifacts/{artifact_id}`
 Downloads a run artifact as a file.
@@ -163,6 +210,21 @@ Request body:
 ```
 
 The endpoint writes state to `.calcchain_backend/plugins_state.json` and returns `restart_required: true`. Hot plugin unload/reload is intentionally not implemented in the MVP because plugins affect catalog, validation, compilation, and running calculations.
+
+### `GET /api/plugins/runtime/status`
+
+Returns current plugin runtime state: whether runtime capabilities are active,
+active plugin IDs, registered capabilities, diagnostics, and the last activation
+error.
+
+### `POST /api/plugins/runtime/reload`
+
+Discovers enabled plugins, verifies/install their wheel-based dependencies into
+`.calcchain_backend/plugin_envs`, imports plugin entrypoints, and builds
+`RuntimeCapabilities` for core. Use this after changing plugin enabled state.
+
+The runtime is cached by the backend process. Core execution receives this
+runtime plus the backend session secrets capability.
 
 ## Credentials note
 
