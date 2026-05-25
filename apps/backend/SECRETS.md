@@ -67,6 +67,9 @@ runtime = runtime_with_backend_secrets(secret_service, session_key)
 ## Current Limits
 
 - Secrets are session-local in memory.
+- Logout clears secrets stored for the bearer session.
 - Persistent keyring storage is not connected yet.
-- `RunService` stores the backend `session_key` for each run and can build a
-  runtime with backend secrets, but it still does not execute `CalculationCore`.
+- `RunService` stores the backend `session_key` for each run and executes
+  `CalculationCore` with backend secrets in runtime capabilities.
+- Run errors, backend log items, run events, and run metadata artifacts are
+  redacted against real secret values stored for the run session.

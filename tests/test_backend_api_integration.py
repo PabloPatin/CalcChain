@@ -15,6 +15,7 @@ pytest.importorskip("httpx")
 from fastapi.testclient import TestClient
 
 from calcchain_backend.app import create_app
+from calcchain_backend.services.secret_service import session_key_from_token_or_header
 from calcchain_backend.settings import BackendSettings, create_settings
 from calcchain_core.capabilities import CapabilityKey, CapabilityOwner, CapabilityRecord, RuntimeCapabilities
 
@@ -149,16 +150,77 @@ def test_lan_auth_pairing_flow_protects_api(tmp_path):
         pair = client.post("/api/auth/pair", json={"code": code})
         assert pair.status_code == 200, pair.text
         token = pair.json()["token"]
+        auth_headers = {"Authorization": f"Bearer {token}"}
 
-        authenticated_state = client.get("/api/auth/state", headers={"Authorization": f"Bearer {token}"})
+        authenticated_state = client.get("/api/auth/state", headers=auth_headers)
         assert authenticated_state.json() == {"auth_required": True, "authenticated": True}
 
-        allowed = client.get("/api/catalog", headers={"Authorization": f"Bearer {token}"})
+        allowed = client.get("/api/catalog", headers=auth_headers)
         assert allowed.status_code == 200, allowed.text
 
-        logout = client.post("/api/auth/logout", headers={"Authorization": f"Bearer {token}"})
+        client.post(
+            "/api/secrets/session",
+            headers=auth_headers,
+            json={
+                "secret_ref": "secret:auth:logout",
+                "kind": "logout-test",
+                "ttl_seconds": 60,
+                "values": {"value": "logout-secret"},
+            },
+        ).raise_for_status()
+        session_key = session_key_from_token_or_header(token)
+        assert app.state.secret_service.list_session_secrets(session_key).items
+
+        logout = client.post("/api/auth/logout", headers=auth_headers)
         assert logout.status_code == 204
-        assert client.get("/api/catalog", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+        assert app.state.secret_service.list_session_secrets(session_key).items == []
+        assert client.get("/api/catalog", headers=auth_headers).status_code == 401
+
+
+def test_run_logs_events_errors_and_metadata_redact_session_secrets(tmp_path, monkeypatch):
+    with _client(tmp_path) as client:
+        client.post(
+            "/api/secrets/session",
+            headers=SESSION_HEADERS,
+            json={
+                "secret_ref": "secret:redaction",
+                "kind": "redaction-test",
+                "ttl_seconds": 60,
+                "values": {"value": "redaction-secret"},
+            },
+        ).raise_for_status()
+
+        def raise_secret(_run, _job_dir):
+            raise RuntimeError("backend error leaked redaction-secret")
+
+        monkeypatch.setattr(client.app.state.run_service, "_write_core_configs", raise_secret)
+        run_id = _start_run(
+            client,
+            {
+                "build_config": {
+                    "schema_version": "1.0",
+                    "build": {"name": "redaction"},
+                    "code": {"source": {"type": "local", "path": str(tmp_path)}},
+                },
+                "run_options": {"name": "redaction"},
+            },
+        )
+        details = _wait_run(client, run_id)
+
+        assert details["status"] == "failed"
+        assert details["error"] == "backend error leaked [redacted]"
+        assert "redaction-secret" not in str(details)
+
+        logs = client.get(f"/api/runs/{run_id}/logs").json()["items"]
+        events = [event.data for event in client.app.state.run_service._runs[run_id].events]
+        run_metadata = _preview_json(client, run_id, "run.json")
+
+        assert "redaction-secret" not in str(logs)
+        assert "redaction-secret" not in str(events)
+        assert "redaction-secret" not in str(run_metadata)
+        assert "[redacted]" in str(logs)
+        assert "[redacted]" in str(events)
+        assert "[redacted]" in str(run_metadata)
 
 
 def test_api_publish_uses_rules_manifest_and_target_credentials(tmp_path):

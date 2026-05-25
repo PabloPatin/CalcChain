@@ -116,6 +116,13 @@ class SecretService:
         self._items.pop(session_key, None)
         return ClearSessionSecretsResponse(deleted_count=deleted_count)
 
+    def secret_values_for_session(self, session_key: str) -> list[str]:
+        self._cleanup_session(session_key)
+        values: list[str] = []
+        for item in self._items.get(session_key, {}).values():
+            values.extend(value for value in item.values.values() if value)
+        return sorted(set(values), key=len, reverse=True)
+
     def resolve_values(self, session_key: str, secret_ref: str) -> dict[str, str]:
         """Return real values for runtime-only backend code."""
         return dict(self._get_live_secret(session_key, secret_ref).values)

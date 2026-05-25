@@ -211,10 +211,11 @@ class RunService:
             await self._append_event(run, _final_event_type(run.status), {"run_id": run_id, "status": run.status})
         except Exception as exc:
             run.status = "cancelled" if run.cancel_requested else "failed"
-            run.error = None if run.status == "cancelled" else str(exc)
+            error_message = self._redact_text(run, str(exc))
+            run.error = None if run.status == "cancelled" else error_message
             run.finished_at = now_utc()
-            await self._append_log(run, "warning" if run.status == "cancelled" else "error", str(exc))
-            await self._append_event(run, "run_failed" if run.status == "failed" else "run_cancelled", {"run_id": run_id, "error": str(exc)})
+            await self._append_log(run, "warning" if run.status == "cancelled" else "error", error_message)
+            await self._append_event(run, "run_failed" if run.status == "failed" else "run_cancelled", {"run_id": run_id, "error": error_message})
             if run.job_dir is not None:
                 self._collect_artifacts(run)
 
@@ -274,16 +275,38 @@ class RunService:
             "error": run.error,
             "logs": [item.model_dump(mode="json") for item in run.logs],
         }
-        self._artifact_service.collect_core_artifacts(run.id, job_dir, metadata)
+        self._artifact_service.collect_core_artifacts(run.id, job_dir, self._redact_payload(run, metadata))
 
     async def _append_log(self, run: _RunState, level: str, message: str) -> None:
-        run.logs.append(LogItem(timestamp=now_utc(), level=level, message=message))  # type: ignore[arg-type]
+        run.logs.append(LogItem(timestamp=now_utc(), level=level, message=self._redact_text(run, message)))  # type: ignore[arg-type]
 
     async def _append_event(self, run: _RunState, event_type: str, data: dict[str, Any]) -> None:
-        event = RunEvent(id=len(run.events) + 1, type=event_type, timestamp=now_utc(), data=data)
+        event = RunEvent(id=len(run.events) + 1, type=event_type, timestamp=now_utc(), data=self._redact_payload(run, data))
         run.events.append(event)
         async with self._condition:
             self._condition.notify_all()
+
+    def _redact_text(self, run: _RunState, value: str) -> str:
+        if self._secret_service is None:
+            return value
+        redacted = value
+        for secret_value in self._secret_service.secret_values_for_session(run.session_key):
+            redacted = redacted.replace(secret_value, "[redacted]")
+        return redacted
+
+    def _redact_payload(self, run: _RunState, value):
+        if isinstance(value, str):
+            return self._redact_text(run, value)
+        if isinstance(value, dict):
+            return {
+                self._redact_text(run, str(key)): self._redact_payload(run, item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [self._redact_payload(run, item) for item in value]
+        if isinstance(value, tuple):
+            return tuple(self._redact_payload(run, item) for item in value)
+        return value
 
     @staticmethod
     def _summary(run: _RunState) -> RunSummary:

@@ -133,7 +133,7 @@ Returns a bearer token. The frontend stores this token and sends it as `Authoriz
 
 ### `POST /api/auth/logout`
 
-Revokes the current bearer token.
+Revokes the current bearer token and clears transient secrets stored for that bearer session.
 
 Pairing codes are generated through the local-only control socket:
 
@@ -231,6 +231,8 @@ runtime plus the backend session secrets capability.
 Credentials are represented by explicit auth nodes in the graph. Auth node descriptors come from the catalog, including plugins. A descriptor marks public credential fields with `x-calcchain-credential: "public"` and secret fields with `x-calcchain-credential: "secret"` or `x-calcchain-secret: true`.
 
 Secret values must not be stored in the project graph, compiled core configs, logs, events, or artifacts. The frontend sends secret values only to the secrets API. Core configs receive only secret references in `credentials.secrets`.
+
+Run errors, backend log items, run events, and run metadata artifacts are redacted against real secret values currently stored for the run session.
 
 ---
 

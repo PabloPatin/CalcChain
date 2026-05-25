@@ -7,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
 from calcchain_backend.config import BackendConfig
+from calcchain_backend.dependencies import get_secret_service
 from calcchain_backend.security.dependencies import (
     bearer_scheme,
     extract_bearer_token,
@@ -14,6 +15,7 @@ from calcchain_backend.security.dependencies import (
     get_sessions,
 )
 from calcchain_backend.security.sessions import SessionManager
+from calcchain_backend.services.secret_service import SecretService, session_key_from_token_or_header
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -81,6 +83,10 @@ def pair_browser(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(
     sessions: Annotated[SessionManager, Depends(get_sessions)],
+    secret_service: Annotated[SecretService, Depends(get_secret_service)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> None:
-    sessions.revoke(extract_bearer_token(credentials))
+    token = extract_bearer_token(credentials)
+    sessions.revoke(token)
+    if token:
+        secret_service.clear_session_secrets(session_key_from_token_or_header(token))
