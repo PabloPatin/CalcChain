@@ -1,4 +1,4 @@
-import { useAuth } from './AuthProvider';
+import { useAuth } from './useAuth';
 import { PairingPage } from './PairingPage';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {

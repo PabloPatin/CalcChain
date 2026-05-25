@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './useAuth';
 
 export function PairingPage() {
   const { pair, error, refresh } = useAuth();

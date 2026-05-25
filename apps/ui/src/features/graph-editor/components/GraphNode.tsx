@@ -36,32 +36,57 @@ export interface GraphNodeProps {
   ) => void;
 }
 
-function getNodeIcon(descriptor: BlockDescriptor) {
-  if (descriptor.category === "Sources") {
-    if (descriptor.defaultData.role === "code") {
-      return FileCode2;
+function renderNodeIcon(descriptor: BlockDescriptor) {
+  if (isSourceDescriptor(descriptor)) {
+    if (isCodeDescriptor(descriptor)) {
+      return <FileCode2 size={20} />;
     }
 
-    return FileInput;
+    return <FileInput size={20} />;
   }
 
-  if (descriptor.category === "Outputs") {
+  if (isOutputDescriptor(descriptor)) {
     if (descriptor.type.includes("artifact")) {
-      return FileOutput;
+      return <FileOutput size={20} />;
     }
 
-    return UploadCloud;
+    return <UploadCloud size={20} />;
   }
 
-  if (descriptor.category === "Mapping") {
-    return Settings2;
+  if (isMappingDescriptor(descriptor)) {
+    return <Settings2 size={20} />;
   }
 
-  if (descriptor.category === "Context") {
-    return Network;
+  if (isContextDescriptor(descriptor)) {
+    return <Network size={20} />;
   }
 
-  return Box;
+  return <Box size={20} />;
+}
+
+function isSourceDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.capability?.namespace === "source" || descriptor.type.startsWith("source.");
+}
+
+function isCodeDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.type.includes(".code") || descriptor.defaultData.role === "code";
+}
+
+function isOutputDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.capability?.namespace === "target" ||
+    descriptor.type.startsWith("target.") ||
+    descriptor.type.includes("artifact") ||
+    descriptor.category === "Outputs" ||
+    descriptor.category === "Output" ||
+    descriptor.category === "Target";
+}
+
+function isMappingDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.category === "Mapping" || descriptor.category === "Transform";
+}
+
+function isContextDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.category === "Context" || descriptor.category === "Environment";
 }
 
 function getNodeSize(node: GraphNodeModel, descriptor: BlockDescriptor) {
@@ -95,7 +120,6 @@ export function GraphNode({
   onPortClick,
   registerPort,
 }: GraphNodeProps) {
-  const Icon = getNodeIcon(descriptor);
   const size = getNodeSize(node, descriptor);
 
   return (
@@ -123,7 +147,7 @@ export function GraphNode({
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="rounded-2xl bg-slate-100 p-2.5 text-slate-700">
-            <Icon size={20} />
+            {renderNodeIcon(descriptor)}
           </div>
 
           <div className="min-w-0 flex-1">

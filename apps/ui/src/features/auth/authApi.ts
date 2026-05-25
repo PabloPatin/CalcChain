@@ -1,22 +1,24 @@
-import { apiFetch, clearSessionToken, storeSessionToken } from '../../shared/api/apiClient';
+import { clearSessionToken, storeSessionToken } from '../../shared/api/apiClient';
+import {
+  getAuthState,
+  logoutSession,
+  pairWithCode as requestPairWithCode,
+} from '../../shared/api/backendApi';
 import type { AuthState, PairingResponse } from './types';
 
 export async function loadAuthState(): Promise<AuthState> {
-  return apiFetch<AuthState>('/api/auth/state');
+  return getAuthState();
 }
 
 export async function pairWithCode(code: string): Promise<PairingResponse> {
-  const response = await apiFetch<PairingResponse>('/api/auth/pair', {
-    method: 'POST',
-    body: JSON.stringify({ code }),
-  });
+  const response = await requestPairWithCode(code);
   storeSessionToken(response.token);
   return response;
 }
 
 export async function logout(): Promise<void> {
   try {
-    await apiFetch<void>('/api/auth/logout', { method: 'POST' });
+    await logoutSession();
   } finally {
     clearSessionToken();
   }

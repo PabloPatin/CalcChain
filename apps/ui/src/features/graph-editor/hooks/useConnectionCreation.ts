@@ -9,6 +9,7 @@ import type {
   NodeId,
   PortId,
 } from "../model/types";
+import type { ConnectionRule } from "../../../shared/api/backendTypes";
 
 import {
   canConnect,
@@ -24,6 +25,7 @@ export interface UseConnectionCreationParams {
 
   edges: GraphEdge[];
   descriptors: BlockDescriptor[];
+  connectionRules?: ConnectionRule[];
 
   onCreateEdge: (
     from: GraphPortEndpoint,
@@ -58,6 +60,7 @@ export function useConnectionCreation({
   nodes,
   edges,
   descriptors,
+  connectionRules = [],
   onCreateEdge,
 }: UseConnectionCreationParams): UseConnectionCreationResult {
   const [pendingConnection, setPendingConnection] =
@@ -87,6 +90,7 @@ export function useConnectionCreation({
         nodes,
         edges,
         descriptors,
+        connectionRules,
         from: pendingConnection.from,
         to,
       });
@@ -102,7 +106,7 @@ export function useConnectionCreation({
         ok: true,
       };
     },
-    [pendingConnection, nodes, edges, descriptors, onCreateEdge],
+    [pendingConnection, nodes, edges, descriptors, connectionRules, onCreateEdge],
   );
 
   const compatibleInputEndpoints = useMemo(() => {
@@ -114,9 +118,10 @@ export function useConnectionCreation({
       nodes,
       edges,
       descriptors,
+      connectionRules,
       from: pendingConnection.from,
     });
-  }, [pendingConnection, nodes, edges, descriptors]);
+  }, [pendingConnection, nodes, edges, descriptors, connectionRules]);
 
   const isCompatibleInput = useCallback(
     (nodeId: NodeId, portId: PortId): boolean => {

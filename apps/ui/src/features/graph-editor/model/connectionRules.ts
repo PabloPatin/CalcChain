@@ -8,18 +8,20 @@ import type {
   PortDescriptor,
   PortId,
 } from "./types";
+import type { ConnectionRule } from "../../../shared/api/backendTypes";
 
 export interface ConnectionCheckContext {
   nodes: GraphNode[];
   edges: GraphEdge[];
   descriptors: BlockDescriptor[];
+  connectionRules?: ConnectionRule[];
 
   from: GraphPortEndpoint;
   to: GraphPortEndpoint;
 }
 
 export function canConnect(context: ConnectionCheckContext): ConnectionCheckResult {
-  const { nodes, edges, descriptors, from, to } = context;
+  const { nodes, edges, descriptors, connectionRules = [], from, to } = context;
 
   if (from.nodeId === to.nodeId) {
     return {
@@ -86,7 +88,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
     };
   }
 
-  if (!toPort.accepts || !toPort.accepts.includes(fromPort.kind)) {
+  if (!isPortKindAccepted(fromPort, toPort, connectionRules)) {
     return {
       ok: false,
       reason: `${toNode.title}.${toPort.label} does not accept ${fromPort.kind}.`,
@@ -181,15 +183,30 @@ export function isInputPortAtCapacity(
   return incomingCount >= maxConnections;
 }
 
+export function isPortKindAccepted(
+  fromPort: PortDescriptor,
+  toPort: PortDescriptor,
+  connectionRules: ConnectionRule[],
+): boolean {
+  if (connectionRules.length > 0) {
+    return connectionRules.some(
+      (rule) => rule.from_kind === fromPort.kind && rule.to_kind === toPort.kind,
+    );
+  }
+
+  return Boolean(toPort.accepts?.includes(fromPort.kind));
+}
+
 export function getCompatibleInputEndpoints(
   params: {
     nodes: GraphNode[];
     edges: GraphEdge[];
     descriptors: BlockDescriptor[];
+    connectionRules?: ConnectionRule[];
     from: GraphPortEndpoint;
   },
 ): GraphPortEndpoint[] {
-  const { nodes, edges, descriptors, from } = params;
+  const { nodes, edges, descriptors, connectionRules = [], from } = params;
   const result: GraphPortEndpoint[] = [];
 
   for (const node of nodes) {
@@ -209,6 +226,7 @@ export function getCompatibleInputEndpoints(
         nodes,
         edges,
         descriptors,
+        connectionRules,
         from,
         to,
       });

@@ -12,32 +12,57 @@ export interface PaletteItemProps {
   ) => void;
 }
 
-function getPaletteIcon(descriptor: BlockDescriptor) {
-  if (descriptor.category === "Sources") {
-    if (descriptor.capability?.namespace === "source" && descriptor.defaultData.role === "code") {
-      return FileCode2;
+function renderPaletteIcon(descriptor: BlockDescriptor) {
+  if (isSourceDescriptor(descriptor)) {
+    if (isCodeDescriptor(descriptor)) {
+      return <FileCode2 size={18} />;
     }
 
-    return FileInput;
+    return <FileInput size={18} />;
   }
 
-  if (descriptor.category === "Outputs") {
+  if (isOutputDescriptor(descriptor)) {
     if (descriptor.type.includes("artifact")) {
-      return FileOutput;
+      return <FileOutput size={18} />;
     }
 
-    return UploadCloud;
+    return <UploadCloud size={18} />;
   }
 
-  if (descriptor.category === "Mapping") {
-    return Settings2;
+  if (isMappingDescriptor(descriptor)) {
+    return <Settings2 size={18} />;
   }
 
-  if (descriptor.category === "Context") {
-    return Network;
+  if (isContextDescriptor(descriptor)) {
+    return <Network size={18} />;
   }
 
-  return Box;
+  return <Box size={18} />;
+}
+
+function isSourceDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.capability?.namespace === "source" || descriptor.type.startsWith("source.");
+}
+
+function isCodeDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.type.includes(".code") || descriptor.defaultData.role === "code";
+}
+
+function isOutputDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.capability?.namespace === "target" ||
+    descriptor.type.startsWith("target.") ||
+    descriptor.type.includes("artifact") ||
+    descriptor.category === "Outputs" ||
+    descriptor.category === "Output" ||
+    descriptor.category === "Target";
+}
+
+function isMappingDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.category === "Mapping" || descriptor.category === "Transform";
+}
+
+function isContextDescriptor(descriptor: BlockDescriptor): boolean {
+  return descriptor.category === "Context" || descriptor.category === "Environment";
 }
 
 export function PaletteItem({
@@ -45,8 +70,6 @@ export function PaletteItem({
   onAddAtCenter,
   onDragStart,
 }: PaletteItemProps) {
-  const Icon = getPaletteIcon(descriptor);
-
   return (
     <button
       type="button"
@@ -57,7 +80,7 @@ export function PaletteItem({
     >
       <div className="flex items-start gap-3">
         <div className="rounded-xl bg-slate-100 p-2 text-slate-700 group-hover:bg-slate-200">
-          <Icon size={18} />
+          {renderPaletteIcon(descriptor)}
         </div>
 
         <div className="min-w-0">

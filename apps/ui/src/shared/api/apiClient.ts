@@ -25,7 +25,11 @@ export function clearSessionToken(): void {
   sessionStorage.removeItem(SESSION_STORAGE_KEY);
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export function getApiUrl(path: string): string {
+  return `${API_BASE_URL}${path}`;
+}
+
+export function createApiHeaders(init: RequestInit = {}): Headers {
   const token = getStoredSessionToken();
   const headers = new Headers(init.headers);
 
@@ -37,9 +41,13 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  return headers;
+}
+
+export async function apiFetchRaw(path: string, init: RequestInit = {}): Promise<Response> {
+  const response = await fetch(getApiUrl(path), {
     ...init,
-    headers,
+    headers: createApiHeaders(init),
   });
 
   if (!response.ok) {
@@ -53,9 +61,24 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     throw new ApiError(detail, response.status);
   }
 
+  return response;
+}
+
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await apiFetchRaw(path, init);
+
   if (response.status === 204) {
     return undefined as T;
   }
-
   return (await response.json()) as T;
+}
+
+export async function apiFetchText(path: string, init: RequestInit = {}): Promise<string> {
+  const response = await apiFetchRaw(path, init);
+  return response.text();
+}
+
+export async function apiFetchBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+  const response = await apiFetchRaw(path, init);
+  return response.blob();
 }

@@ -1,20 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clearSessionToken } from '../../shared/api/apiClient';
+import { AuthContext, type AuthContextValue } from './authContext';
 import { loadAuthState, logout as requestLogout, pairWithCode } from './authApi';
 
-type AuthContextValue = {
-  loading: boolean;
-  authRequired: boolean;
-  authenticated: boolean;
-  error: string | null;
-  pair: (code: string) => Promise<void>;
-  refresh: () => Promise<void>;
-  logout: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
@@ -40,8 +30,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+
+    async function loadInitialAuthState() {
+      try {
+        const state = await loadAuthState();
+        if (cancelled) {
+          return;
+        }
+        setAuthRequired(state.auth_required);
+        setAuthenticated(state.authenticated);
+        if (state.auth_required && !state.authenticated) {
+          clearSessionToken();
+        }
+      } catch (caught) {
+        if (cancelled) {
+          return;
+        }
+        setError(caught instanceof Error ? caught.message : 'Cannot reach CalcChain backend');
+        setAuthRequired(true);
+        setAuthenticated(false);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadInitialAuthState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pair = useCallback(async (code: string) => {
     setError(null);
@@ -62,12 +83,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (context === null) {
-    throw new Error('useAuth must be used inside AuthProvider');
-  }
-  return context;
 }

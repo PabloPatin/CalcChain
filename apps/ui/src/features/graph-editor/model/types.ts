@@ -189,6 +189,12 @@ export interface BlockDescriptor {
   defaultData: BlockData;
 
   /**
+   * Backend JSON schema for block config.
+   * Used by schema-driven inspectors and plugin-defined fields.
+   */
+  configSchema?: Record<string, unknown>;
+
+  /**
    * Optional fixed or preferred size.
    */
   defaultSize?: Partial<CanvasSize>;

@@ -1,6 +1,7 @@
 import type { DragEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { getCatalog } from "../../shared/api/backendApi";
 import type {
   BlockDescriptor,
   CanvasPosition,
@@ -11,6 +12,7 @@ import {
   FALLBACK_BLOCK_DESCRIPTORS,
   resolveBlockDescriptors,
 } from "./model/blockDescriptors";
+import { mapCatalogResponse, type EditorCatalog } from "./model/catalog";
 
 import { useGraphState } from "./hooks/useGraphState";
 import { usePortPositions } from "./hooks/usePortPositions";
@@ -22,6 +24,13 @@ import { GraphCanvas } from "./components/GraphCanvas";
 import { Inspector } from "./components/Inspector";
 
 const BLOCK_DRAG_MIME = "application/x-calcchain-block";
+
+const FALLBACK_CATALOG: EditorCatalog = {
+  catalogVersion: "fallback",
+  descriptors: resolveBlockDescriptors(FALLBACK_BLOCK_DESCRIPTORS),
+  connectionRules: [],
+  plugins: [],
+};
 
 function getPreferredNodeSize(descriptor: BlockDescriptor) {
   return {
@@ -72,18 +81,48 @@ export function GraphEditor() {
   const [message, setMessage] = useState(
     "Поле пустое. Добавь блоки из палитры слева.",
   );
+  const [catalog, setCatalog] = useState<EditorCatalog>(FALLBACK_CATALOG);
+  const [catalogSource, setCatalogSource] = useState<"backend" | "fallback">("fallback");
 
-  /**
-   * Later this will be replaced by backend descriptors:
-   *
-   * const backendDescriptors = await capabilitiesApi.getBlockDescriptors()
-   * const descriptors = resolveBlockDescriptors(backendDescriptors)
-   */
-  const descriptors = useMemo(
-    () => resolveBlockDescriptors(FALLBACK_BLOCK_DESCRIPTORS),
-    [],
-  );
+  useEffect(() => {
+    let cancelled = false;
 
+    async function loadCatalog() {
+      try {
+        const backendCatalog = await getCatalog();
+        if (cancelled) {
+          return;
+        }
+
+        const editorCatalog = mapCatalogResponse(backendCatalog);
+        setCatalog(editorCatalog);
+        setCatalogSource("backend");
+        setMessage(
+          `Каталог загружен: ${editorCatalog.descriptors.length} блоков, ${editorCatalog.plugins.length} плагинов.`,
+        );
+      } catch (caught) {
+        if (cancelled) {
+          return;
+        }
+
+        setCatalog(FALLBACK_CATALOG);
+        setCatalogSource("fallback");
+        setMessage(
+          `Каталог backend недоступен, используются fallback-блоки. ${
+            caught instanceof Error ? caught.message : "Неизвестная ошибка"
+          }`,
+        );
+      }
+    }
+
+    void loadCatalog();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const descriptors = catalog.descriptors;
   const graph = useGraphState();
 
   const {
@@ -118,6 +157,7 @@ export function GraphEditor() {
     nodes,
     edges,
     descriptors,
+    connectionRules: catalog.connectionRules,
     onCreateEdge: addEdge,
   });
 
@@ -144,7 +184,7 @@ export function GraphEditor() {
 
   function handleSave() {
     localStorage.setItem("calcchain.graph", JSON.stringify(document, null, 2));
-    setMessage("Граф сохранён в localStorage.");
+    setMessage("Граф сохранен в localStorage.");
   }
 
   function handleValidate() {
@@ -154,7 +194,7 @@ export function GraphEditor() {
     }
 
     setMessage(
-      "Базовая проверка соединений выполняется при создании связей. Backend-валидацию подключим позже.",
+      `Проверка соединений использует правила из ${catalogSource} catalog (${catalog.connectionRules.length}). Backend-валидацию графа подключим следующим шагом.`,
     );
   }
 
