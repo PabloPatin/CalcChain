@@ -127,7 +127,7 @@ class PluginService:
         from calcchain_plugin_system.manager import PluginManager
         from calcchain_plugin_system.settings import PluginSettings
 
-        repository = PluginDiscovery().discover((self._settings.project_root / "plugins",))
+        repository = PluginDiscovery().discover((self._settings.plugins_dir,))
         activation_plan = PluginActivationPlanner(
             python_version=platform.python_version(),
         ).plan(repository, PluginSettings(enabled_plugins=enabled_ids))
@@ -153,10 +153,9 @@ class PluginService:
         return PluginManager().activate(activation_plan, environment)
 
     def _scan_plugin_descriptors(self) -> list[dict[str, Any]]:
-        root = self._settings.project_root
         descriptors: list[dict[str, Any]] = []
 
-        for path in sorted((root / "plugins").glob("*/plugin.json")):
+        for path in sorted(self._settings.plugins_dir.glob("*/plugin.json")):
             descriptor = self._read_json_object(path)
             if descriptor is not None:
                 descriptor["__path__"] = str(path)
@@ -164,7 +163,7 @@ class PluginService:
 
         # Some early CalcChain layouts keep a top-level plugins.json. Support it
         # as an optional list of plugin descriptors or descriptor paths.
-        top_level = root / "plugins.json"
+        top_level = self._settings.resolved_app_root / "plugins.json"
         top_level_data = self._read_json_object(top_level)
         if top_level_data is not None:
             items = top_level_data.get("plugins") if isinstance(top_level_data.get("plugins"), list) else []

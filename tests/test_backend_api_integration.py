@@ -191,6 +191,33 @@ def test_lan_auth_pairing_flow_protects_api(tmp_path):
         assert client.get("/api/catalog", headers=auth_headers).status_code == 401
 
 
+def test_backend_settings_support_installed_layout(tmp_path):
+    app_root = tmp_path / "CalcChain"
+    state_dir = tmp_path / "State"
+    projects_dir = tmp_path / "CalcChainProjects"
+    plugin_root = app_root / "plugins"
+    static_dir = app_root / "web"
+
+    settings = create_settings(
+        tmp_path / "source-root",
+        app_root=app_root,
+        state_dir=state_dir,
+        user_projects_dir=projects_dir,
+        plugin_root=plugin_root,
+        static_dir=static_dir,
+    )
+
+    assert settings.project_root == (tmp_path / "source-root").resolve()
+    assert settings.resolved_app_root == app_root.resolve()
+    assert settings.state_dir == state_dir.resolve()
+    assert settings.projects_dir == projects_dir.resolve()
+    assert settings.plugins_dir == plugin_root.resolve()
+    assert settings.frontend_static_dir == static_dir.resolve()
+    assert settings.projects_path == state_dir.resolve() / "projects.json"
+    assert settings.plugins_state_path == state_dir.resolve() / "plugins_state.json"
+    assert settings.runs_dir == state_dir.resolve() / "runs"
+
+
 def test_run_logs_events_errors_and_metadata_redact_session_secrets(tmp_path, monkeypatch):
     with _client(tmp_path) as client:
         client.post(

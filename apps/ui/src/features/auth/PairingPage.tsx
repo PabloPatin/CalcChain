@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { useAuth } from './useAuth';
 
 export function PairingPage() {
-  const { pair, error, refresh } = useAuth();
+  const { pair, error } = useAuth();
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -13,7 +13,7 @@ export function PairingPage() {
     const normalizedCode = code.trim();
 
     if (!/^\d{8}$/.test(normalizedCode)) {
-      setLocalError('Введите 8 цифр из консоли сервера.');
+      setLocalError('Введите 8 цифр из окна запуска CalcChain.');
       return;
     }
 
@@ -33,8 +33,7 @@ export function PairingPage() {
       <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
         <h1 className="text-2xl font-semibold">Подключение к CalcChain</h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          Backend запущен в LAN-режиме. Введите одноразовый pairing code,
-          который был напечатан в доверенной консоли сервера.
+          CalcChain запущен в LAN-режиме. Введите одноразовый pairing code из окна запуска.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -64,15 +63,7 @@ export function PairingPage() {
             disabled={submitting || code.length !== 8}
             className="w-full rounded-xl bg-sky-500 px-4 py-3 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? 'Проверяю…' : 'Подключиться'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="w-full rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-200"
-          >
-            Проверить подключение заново
+            {submitting ? 'Проверяю...' : 'Подключиться'}
           </button>
         </form>
       </section>

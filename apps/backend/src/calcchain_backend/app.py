@@ -5,8 +5,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from calcchain_backend import __version__
 from calcchain_backend.api import artifacts, auth, catalog, graphs, plugins, projects, runs, secrets, server
@@ -83,6 +84,7 @@ def create_app(settings: BackendSettings | None = None) -> FastAPI:
     app.include_router(artifacts.router, prefix="/api/runs", tags=["artifacts"], dependencies=protected)
     app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"], dependencies=protected)
     app.include_router(secrets.router, prefix="/api/secrets", tags=["secrets"], dependencies=protected)
+    _mount_frontend(app, settings.frontend_static_dir)
     return app
 
 
@@ -93,6 +95,11 @@ def create_app_from_env() -> FastAPI:
     reloaded worker through narrowly scoped environment variables.
     """
     project_root = os.environ.get("CALCCHAIN_BACKEND_PROJECT_ROOT")
+    app_root = os.environ.get("CALCCHAIN_BACKEND_APP_ROOT")
+    state_dir = os.environ.get("CALCCHAIN_BACKEND_STATE_DIR")
+    projects_dir = os.environ.get("CALCCHAIN_BACKEND_PROJECTS_DIR")
+    plugin_root = os.environ.get("CALCCHAIN_BACKEND_PLUGIN_ROOT")
+    static_dir = os.environ.get("CALCCHAIN_BACKEND_STATIC_DIR")
     mode = os.environ.get("CALCCHAIN_BACKEND_MODE") or "local"
     host = os.environ.get("CALCCHAIN_BACKEND_HOST") or "127.0.0.1"
     raw_port = os.environ.get("CALCCHAIN_BACKEND_PORT")
@@ -100,7 +107,19 @@ def create_app_from_env() -> FastAPI:
         port = int(raw_port) if raw_port else 8765
     except ValueError:
         port = 8765
-    return create_app(create_settings(project_root, mode=mode, host=host, port=port))
+    return create_app(
+        create_settings(
+            project_root,
+            app_root=app_root,
+            state_dir=state_dir,
+            user_projects_dir=projects_dir,
+            plugin_root=plugin_root,
+            static_dir=static_dir,
+            mode=mode,
+            host=host,
+            port=port,
+        )
+    )
 
 
 def _backend_config(settings: BackendSettings) -> BackendConfig:
@@ -113,6 +132,50 @@ def _backend_config(settings: BackendSettings) -> BackendConfig:
         session_ttl_seconds=settings.session_ttl_seconds,
         max_pairing_attempts_per_minute=settings.max_pairing_attempts_per_minute,
     )
+
+
+def _mount_frontend(app: FastAPI, static_dir: Path | None) -> None:
+    if static_dir is None:
+        return
+
+    static_root = static_dir.resolve()
+    index_path = static_root / "index.html"
+    if not index_path.is_file():
+        return
+
+    @app.get("/", include_in_schema=False)
+    def serve_frontend_root() -> FileResponse:
+        return FileResponse(index_path)
+
+    @app.get("/{frontend_path:path}", include_in_schema=False)
+    def serve_frontend_path(frontend_path: str) -> FileResponse:
+        if frontend_path == "api" or frontend_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+
+        response_path = _frontend_response_path(static_root, frontend_path)
+        if response_path is None:
+            raise HTTPException(status_code=404, detail="Not Found")
+        return FileResponse(response_path)
+
+
+def _frontend_response_path(static_root: Path, frontend_path: str) -> Path | None:
+    index_path = static_root / "index.html"
+    candidate = (static_root / frontend_path).resolve()
+
+    if _is_relative_to(candidate, static_root) and candidate.is_file():
+        return candidate
+
+    if index_path.is_file():
+        return index_path
+    return None
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
 
 
 app = create_app()
