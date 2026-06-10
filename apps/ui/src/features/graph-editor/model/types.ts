@@ -1,5 +1,7 @@
 // В этом файлое представлены только логические компоненты ui
 
+import type { JsonObject } from "../../../shared/api/backendTypes";
+
 /**
  * Stable primitive identifiers.
  */
@@ -58,20 +60,6 @@ export interface CanvasSize {
 }
 
 /**
- * Runtime/display status of a graph node.
- * This is UI-level status, not CalcChain manifest status.
- */
-export type GraphNodeStatus =
-  | "draft"
-  | "configured"
-  | "valid"
-  | "invalid"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "unknown";
-
-/**
  * Generic block data.
  *
  * Different block types will store different fields here:
@@ -83,7 +71,7 @@ export type GraphNodeStatus =
  * Later we can replace this with stricter discriminated union types,
  * but this shape is convenient while plugin-defined blocks are expected.
  */
-export type BlockData = Record<string, unknown>;
+export type BlockData = JsonObject;
 
 /**
  * Describes a single input or output port on a block descriptor.
@@ -257,32 +245,17 @@ export interface GraphNode {
   position: CanvasPosition;
 
   /**
-   * Optional measured or fixed size.
-   */
-  size?: Partial<CanvasSize>;
-
-  /**
    * Block-specific data.
    */
-  data: BlockData;
-
-  /**
-   * UI/runtime status.
-   */
-  status?: GraphNodeStatus;
-
-  /**
-   * Optional warnings/errors attached to this node.
-   */
-  diagnostics?: GraphDiagnostic[];
+  config: BlockData;
 }
 
 /**
  * A concrete port endpoint on a concrete node.
  */
 export interface GraphPortEndpoint {
-  nodeId: NodeId;
-  portId: PortId;
+  node_id: NodeId;
+  port_id: PortId;
 }
 
 /**
@@ -293,28 +266,16 @@ export interface GraphPortEndpoint {
 export interface GraphEdge {
   id: EdgeId;
 
-  from: GraphPortEndpoint;
-  to: GraphPortEndpoint;
+  source: GraphPortEndpoint;
+  target: GraphPortEndpoint;
 
-  /**
-   * Optional edge data.
-   *
-   * We currently keep rule_set as a separate block,
-   * but this field allows future edge-level metadata if needed.
-   */
-  data?: Record<string, unknown>;
-
-  /**
-   * Optional diagnostics attached to the connection.
-   */
-  diagnostics?: GraphDiagnostic[];
 }
 
 /**
  * Full graph document edited by the UI.
  */
 export interface GraphDocument {
-  schemaVersion: string;
+  schema_version: string;
 
   /**
    * Human-readable graph name.
@@ -325,23 +286,9 @@ export interface GraphDocument {
   edges: GraphEdge[];
 
   /**
-   * Optional viewport state.
-   */
-  viewport?: GraphViewport;
-
-  /**
    * Optional graph-level metadata.
    */
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * Canvas viewport state.
- */
-export interface GraphViewport {
-  x: number;
-  y: number;
-  zoom: number;
+  metadata?: JsonObject;
 }
 
 /**
@@ -362,8 +309,8 @@ export interface GraphEditorState {
  * Connection that is currently being created by the user.
  */
 export interface PendingConnection {
-  fromNodeId: NodeId;
-  fromPortId: PortId;
+  node_id: NodeId;
+  port_id: PortId;
 }
 
 /**
@@ -416,9 +363,9 @@ export interface GraphValidationResult {
  * Data prepared for graph compiler/backend.
  */
 export interface SerializedGraph {
-  schemaVersion: string;
+  schema_version: string;
   name: string;
   nodes: GraphNode[];
   edges: GraphEdge[];
-  metadata?: Record<string, unknown>;
+  metadata?: JsonObject;
 }

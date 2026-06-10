@@ -58,8 +58,8 @@ export function PortButton({
 
         onPortClick(
           {
-            nodeId,
-            portId: port.id,
+            node_id: nodeId,
+            port_id: port.id,
           },
           direction,
         );

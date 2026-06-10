@@ -127,7 +127,7 @@ export function useConnectionCreation({
     (nodeId: NodeId, portId: PortId): boolean => {
       return compatibleInputEndpoints.some(
         (endpoint) =>
-          endpoint.nodeId === nodeId && endpoint.portId === portId,
+          endpoint.node_id === nodeId && endpoint.port_id === portId,
       );
     },
     [compatibleInputEndpoints],

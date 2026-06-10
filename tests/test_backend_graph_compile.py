@@ -54,6 +54,105 @@ def test_graph_compile_returns_core_build_and_run_configs():
     RunConfig.from_dict(result.run_config)
 
 
+def test_graph_compile_preserves_calculation_stdin_config():
+    result = _service().compile(
+        GraphDocument(
+            name="stdin",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", config={"path": "code"}),
+                GraphNode(
+                    id="calc",
+                    type="calculation",
+                    config={
+                        "command": "python solver.py",
+                        "stdin_mode": "script",
+                        "stdin_text": "5\n",
+                    },
+                ),
+            ],
+            edges=[_edge("code", "output", "calc", "code")],
+        ),
+    )
+
+    assert result.valid
+    assert result.run_config["run"]["stdin_mode"] == "script"
+    assert result.run_config["run"]["stdin_text"] == "5\n"
+
+    RunConfig.from_dict(result.run_config)
+
+
+def test_graph_compile_treats_empty_timeout_as_null():
+    result = _service().compile(
+        GraphDocument(
+            name="empty timeout",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", config={"path": "code"}),
+                GraphNode(
+                    id="calc",
+                    type="calculation",
+                    config={"command": "python solver.py", "timeout_seconds": ""},
+                ),
+            ],
+            edges=[_edge("code", "output", "calc", "code")],
+        ),
+    )
+
+    assert result.valid
+    assert result.run_config["run"]["timeout_seconds"] is None
+
+    RunConfig.from_dict(result.run_config)
+
+
+def test_graph_compile_keeps_same_title_input_nodes_separate():
+    result = _service().compile(
+        GraphDocument(
+            name="duplicate input titles",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", title="Local Code Source", config={"path": "code"}),
+                GraphNode(id="input_a", type="source.local.input", title="Local Input Source", config={"path": "a"}),
+                GraphNode(id="input_b", type="source.local.input", title="Local Input Source", config={"path": "b"}),
+                GraphNode(id="calc", type="calculation", config={"command": "python solver.py"}),
+            ],
+            edges=[
+                _edge("code", "output", "calc", "code"),
+                _edge("input_a", "output", "calc", "input"),
+                _edge("input_b", "output", "calc", "input"),
+            ],
+        ),
+    )
+
+    assert result.valid
+    inputs = result.build_config["inputs"]
+    assert [item["name"] for item in inputs] == ["input_a", "input_b"]
+    assert [item["source"]["path"] for item in inputs] == ["a", "b"]
+
+    BuildConfig.from_dict(result.build_config)
+
+
+def test_graph_compile_suffixes_duplicate_explicit_input_names():
+    result = _service().compile(
+        GraphDocument(
+            name="duplicate explicit input names",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", config={"path": "code"}),
+                GraphNode(id="input_a", type="source.local.input", config={"name": "mesh", "path": "a"}),
+                GraphNode(id="input_b", type="source.local.input", config={"name": "mesh", "path": "b"}),
+                GraphNode(id="calc", type="calculation", config={"command": "python solver.py"}),
+            ],
+            edges=[
+                _edge("code", "output", "calc", "code"),
+                _edge("input_a", "output", "calc", "input"),
+                _edge("input_b", "output", "calc", "input"),
+            ],
+        ),
+    )
+
+    assert result.valid
+    assert [item["name"] for item in result.build_config["inputs"]] == ["mesh", "mesh_2"]
+
+    BuildConfig.from_dict(result.build_config)
+
+
 def test_graph_compile_strips_secret_values_and_uses_secret_refs():
     result = _service().compile(
         GraphDocument(
@@ -106,6 +205,57 @@ def test_graph_compile_returns_publish_and_rules_configs_for_targets():
 
     PublishConfig.from_dict(result.publish_config)
     RulesFile.from_dict(result.rules_config)
+
+
+def test_graph_compile_uses_connected_env_nodes_only():
+    result = _service().compile(
+        GraphDocument(
+            name="env nodes",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", config={"path": "code"}),
+                GraphNode(id="calc", type="calculation", config={"command": "python solver.py"}),
+                GraphNode(id="plain", type="env.public", config={"name": "PLAIN_ENV", "value": "visible"}),
+                GraphNode(id="secret", type="env.secret", config={"name": "SECRET_ENV", "value": "hidden"}),
+                GraphNode(id="unused", type="env.public", config={"name": "UNUSED_ENV", "value": "ignored"}),
+            ],
+            edges=[
+                _edge("code", "output", "calc", "code"),
+                _edge("plain", "output", "calc", "env"),
+                _edge("secret", "output", "calc", "env"),
+            ],
+        ),
+    )
+
+    assert result.valid
+    env = result.run_config["run"]["env"]
+    assert env["public"] == {"PLAIN_ENV": "visible"}
+    assert set(env["secrets"]) == {"SECRET_ENV"}
+    assert env["secrets"]["SECRET_ENV"].startswith("secret:graph:")
+    assert "hidden" not in str(result.model_dump(mode="json"))
+    assert "UNUSED_ENV" not in str(result.run_config)
+
+    RunConfig.from_dict(result.run_config)
+
+
+def test_secret_requirements_include_only_connected_secret_env_nodes():
+    service = SecretService(_service()._catalog_service)
+    session_key = session_key_from_token_or_header("env-requirements")
+    graph = GraphDocument(
+        name="env requirements",
+        nodes=[
+            GraphNode(id="calc", type="calculation", config={"command": "python solver.py"}),
+            GraphNode(id="secret", type="env.secret", config={"name": "SECRET_ENV"}),
+            GraphNode(id="unused", type="env.secret", config={"name": "UNUSED_ENV"}),
+        ],
+        edges=[_edge("secret", "output", "calc", "env")],
+    )
+
+    requirements = service.get_requirements_for_graph(session_key, graph).requirements
+
+    assert len(requirements) == 1
+    assert requirements[0].kind == "env-secret"
+    assert requirements[0].fields[0].name == "value"
+    assert requirements[0].used_by[0].node_id == "secret"
 
 
 def test_backend_secret_service_is_core_secrets_adapter():

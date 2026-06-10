@@ -1,0 +1,24 @@
+{
+  "map": [
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_path": "input_1.txt",
+      "target_path": "input_1.txt",
+      "work_path": "input_1.txt"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "source_path": "input_2.txt",
+      "target_path": "input_2.txt",
+      "work_path": "input_2.txt"
+    }
+  ],
+  "name": "frozen_inputs",
+  "sources": [
+    {
+      "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_6246ba8b3ee2482e\\job\\.calcchain\\frozen_inputs",
+      "type": "local"
+    }
+  ],
+  "tree_sha256": "a448a5f25e9142c76885fe4b7f14afe887206e5e7dcc983f0af5d1926a9a805d"
+}

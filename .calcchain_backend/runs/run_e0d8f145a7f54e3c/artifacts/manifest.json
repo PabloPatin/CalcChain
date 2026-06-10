@@ -1,0 +1,149 @@
+{
+  "build": {
+    "code": {
+      "map": [
+        {
+          "sha256": "8714644f678b1421bd14191f24c2852adb911ece99238db6035202764fd5b5b8",
+          "source_path": "demo_calcchain_module.py",
+          "work_path": "demo_calcchain_module.py"
+        }
+      ],
+      "name": "Local Code Source",
+      "sources": [
+        {
+          "path": "D:\\CalcChain demo\\repo\\code",
+          "type": "local"
+        }
+      ],
+      "tree_sha256": "5b41ec416d3e376fed7d85f291a999821a49d80a85a3f392b28bb2f79e4ff3be"
+    },
+    "inputs": [
+      {
+        "map": [
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_1.txt",
+            "work_path": "input_1.txt"
+          }
+        ],
+        "name": "node-0cbc48e1-9134-4457-acd6-8141796a8732",
+        "sources": [
+          {
+            "path": "D:\\CalcChain demo\\repo\\source_1",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "0f2c178087eb396492c523e69fc123d5bf5e9a79bd0c46c5d07b9c5ecaac6108"
+      },
+      {
+        "map": [
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_2.txt",
+            "work_path": "input_2.txt"
+          }
+        ],
+        "name": "node-e0e2b0a3-2c0e-40d9-b2e9-61b398582c4c",
+        "sources": [
+          {
+            "path": "D:\\CalcChain demo\\repo\\source_2",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "ce39e018d804f50eec4e90e33b4ac782a8331ac8cd19fef626ab628c0be4e85b"
+      },
+      {
+        "map": [
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_1.txt",
+            "target_path": "input_1.txt",
+            "work_path": "input_1.txt"
+          },
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_2.txt",
+            "target_path": "input_2.txt",
+            "work_path": "input_2.txt"
+          }
+        ],
+        "name": "frozen_inputs",
+        "sources": [
+          {
+            "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_e0d8f145a7f54e3c\\job\\.calcchain\\frozen_inputs",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "a448a5f25e9142c76885fe4b7f14afe887206e5e7dcc983f0af5d1926a9a805d"
+      }
+    ],
+    "lock": {
+      "sha256": "4c21b7dbbe753ef78e3580ed5e9e130ad925e854a32f7fb671173158687500d9",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_e0d8f145a7f54e3c\\job\\.calcchain\\build\\build_lock.json",
+          "type": "local"
+        }
+      ]
+    }
+  },
+  "job": {
+    "created_at": "2026-05-26T09:34:18.999704+00:00",
+    "hostname": "Lenovid",
+    "id": "job",
+    "job_dir": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_e0d8f145a7f54e3c\\job",
+    "status": "Succeeded",
+    "user": "pashk"
+  },
+  "run": {
+    "file_groups": {
+      "code": [
+        "demo_calcchain_module.py"
+      ],
+      "deleted": [],
+      "ignored": [],
+      "inputs": [
+        "input_1.txt",
+        "input_2.txt"
+      ],
+      "logs": [],
+      "outputs": [
+        "demo_output/result_report.json",
+        "demo_output/result_status.txt"
+      ],
+      "temp": [],
+      "unknown": []
+    },
+    "status": "Succeeded"
+  },
+  "schema_version": "1.0",
+  "snapshots": {
+    "build": {
+      "sha256": "34305fb48cd2eeecc2f1a183336d36f166cd041028c587af4d8b01b178361d50",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_e0d8f145a7f54e3c\\job\\.calcchain\\snapshots\\build_snapshot.json",
+          "type": "local"
+        }
+      ]
+    },
+    "post_run": {
+      "sha256": "eda2b7c4e076ce07a230ee510f4d4d7793710b09db26a1f85022cbb85c6ad97b",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_e0d8f145a7f54e3c\\job\\.calcchain\\snapshots\\post_run_snapshot.json",
+          "type": "local"
+        }
+      ]
+    },
+    "pre_run": {
+      "sha256": "31c63b3f5bbbc4eb851a3c8e3d07acb255a914429fb4711edec772751eac2b18",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_e0d8f145a7f54e3c\\job\\.calcchain\\snapshots\\pre_run_snapshot.json",
+          "type": "local"
+        }
+      ]
+    }
+  }
+}

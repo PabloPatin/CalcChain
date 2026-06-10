@@ -1,0 +1,52 @@
+{
+  "run_id": "run_825d2f8f450a4628",
+  "status": "success",
+  "name": "Untitled calculation graph",
+  "created_at": "2026-05-26T08:53:40.943895+00:00",
+  "started_at": "2026-05-26T08:53:40.944821+00:00",
+  "finished_at": "2026-05-26T08:53:42.644423+00:00",
+  "job_dir": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_825d2f8f450a4628\\job",
+  "error": null,
+  "logs": [
+    {
+      "timestamp": "2026-05-26T08:53:40.944827Z",
+      "level": "info",
+      "message": "Run started"
+    },
+    {
+      "timestamp": "2026-05-26T08:53:40.944925Z",
+      "level": "info",
+      "message": "Processing step: write_configs"
+    },
+    {
+      "timestamp": "2026-05-26T08:53:40.963758Z",
+      "level": "info",
+      "message": "Processing step: create_build_lock"
+    },
+    {
+      "timestamp": "2026-05-26T08:53:41.222319Z",
+      "level": "info",
+      "message": "Processing step: validate_build"
+    },
+    {
+      "timestamp": "2026-05-26T08:53:41.245901Z",
+      "level": "info",
+      "message": "Processing step: build"
+    },
+    {
+      "timestamp": "2026-05-26T08:53:41.309731Z",
+      "level": "info",
+      "message": "Processing step: run"
+    },
+    {
+      "timestamp": "2026-05-26T08:53:42.644339Z",
+      "level": "info",
+      "message": "Run finished successfully"
+    },
+    {
+      "timestamp": "2026-05-26T08:53:42.644490Z",
+      "level": "info",
+      "message": "Processing step: collect_artifacts"
+    }
+  ]
+}

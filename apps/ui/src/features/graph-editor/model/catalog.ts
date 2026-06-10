@@ -105,7 +105,7 @@ function getDefaultData(configSchema: JsonObject): BlockData {
   return data;
 }
 
-function getDefaultValue(schema: JsonObject): unknown {
+function getDefaultValue(schema: JsonObject): JsonValue {
   if ("default" in schema) {
     return schema.default;
   }

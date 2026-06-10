@@ -1,0 +1,17 @@
+{
+  "map": [
+    {
+      "sha256": "8714644f678b1421bd14191f24c2852adb911ece99238db6035202764fd5b5b8",
+      "source_path": "demo_calcchain_module.py",
+      "work_path": "demo_calcchain_module.py"
+    }
+  ],
+  "name": "Local Code Source",
+  "sources": [
+    {
+      "path": "D:\\CalcChain demo\\repo\\code",
+      "type": "local"
+    }
+  ],
+  "tree_sha256": "5b41ec416d3e376fed7d85f291a999821a49d80a85a3f392b28bb2f79e4ff3be"
+}

@@ -1,0 +1,5 @@
+calcchain-core>=0.1.0
+calcchain-plugin-system>=0.1.0
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7

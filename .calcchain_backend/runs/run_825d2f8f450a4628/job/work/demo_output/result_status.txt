@@ -1,0 +1,8 @@
+STATUS: OK
+TIME_UTC: 2026-05-26T08:53:42.534113+00:00
+ENV_VAR_REQUIRED: CALCCHAIN_DEMO_TOKEN
+ENV_VAR_PRESENT: true
+USER_NUMBER: 8
+
+MESSAGE: Демонстрационный расчёт выполнен успешно.
+OUTPUT: Входные файлы проверены, расчёт имитирован, отчёт сформирован.

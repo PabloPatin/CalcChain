@@ -1,0 +1,33 @@
+{
+  "active_plugins": [
+    {
+      "plugin_id": "calcchain.svn",
+      "plugin_version": "0.1.0"
+    }
+  ],
+  "env_hash": "e4940d8b7575f5772714003f79906e05620cc73bb0b9b14a75f5196914b98919",
+  "installer_backend_version": "unknown",
+  "plugin_api_version": "1.0",
+  "python_version": "3.14.3",
+  "requirements": [
+    {
+      "plugin_id": "calcchain.svn",
+      "sha256": "3ebd744ff33fef0b1ef44867a5138ff50cc492c22536e36659f474927fb8efa1"
+    }
+  ],
+  "resolved_dependencies": [],
+  "used_wheels": [
+    {
+      "file": "calcchain_svn-0.1.0-py3-none-any.whl",
+      "plugin_id": "calcchain.svn",
+      "sha256": "b8c8deb49f100c3b7aef0d19dc7c28e486babdd912ec8578daed96f6d75bd939",
+      "source": "plugin"
+    },
+    {
+      "file": "svn_client-0.1.0-py3-none-any.whl",
+      "plugin_id": "calcchain.svn",
+      "sha256": "4bdb14a49a971d33e567d1baf587d365008b7df745e8b350afe0c801322b17fc",
+      "source": "plugin"
+    }
+  ]
+}

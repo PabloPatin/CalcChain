@@ -1,0 +1,32 @@
+schema_version = "1.0"
+
+[lock]
+created_at = "2026-05-25T20:50:17.324695+00:00"
+created_from = "build.toml"
+build_toml_sha256 = "67494efec68770dc1565b9e8b2f4073e67581ab294f1f29945427c7d37bcf3eb"
+
+[build]
+name = "Untitled calculation graph"
+description = ""
+
+[code]
+name = "Local Code Source"
+version = ""
+
+[code.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\demo_calcchain_module.py"
+
+[[inputs]]
+name = "Local Input Source"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_1"
+
+[[inputs]]
+name = "Local Input Source"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_2"

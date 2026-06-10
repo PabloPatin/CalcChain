@@ -1,0 +1,78 @@
+{
+  "build": {
+    "code": {
+      "map": [
+        {
+          "sha256": "8714644f678b1421bd14191f24c2852adb911ece99238db6035202764fd5b5b8",
+          "source_path": "demo_calcchain_module.py",
+          "work_path": "demo_calcchain_module.py"
+        }
+      ],
+      "name": "Local Code Source",
+      "sources": [
+        {
+          "path": "D:\\CalcChain demo\\repo\\code",
+          "type": "local"
+        }
+      ],
+      "tree_sha256": "5b41ec416d3e376fed7d85f291a999821a49d80a85a3f392b28bb2f79e4ff3be"
+    },
+    "inputs": [
+      {
+        "map": [
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_1.txt",
+            "work_path": "input_1.txt"
+          },
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_2.txt",
+            "work_path": "input_2.txt"
+          }
+        ],
+        "name": "Local Input Source",
+        "sources": [
+          {
+            "path": "D:\\CalcChain demo\\repo\\source_1",
+            "type": "local"
+          },
+          {
+            "path": "D:\\CalcChain demo\\repo\\source_2",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "a448a5f25e9142c76885fe4b7f14afe887206e5e7dcc983f0af5d1926a9a805d"
+      }
+    ],
+    "lock": {
+      "sha256": "554ec89383e6182f5e2ba1a6454f2ef90210d7b2c9c1d0bec9b4a265e50acf6a",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_5f84016afa824525\\job\\.calcchain\\build\\build_lock.json",
+          "type": "local"
+        }
+      ]
+    }
+  },
+  "job": {
+    "created_at": "2026-05-26T08:44:58.682556+00:00",
+    "hostname": "Lenovid",
+    "id": "job",
+    "job_dir": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_5f84016afa824525\\job",
+    "status": "Built",
+    "user": "pashk"
+  },
+  "schema_version": "1.0",
+  "snapshots": {
+    "build": {
+      "sha256": "d90950583f408494bbf734e8aa2c3b6a53e5c8dab292e761bbd278176603540b",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_5f84016afa824525\\job\\.calcchain\\snapshots\\build_snapshot.json",
+          "type": "local"
+        }
+      ]
+    }
+  }
+}

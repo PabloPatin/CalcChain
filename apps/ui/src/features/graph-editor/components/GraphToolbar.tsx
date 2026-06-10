@@ -1,51 +1,43 @@
-import { Play, RotateCcw, Save, X } from "lucide-react";
+import { CheckCircle2, FolderOpen, Rocket, Save } from "lucide-react";
 
 export interface GraphToolbarProps {
   message?: string;
-
-  isCreatingConnection: boolean;
-
-  onSave?: () => void;
-  onValidate?: () => void;
-  onRun?: () => void;
-  onClear?: () => void;
-  onCancelConnection?: () => void;
+  busyAction: "validate" | "compile-run" | null;
+  onSave: () => void;
+  onLoad: () => void;
+  onValidate: () => void;
+  onCompileRun: () => void;
 }
 
 export function GraphToolbar({
   message,
-  isCreatingConnection,
+  busyAction,
   onSave,
+  onLoad,
   onValidate,
-  onRun,
-  onClear,
-  onCancelConnection,
+  onCompileRun,
 }: GraphToolbarProps) {
+  const disabled = busyAction !== null;
+  const secondaryButtonClass =
+    "flex h-9 min-w-24 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:hover:bg-white";
+  const primaryButtonClass =
+    "flex h-9 min-w-36 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:hover:bg-slate-950";
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white/80 px-6 backdrop-blur">
-      <div>
+      <div className="min-w-0">
         <div className="text-sm font-semibold text-slate-950">Workspace</div>
-        <div className="text-xs text-slate-500">
-          {message ?? "Собери расчётный граф из блоков."}
+        <div className="truncate text-xs text-slate-500">
+          {message ?? "Собери расчетный граф из блоков."}
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        {isCreatingConnection && (
-          <button
-            type="button"
-            onClick={onCancelConnection}
-            className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <X size={16} />
-            Cancel connection
-          </button>
-        )}
-
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={onSave}
-          className="flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-2 text-sm font-medium text-white shadow-sm"
+          disabled={disabled}
+          className={secondaryButtonClass}
         >
           <Save size={16} />
           Save
@@ -53,31 +45,34 @@ export function GraphToolbar({
 
         <button
           type="button"
-          onClick={onValidate}
-          className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          onClick={onLoad}
+          disabled={disabled}
+          className={secondaryButtonClass}
         >
-          <Play size={16} />
-          Validate
+          <FolderOpen size={16} />
+          Load
         </button>
-
-        {onRun && (
-          <button
-            type="button"
-            onClick={onRun}
-            className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Play size={16} />
-            Run
-          </button>
-        )}
 
         <button
           type="button"
-          onClick={onClear}
-          className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          onClick={onValidate}
+          disabled={disabled}
+          aria-busy={busyAction === "validate"}
+          className={secondaryButtonClass}
         >
-          <RotateCcw size={16} />
-          Clear
+          <CheckCircle2 size={16} />
+          Validate
+        </button>
+
+        <button
+          type="button"
+          onClick={onCompileRun}
+          disabled={disabled}
+          aria-busy={busyAction === "compile-run"}
+          className={primaryButtonClass}
+        >
+          <Rocket size={16} />
+          Compile + Run
         </button>
       </div>
     </header>

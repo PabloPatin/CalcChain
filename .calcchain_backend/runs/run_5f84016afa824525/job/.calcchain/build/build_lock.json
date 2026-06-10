@@ -1,0 +1,36 @@
+{
+  "build": {
+    "description": "",
+    "name": "Untitled calculation graph"
+  },
+  "code": {
+    "name": "Local Code Source",
+    "source": {
+      "path": "D:\\CalcChain demo\\repo\\code",
+      "type": "local"
+    },
+    "version": ""
+  },
+  "inputs": [
+    {
+      "name": "Local Input Source",
+      "source": {
+        "path": "D:\\CalcChain demo\\repo\\source_1",
+        "type": "local"
+      }
+    },
+    {
+      "name": "Local Input Source",
+      "source": {
+        "path": "D:\\CalcChain demo\\repo\\source_2",
+        "type": "local"
+      }
+    }
+  ],
+  "lock": {
+    "build_toml_sha256": "9288f9e31d1efacc657633cc7cdd5b674c6cd8ada90c5577a0563819e9eafbc4",
+    "created_at": "2026-05-26T08:44:58.617979+00:00",
+    "created_from": "build.toml"
+  },
+  "schema_version": "1.0"
+}

@@ -28,7 +28,7 @@ function getDescriptor(
   return descriptors.find((descriptor) => descriptor.type === node.type);
 }
 
-function getFallbackNodeSize(node: GraphNode, descriptor: BlockDescriptor) {
+function getFallbackNodeSize(descriptor: BlockDescriptor) {
   const portRows = Math.max(
     descriptor.inputs.length,
     descriptor.outputs.length,
@@ -36,9 +36,9 @@ function getFallbackNodeSize(node: GraphNode, descriptor: BlockDescriptor) {
   );
 
   return {
-    width: node.size?.width ?? descriptor.defaultSize?.width ?? 252,
+    width: descriptor.defaultSize?.width ?? 252,
     height: Math.max(
-      node.size?.height ?? descriptor.defaultSize?.height ?? 168,
+      descriptor.defaultSize?.height ?? 168,
       112 + portRows * 34,
     ),
   };
@@ -56,7 +56,7 @@ function getFallbackPortPosition(
     ports.findIndex((port) => port.id === portId),
   );
 
-  const size = getFallbackNodeSize(node, descriptor);
+  const size = getFallbackNodeSize(descriptor);
 
   return {
     x:
@@ -106,8 +106,8 @@ export function EdgeLayer({
         </defs>
 
       {edges.map((edge) => {
-        const fromNode = nodeById.get(edge.from.nodeId);
-        const toNode = nodeById.get(edge.to.nodeId);
+        const fromNode = nodeById.get(edge.source.node_id);
+        const toNode = nodeById.get(edge.target.node_id);
 
         if (!fromNode || !toNode) {
           return null;
@@ -123,27 +123,27 @@ export function EdgeLayer({
         const start =
           portPositions[
             createPortPositionKey(
-              edge.from.nodeId,
+              edge.source.node_id,
               "output",
-              edge.from.portId,
+              edge.source.port_id,
             )
           ] ??
           getFallbackPortPosition(
             fromNode,
             fromDescriptor,
             "output",
-            edge.from.portId,
+            edge.source.port_id,
           );
 
         const end =
           portPositions[
-            createPortPositionKey(edge.to.nodeId, "input", edge.to.portId)
+            createPortPositionKey(edge.target.node_id, "input", edge.target.port_id)
           ] ??
           getFallbackPortPosition(
             toNode,
             toDescriptor,
             "input",
-            edge.to.portId,
+            edge.target.port_id,
           );
 
         const selected = selectedEdgeId === edge.id;

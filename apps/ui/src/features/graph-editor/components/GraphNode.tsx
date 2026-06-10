@@ -12,10 +12,13 @@ import type {
 
 import { PortButton } from "./PortButton";
 
+const INTERNAL_CONFIG_FIELDS = new Set(["credential_ref", "secret_ref"]);
+
 export interface GraphNodeProps {
   node: GraphNodeModel;
   descriptor: BlockDescriptor;
   selected: boolean;
+  invalid: boolean;
 
   pendingConnectionFrom: GraphPortEndpoint | null;
   isCompatibleInput: (nodeId: NodeId, portId: PortId) => boolean;
@@ -89,7 +92,7 @@ function isContextDescriptor(descriptor: BlockDescriptor): boolean {
   return descriptor.category === "Context" || descriptor.category === "Environment";
 }
 
-function getNodeSize(node: GraphNodeModel, descriptor: BlockDescriptor) {
+function getNodeSize(descriptor: BlockDescriptor) {
   const portRows = Math.max(
     descriptor.inputs.length,
     descriptor.outputs.length,
@@ -97,22 +100,63 @@ function getNodeSize(node: GraphNodeModel, descriptor: BlockDescriptor) {
   );
 
   return {
-    width: node.size?.width ?? descriptor.defaultSize?.width ?? 252,
+    width: descriptor.defaultSize?.width ?? 252,
     height: Math.max(
-      node.size?.height ?? descriptor.defaultSize?.height ?? 168,
+      descriptor.defaultSize?.height ?? 168,
       112 + portRows * 34,
     ),
   };
 }
 
-function getDataPreviewEntries(node: GraphNodeModel) {
-  return Object.entries(node.data).slice(0, 2);
+function getDataPreviewEntries(
+  node: GraphNodeModel,
+  descriptor: BlockDescriptor,
+): Array<[string, string]> {
+  const secretFields = getSecretFieldNames(descriptor);
+  return Object.entries(node.config)
+    .filter(([key]) => !INTERNAL_CONFIG_FIELDS.has(key))
+    .slice(0, 2)
+    .map(([key, value]) => [
+      key,
+      secretFields.has(key) && value !== "" ? "******" : String(value),
+    ]);
+}
+
+function getSecretFieldNames(descriptor: BlockDescriptor): Set<string> {
+  const properties = descriptor.configSchema?.properties;
+  if (typeof properties !== "object" || properties === null || Array.isArray(properties)) {
+    return new Set();
+  }
+
+  const result = new Set<string>();
+  for (const [key, value] of Object.entries(properties)) {
+    if (isSecretProperty(value)) {
+      result.add(key);
+    }
+  }
+  return result;
+}
+
+function isSecretProperty(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const property = value as Record<string, unknown>;
+  return (
+    property["x-calcchain-credential"] === "secret" ||
+    property["x-calcchain-secret"] === true ||
+    property["x-secret"] === true ||
+    property.secret === true ||
+    property.format === "password" ||
+    property.writeOnly === true
+  );
 }
 
 export function GraphNode({
   node,
   descriptor,
   selected,
+  invalid,
   pendingConnectionFrom,
   isCompatibleInput,
   onSelect,
@@ -120,10 +164,11 @@ export function GraphNode({
   onPortClick,
   registerPort,
 }: GraphNodeProps) {
-  const size = getNodeSize(node, descriptor);
+  const size = getNodeSize(descriptor);
 
   return (
     <div
+      data-graph-node="true"
       role="button"
       tabIndex={0}
       onMouseDown={(event) => onPointerDown(event, node.id)}
@@ -134,8 +179,12 @@ export function GraphNode({
       className={[
         "absolute select-none rounded-3xl border bg-white shadow-sm transition",
         selected
-          ? "border-slate-950 shadow-lg ring-4 ring-slate-200"
-          : "border-slate-300 hover:border-slate-400 hover:shadow-md",
+          ? invalid
+            ? "border-rose-600 shadow-lg ring-4 ring-rose-200"
+            : "border-slate-950 shadow-lg ring-4 ring-slate-200"
+          : invalid
+            ? "border-rose-500 bg-rose-50/60 shadow-md ring-4 ring-rose-100"
+            : "border-slate-300 hover:border-slate-400 hover:shadow-md",
       ].join(" ")}
       style={{
         left: node.position.x,
@@ -162,10 +211,10 @@ export function GraphNode({
         </div>
 
         <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600">
-          {getDataPreviewEntries(node).length === 0 ? (
+          {getDataPreviewEntries(node, descriptor).length === 0 ? (
             <div className="text-slate-400">No data</div>
           ) : (
-            getDataPreviewEntries(node).map(([key, value]) => (
+            getDataPreviewEntries(node, descriptor).map(([key, value]) => (
               <div key={key} className="flex gap-2">
                 <span className="shrink-0 text-slate-400">{key}</span>
                 <span className="truncate text-slate-700">
@@ -217,8 +266,8 @@ export function GraphNode({
                   port={port}
                   direction="output"
                   isPendingOutput={
-                    pendingConnectionFrom?.nodeId === node.id &&
-                    pendingConnectionFrom?.portId === port.id
+                    pendingConnectionFrom?.node_id === node.id &&
+                    pendingConnectionFrom?.port_id === port.id
                   }
                   isCompatibleInput={false}
                   onPortClick={onPortClick}

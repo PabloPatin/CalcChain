@@ -4,7 +4,8 @@ import { PORT_KIND } from "./portKinds";
 export const BLOCK_TYPE = {
   CALCULATION: "calculation",
   RULE_SET: "rule-set",
-  ENV: "env",
+  ENV_PUBLIC: "env.public",
+  ENV_SECRET: "env.secret",
 
   OUTPUT_ARTIFACT: "output-artifact",
 
@@ -71,10 +72,38 @@ export const FALLBACK_BLOCK_DESCRIPTORS: BlockDescriptor[] = [
       },
     ],
     defaultData: {
-      executable: "",
-      args: [],
-      cwd: "work",
-      timeoutSec: 3600,
+      command: "",
+      working_directory: ".",
+      stdin_mode: "none",
+      stdin_text: "",
+      encoding: "utf-8",
+      timeout_seconds: null,
+    },
+    configSchema: {
+      type: "object",
+      properties: {
+        command: { type: "string", title: "Command" },
+        working_directory: { type: "string", title: "Working directory" },
+        stdin_mode: {
+          type: "string",
+          title: "Stdin mode",
+          enum: ["none", "script"],
+          default: "none",
+        },
+        stdin_text: {
+          type: "string",
+          title: "Stdin text",
+          default: "",
+          format: "textarea",
+        },
+        encoding: { type: "string", title: "Encoding", default: "utf-8" },
+        timeout_seconds: {
+          type: ["integer", "null"],
+          title: "Timeout seconds",
+          default: null,
+        },
+      },
+      required: ["command"],
     },
     defaultSize: {
       width: 286,
@@ -119,29 +148,79 @@ export const FALLBACK_BLOCK_DESCRIPTORS: BlockDescriptor[] = [
   },
 
   {
-    type: BLOCK_TYPE.ENV,
-    title: "Env",
-    category: "Context",
-    description: "Environment variables for calculation runtime.",
+    type: BLOCK_TYPE.ENV_PUBLIC,
+    title: "Public Env",
+    category: "Environment",
+    description: "Plain runtime environment variable.",
     provider: {
       kind: "core",
     },
     capability: {
       namespace: "env",
-      id: "variables",
+      id: "public",
     },
     inputs: [],
     outputs: [
       {
-        id: "env",
+        id: "output",
         label: "env",
         kind: PORT_KIND.ENV,
         description: "Runtime environment.",
       },
     ],
     defaultData: {
-      variables: {},
-      secretVariables: [],
+      name: "",
+      value: "",
+    },
+    configSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", title: "Name" },
+        value: { type: "string", title: "Value" },
+      },
+      required: ["name", "value"],
+    },
+  },
+
+  {
+    type: BLOCK_TYPE.ENV_SECRET,
+    title: "Secret Env",
+    category: "Environment",
+    description: "Secret runtime environment variable stored in backend session secrets.",
+    provider: {
+      kind: "core",
+    },
+    capability: {
+      namespace: "env",
+      id: "secret",
+    },
+    inputs: [],
+    outputs: [
+      {
+        id: "output",
+        label: "env",
+        kind: PORT_KIND.ENV,
+        description: "Runtime environment.",
+      },
+    ],
+    defaultData: {
+      name: "",
+      value: "",
+    },
+    configSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", title: "Name" },
+        value: {
+          type: "string",
+          title: "Value",
+          format: "password",
+          writeOnly: true,
+          "x-calcchain-credential": "secret",
+          "x-calcchain-secret": true,
+        },
+      },
+      required: ["name", "value"],
     },
   },
 

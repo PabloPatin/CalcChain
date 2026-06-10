@@ -27,33 +27,56 @@ export function createEmptyGraphDocument(
   name = DEFAULT_GRAPH_NAME,
 ): GraphDocument {
   return {
-    schemaVersion: DEFAULT_SCHEMA_VERSION,
+    schema_version: DEFAULT_SCHEMA_VERSION,
     name,
     nodes: [],
     edges: [],
-    viewport: {
-      x: 0,
-      y: 0,
-      zoom: 1,
-    },
   };
+}
+
+function mergeBlockData(current: BlockData, patch: Partial<BlockData>): BlockData {
+  const next: BlockData = { ...current };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) {
+      next[key] = value;
+    }
+  }
+  return next;
 }
 
 export function createGraphNode(
   descriptor: BlockDescriptor,
   position: CanvasPosition,
+  title = descriptor.title,
 ): GraphNode {
   return {
     id: createId("node"),
     type: descriptor.type,
-    title: descriptor.title,
+    title,
     position,
-    size: descriptor.defaultSize,
-    data: {
+    config: {
       ...descriptor.defaultData,
     },
-    status: "draft",
   };
+}
+
+function uniqueNodeTitle(descriptor: BlockDescriptor, nodes: GraphNode[]): string {
+  const sameTypeTitles = new Set(
+    nodes
+      .filter((node) => node.type === descriptor.type)
+      .map((node) => node.title),
+  );
+
+  if (!sameTypeTitles.has(descriptor.title)) {
+    return descriptor.title;
+  }
+
+  for (let index = 2; ; index += 1) {
+    const candidate = `${descriptor.title} ${index}`;
+    if (!sameTypeTitles.has(candidate)) {
+      return candidate;
+    }
+  }
 }
 
 export function createGraphEdge(
@@ -62,8 +85,8 @@ export function createGraphEdge(
 ): GraphEdge {
   return {
     id: createId("edge"),
-    from,
-    to,
+    source: from,
+    target: to,
   };
 }
 
@@ -152,7 +175,11 @@ export function useGraphState(
 
   const addNode = useCallback(
     (descriptor: BlockDescriptor, position: CanvasPosition): GraphNode => {
-      const node = createGraphNode(descriptor, position);
+      const node = createGraphNode(
+        descriptor,
+        position,
+        uniqueNodeTitle(descriptor, document.nodes),
+      );
 
       setDocumentState((current) => ({
         ...current,
@@ -164,7 +191,7 @@ export function useGraphState(
 
       return node;
     },
-    [],
+    [document.nodes],
   );
 
   const updateNodeData = useCallback(
@@ -175,10 +202,7 @@ export function useGraphState(
           node.id === nodeId
             ? {
                 ...node,
-                data: {
-                  ...node.data,
-                  ...dataPatch,
-                },
+                config: mergeBlockData(node.config, dataPatch),
               }
             : node,
         ),
@@ -194,7 +218,7 @@ export function useGraphState(
         node.id === nodeId
           ? {
               ...node,
-              data,
+              config: data,
             }
           : node,
       ),
@@ -220,7 +244,7 @@ export function useGraphState(
       ...current,
       nodes: current.nodes.filter((node) => node.id !== nodeId),
       edges: current.edges.filter(
-        (edge) => edge.from.nodeId !== nodeId && edge.to.nodeId !== nodeId,
+        (edge) => edge.source.node_id !== nodeId && edge.target.node_id !== nodeId,
       ),
     }));
 
@@ -232,10 +256,10 @@ export function useGraphState(
     (from: GraphPortEndpoint, to: GraphPortEndpoint): GraphEdge | null => {
       const edgeAlreadyExists = document.edges.some(
         (edge) =>
-          edge.from.nodeId === from.nodeId &&
-          edge.from.portId === from.portId &&
-          edge.to.nodeId === to.nodeId &&
-          edge.to.portId === to.portId,
+          edge.source.node_id === from.node_id &&
+          edge.source.port_id === from.port_id &&
+          edge.target.node_id === to.node_id &&
+          edge.target.port_id === to.port_id,
       );
 
       if (edgeAlreadyExists) {

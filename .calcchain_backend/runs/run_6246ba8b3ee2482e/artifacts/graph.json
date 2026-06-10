@@ -1,0 +1,154 @@
+{
+  "catalog_version": "builtin-2026-05-24:calcchain.svn",
+  "compile_options": {},
+  "compiled_at": "2026-05-26T09:30:36.861574+00:00",
+  "edges": [
+    {
+      "id": "edge-067178c8-cdea-4ef8-81b8-a66fbb4b0316",
+      "source": {
+        "node_id": "node-0cbc48e1-9134-4457-acd6-8141796a8732",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-35114bd1-5346-4804-bab2-d4d38308c7c0",
+        "port_id": "input"
+      }
+    },
+    {
+      "id": "edge-31d19465-e5fd-45c9-8246-a198790628ee",
+      "source": {
+        "node_id": "node-e0e2b0a3-2c0e-40d9-b2e9-61b398582c4c",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-35114bd1-5346-4804-bab2-d4d38308c7c0",
+        "port_id": "input"
+      }
+    },
+    {
+      "id": "edge-de129dbe-614d-487d-97bd-6842d1aa575d",
+      "source": {
+        "node_id": "node-f1ce9a20-2891-4d54-93da-cc3c9e2b2260",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-35114bd1-5346-4804-bab2-d4d38308c7c0",
+        "port_id": "code"
+      }
+    },
+    {
+      "id": "edge-d3afbef3-d4fc-4abc-8b0b-3a62cf02c5f3",
+      "source": {
+        "node_id": "node-ed0dec35-2f74-4311-b300-cb544c96ec8b",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-35114bd1-5346-4804-bab2-d4d38308c7c0",
+        "port_id": "env"
+      }
+    },
+    {
+      "id": "edge-bcd38a53-b492-4699-98ba-1f3426490bd2",
+      "source": {
+        "node_id": "node-35114bd1-5346-4804-bab2-d4d38308c7c0",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-a71c11ee-0f6d-40f7-9bf3-91f648cbfa06",
+        "port_id": "source"
+      }
+    }
+  ],
+  "execution_plan": [
+    "node-f1ce9a20-2891-4d54-93da-cc3c9e2b2260",
+    "node-0cbc48e1-9134-4457-acd6-8141796a8732",
+    "node-e0e2b0a3-2c0e-40d9-b2e9-61b398582c4c",
+    "node-ed0dec35-2f74-4311-b300-cb544c96ec8b",
+    "node-35114bd1-5346-4804-bab2-d4d38308c7c0",
+    "node-a71c11ee-0f6d-40f7-9bf3-91f648cbfa06"
+  ],
+  "graph_digest": "ae10a38f73f2fef87e64c7690ca51f8eb6dba2c89c5f7da4be019fe699f7b58c",
+  "kind": "calcchain.graph_config",
+  "name": "Untitled calculation graph",
+  "nodes": [
+    {
+      "config": {
+        "path": "D:\\CalcChain demo\\repo\\code"
+      },
+      "id": "node-f1ce9a20-2891-4d54-93da-cc3c9e2b2260",
+      "position": {
+        "x": 675.8780943617957,
+        "y": 571.7183287814233
+      },
+      "title": "Local Code Source",
+      "type": "source.local.code"
+    },
+    {
+      "config": {
+        "path": "D:\\CalcChain demo\\repo\\source_1"
+      },
+      "id": "node-0cbc48e1-9134-4457-acd6-8141796a8732",
+      "position": {
+        "x": 682.0357142857142,
+        "y": 167.33928230830597
+      },
+      "title": "Local Input Source",
+      "type": "source.local.input"
+    },
+    {
+      "config": {
+        "path": "D:\\CalcChain demo\\repo\\source_2"
+      },
+      "id": "node-e0e2b0a3-2c0e-40d9-b2e9-61b398582c4c",
+      "position": {
+        "x": 679.4077830840646,
+        "y": 368.5753951212878
+      },
+      "title": "Local Input Source",
+      "type": "source.local.input"
+    },
+    {
+      "config": {
+        "name": "CALCCHAIN_DEMO_TOKEN",
+        "value": "demo-token"
+      },
+      "id": "node-ed0dec35-2f74-4311-b300-cb544c96ec8b",
+      "position": {
+        "x": 931.5924706343826,
+        "y": 744.0252438509093
+      },
+      "title": "Public Env",
+      "type": "env.public"
+    },
+    {
+      "config": {
+        "command": "python demo_calcchain_module.py input_1.txt input_2.txt --out-dir demo_output",
+        "encoding": "utf-8",
+        "stdin_mode": "script",
+        "stdin_text": "8",
+        "timeout_seconds": 120,
+        "working_directory": "."
+      },
+      "id": "node-35114bd1-5346-4804-bab2-d4d38308c7c0",
+      "position": {
+        "x": 1153.0671746420314,
+        "y": 300.5335876997595
+      },
+      "title": "Calculation",
+      "type": "calculation"
+    },
+    {
+      "config": {
+        "name": "output"
+      },
+      "id": "node-a71c11ee-0f6d-40f7-9bf3-91f648cbfa06",
+      "position": {
+        "x": 1494.4639816703436,
+        "y": 312.8583821773159
+      },
+      "title": "Artifact Output",
+      "type": "artifact.output"
+    }
+  ],
+  "schema_version": "1.0"
+}

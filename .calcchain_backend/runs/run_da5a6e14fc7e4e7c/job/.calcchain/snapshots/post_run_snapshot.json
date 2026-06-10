@@ -1,0 +1,36 @@
+{
+  "created_at": "2026-05-25T20:53:46.524999+00:00",
+  "entries": [
+    {
+      "kind": "file",
+      "path": "demo_calcchain_module.py",
+      "sha256": "8714644f678b1421bd14191f24c2852adb911ece99238db6035202764fd5b5b8",
+      "size": 6891
+    },
+    {
+      "kind": "file",
+      "path": "demo_output/result_report.json",
+      "sha256": "ac1bf5333240d1f67dcf7b52f761d03d0e68f040f4d56aa5efd83b3eb9ea1185",
+      "size": 1254
+    },
+    {
+      "kind": "file",
+      "path": "demo_output/result_status.txt",
+      "sha256": "866337cac39fce2e03dc6be7669f8aca34c840887000d19a4196bf530d0eb750",
+      "size": 432
+    },
+    {
+      "kind": "file",
+      "path": "input_1.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "kind": "file",
+      "path": "input_2.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    }
+  ],
+  "schema_version": "1.0"
+}

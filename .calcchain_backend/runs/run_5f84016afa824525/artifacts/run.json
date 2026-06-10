@@ -1,0 +1,47 @@
+{
+  "run_id": "run_5f84016afa824525",
+  "status": "failed",
+  "name": "Untitled calculation graph",
+  "created_at": "2026-05-26T08:44:58.186957+00:00",
+  "started_at": "2026-05-26T08:44:58.187966+00:00",
+  "finished_at": "2026-05-26T08:44:58.723123+00:00",
+  "job_dir": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_5f84016afa824525\\job",
+  "error": "timeout_seconds must be an integer or null",
+  "logs": [
+    {
+      "timestamp": "2026-05-26T08:44:58.187973Z",
+      "level": "info",
+      "message": "Run started"
+    },
+    {
+      "timestamp": "2026-05-26T08:44:58.188181Z",
+      "level": "info",
+      "message": "Processing step: write_configs"
+    },
+    {
+      "timestamp": "2026-05-26T08:44:58.201451Z",
+      "level": "info",
+      "message": "Processing step: create_build_lock"
+    },
+    {
+      "timestamp": "2026-05-26T08:44:58.621934Z",
+      "level": "info",
+      "message": "Processing step: validate_build"
+    },
+    {
+      "timestamp": "2026-05-26T08:44:58.658486Z",
+      "level": "info",
+      "message": "Processing step: build"
+    },
+    {
+      "timestamp": "2026-05-26T08:44:58.710400Z",
+      "level": "info",
+      "message": "Processing step: run"
+    },
+    {
+      "timestamp": "2026-05-26T08:44:58.723129Z",
+      "level": "error",
+      "message": "timeout_seconds must be an integer or null"
+    }
+  ]
+}

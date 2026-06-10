@@ -39,35 +39,49 @@ def test_api_compile_secrets_run_and_artifacts(tmp_path):
         encoding="utf-8",
     )
     with _client(tmp_path) as client:
+        graph = {
+            "name": "api secret env",
+            "nodes": [
+                {"id": "code", "type": "source.local.code", "config": {"path": str(code_dir)}},
+                {
+                    "id": "calc",
+                    "type": "calculation",
+                    "config": {
+                        "command": "required by catalog",
+                        "executable": sys.executable,
+                        "args": ["solver.py"],
+                    },
+                },
+                {"id": "token_env", "type": "env.secret", "config": {"name": "CALCCHAIN_TOKEN"}},
+            ],
+            "edges": [
+                _edge("code", "output", "calc", "code"),
+                _edge("token_env", "output", "calc", "env"),
+            ],
+        }
+        requirements_response = client.post(
+            "/api/secrets/requirements",
+            headers=SESSION_HEADERS,
+            json={"graph": graph},
+        )
+        assert requirements_response.status_code == 200, requirements_response.text
+        requirements = requirements_response.json()["requirements"]
+        assert len(requirements) == 1
+        assert requirements[0]["kind"] == "env-secret"
+
         compiled = _compile_graph(
             client,
-            {
-                "name": "api secret env",
-                "nodes": [
-                    {"id": "code", "type": "source.local.code", "config": {"path": str(code_dir)}},
-                    {
-                        "id": "calc",
-                        "type": "calculation",
-                        "config": {
-                            "command": "required by catalog",
-                            "executable": sys.executable,
-                            "args": ["solver.py"],
-                            "secret_env": {"CALCCHAIN_TOKEN": "secret:run:api-token"},
-                        },
-                    },
-                ],
-                "edges": [_edge("code", "output", "calc", "code")],
-            },
+            graph,
         )
 
         secret_response = client.post(
             "/api/secrets/session",
             headers=SESSION_HEADERS,
             json={
-                "secret_ref": "secret:run:api-token",
+                "secret_ref": requirements[0]["secret_ref"],
                 "kind": "run-env",
                 "ttl_seconds": 60,
-                "values": {"CALCCHAIN_TOKEN": "secret-from-api"},
+                "values": {"value": "secret-from-api"},
             },
         )
         assert secret_response.status_code == 200, secret_response.text

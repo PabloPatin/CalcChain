@@ -1,0 +1,52 @@
+{
+  "run_id": "run_da5a6e14fc7e4e7c",
+  "status": "failed",
+  "name": "Untitled calculation graph",
+  "created_at": "2026-05-25T20:53:46.093078+00:00",
+  "started_at": "2026-05-25T20:53:46.093842+00:00",
+  "finished_at": "2026-05-25T20:53:46.571663+00:00",
+  "job_dir": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_da5a6e14fc7e4e7c\\job",
+  "error": "Core run finished with failed status",
+  "logs": [
+    {
+      "timestamp": "2026-05-25T20:53:46.093846Z",
+      "level": "info",
+      "message": "Run started"
+    },
+    {
+      "timestamp": "2026-05-25T20:53:46.093954Z",
+      "level": "info",
+      "message": "Processing step: write_configs"
+    },
+    {
+      "timestamp": "2026-05-25T20:53:46.104384Z",
+      "level": "info",
+      "message": "Processing step: create_build_lock"
+    },
+    {
+      "timestamp": "2026-05-25T20:53:46.129439Z",
+      "level": "info",
+      "message": "Processing step: validate_build"
+    },
+    {
+      "timestamp": "2026-05-25T20:53:46.160530Z",
+      "level": "info",
+      "message": "Processing step: build"
+    },
+    {
+      "timestamp": "2026-05-25T20:53:46.241090Z",
+      "level": "info",
+      "message": "Processing step: run"
+    },
+    {
+      "timestamp": "2026-05-25T20:53:46.571558Z",
+      "level": "error",
+      "message": "Core run finished with failed status"
+    },
+    {
+      "timestamp": "2026-05-25T20:53:46.571768Z",
+      "level": "info",
+      "message": "Processing step: collect_artifacts"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+schema_version = "1.0"
+
+[run]
+executable = "python"
+args = ["demo_calcchain_module.py", "input_1.txt", "input_2.txt", "--out-dir", "demo_output"]
+cwd = "."
+timeout_seconds = "120"
+encoding = "utf-8"
+stdin_mode = "script"
+stdin_text = "8"
+
+[run.env.secrets]
+CALCCHAIN_DEMO_TOKEN = "secret:graph:f71f57af971b0c1d17612200"

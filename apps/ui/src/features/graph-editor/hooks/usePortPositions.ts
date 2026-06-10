@@ -18,6 +18,7 @@ export function createPortPositionKey(
 
 export interface UsePortPositionsParams {
   canvasRef: RefObject<HTMLElement | null>;
+  scale?: number;
 
   /**
    * Values that should trigger recalculation.
@@ -41,6 +42,7 @@ export interface UsePortPositionsResult {
 
 export function usePortPositions({
   canvasRef,
+  scale = 1,
   dependencies = [],
 }: UsePortPositionsParams): UsePortPositionsResult {
   const portElementsRef = useRef<Map<string, HTMLElement>>(new Map());
@@ -67,10 +69,14 @@ export function usePortPositions({
     for (const [key, element] of portElementsRef.current.entries()) {
       const elementRect = element.getBoundingClientRect();
 
-      nextPositions[key] = getElementCenterRelativeToCanvas(
+      const position = getElementCenterRelativeToCanvas(
         canvasRect,
         elementRect,
       );
+      nextPositions[key] = {
+        x: position.x / scale,
+        y: position.y / scale,
+      };
     }
 
     setPortPositions((currentPositions) => {
@@ -80,7 +86,7 @@ export function usePortPositions({
 
       return nextPositions;
     });
-  }, [canvasRef]);
+  }, [canvasRef, scale]);
 
   const registerPort = useCallback(
     (

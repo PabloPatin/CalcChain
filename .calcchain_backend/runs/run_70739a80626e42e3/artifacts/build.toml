@@ -1,0 +1,26 @@
+schema_version = "1.0"
+
+[build]
+name = "Untitled calculation graph"
+
+[code]
+name = "Local Code Source"
+version = ""
+
+[code.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\code"
+
+[[inputs]]
+name = "node-0cbc48e1-9134-4457-acd6-8141796a8732"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_1"
+
+[[inputs]]
+name = "node-e0e2b0a3-2c0e-40d9-b2e9-61b398582c4c"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_2"

@@ -1,0 +1,32 @@
+schema_version = "1.0"
+
+[lock]
+created_at = "2026-05-26T09:30:16.858647+00:00"
+created_from = "build.toml"
+build_toml_sha256 = "9a3fc44d6b925879ddd7c626df4d466ef55d14a1db7de3bc7df903691c803f72"
+
+[build]
+name = "Untitled calculation graph"
+description = ""
+
+[code]
+name = "Local Code Source"
+version = ""
+
+[code.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\code"
+
+[[inputs]]
+name = "node-0cbc48e1-9134-4457-acd6-8141796a8732"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_1"
+
+[[inputs]]
+name = "node-e0e2b0a3-2c0e-40d9-b2e9-61b398582c4c"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_2"

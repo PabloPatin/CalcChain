@@ -1,0 +1,149 @@
+{
+  "catalog_version": "builtin-2026-05-24:calcchain.svn",
+  "compile_options": {},
+  "compiled_at": "2026-05-25T20:50:16.195707+00:00",
+  "edges": [
+    {
+      "id": "edge-0ccc9ba4-4275-442a-b2d4-31a01bef540d",
+      "source": {
+        "node_id": "node-bc08caad-aa99-47ab-b864-4ff727a17078",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-39fbe191-63ee-4170-ac55-b90c56d19d4a",
+        "port_id": "input"
+      }
+    },
+    {
+      "id": "edge-e4acb67f-5e26-4751-b7c0-585e29d80a46",
+      "source": {
+        "node_id": "node-7933f108-847c-4eca-a778-e6981bc7e87d",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-39fbe191-63ee-4170-ac55-b90c56d19d4a",
+        "port_id": "input"
+      }
+    },
+    {
+      "id": "edge-d136205e-3bac-489f-945f-05765be50c7f",
+      "source": {
+        "node_id": "node-b09e824c-f757-48a9-a79c-fb59f6795f9c",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-39fbe191-63ee-4170-ac55-b90c56d19d4a",
+        "port_id": "code"
+      }
+    },
+    {
+      "id": "edge-05e5ca32-fa12-42c4-8735-790feb850c67",
+      "source": {
+        "node_id": "node-d3375546-a583-4a35-b5c0-231cee489765",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-39fbe191-63ee-4170-ac55-b90c56d19d4a",
+        "port_id": "env"
+      }
+    },
+    {
+      "id": "edge-bcf77d22-c4a2-4cf1-891f-5ac996b1008e",
+      "source": {
+        "node_id": "node-39fbe191-63ee-4170-ac55-b90c56d19d4a",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "node-d7bc5ddf-aa5b-42c4-942b-853e96ba5be5",
+        "port_id": "source"
+      }
+    }
+  ],
+  "execution_plan": [
+    "node-bc08caad-aa99-47ab-b864-4ff727a17078",
+    "node-7933f108-847c-4eca-a778-e6981bc7e87d",
+    "node-b09e824c-f757-48a9-a79c-fb59f6795f9c",
+    "node-d3375546-a583-4a35-b5c0-231cee489765",
+    "node-39fbe191-63ee-4170-ac55-b90c56d19d4a",
+    "node-d7bc5ddf-aa5b-42c4-942b-853e96ba5be5"
+  ],
+  "graph_digest": "84952d2580cf0d63956eab2146eba61713abdae565f3eeb60e5b33dc61e285f3",
+  "kind": "calcchain.graph_config",
+  "name": "Untitled calculation graph",
+  "nodes": [
+    {
+      "config": {
+        "path": "D:\\CalcChain demo\\repo\\source_1"
+      },
+      "id": "node-bc08caad-aa99-47ab-b864-4ff727a17078",
+      "position": {
+        "x": 1277.5672979249814,
+        "y": 702.2627370797583
+      },
+      "title": "Local Input Source",
+      "type": "source.local.input"
+    },
+    {
+      "config": {
+        "path": "D:\\CalcChain demo\\repo\\source_2"
+      },
+      "id": "node-7933f108-847c-4eca-a778-e6981bc7e87d",
+      "position": {
+        "x": 1288.6103137768719,
+        "y": 913.4604152471646
+      },
+      "title": "Local Input Source",
+      "type": "source.local.input"
+    },
+    {
+      "config": {
+        "path": "D:\\CalcChain demo\\repo\\demo_calcchain_module.py"
+      },
+      "id": "node-b09e824c-f757-48a9-a79c-fb59f6795f9c",
+      "position": {
+        "x": 1292.751444721331,
+        "y": 1116.375831525653
+      },
+      "title": "Local Code Source",
+      "type": "source.local.code"
+    },
+    {
+      "config": {
+        "command": "python demo_calcchain_module.py .\\input_1.txt .\\input_2.txt --out-dir .\\demo_output",
+        "working_directory": "."
+      },
+      "id": "node-39fbe191-63ee-4170-ac55-b90c56d19d4a",
+      "position": {
+        "x": 1826.9573365565352,
+        "y": 819.594780506095
+      },
+      "title": "Calculation",
+      "type": "calculation"
+    },
+    {
+      "config": {
+        "name": "CALCCHAIN_DEMO_TOKEN=\"demo-token\""
+      },
+      "id": "node-d3375546-a583-4a35-b5c0-231cee489765",
+      "position": {
+        "x": 1294.8368986688524,
+        "y": 1322.3674532403013
+      },
+      "title": "Env",
+      "type": "env.local"
+    },
+    {
+      "config": {
+        "name": "Result"
+      },
+      "id": "node-d7bc5ddf-aa5b-42c4-942b-853e96ba5be5",
+      "position": {
+        "x": 2180.022793589867,
+        "y": 835.7989244616025
+      },
+      "title": "Artifact Output",
+      "type": "artifact.output"
+    }
+  ],
+  "schema_version": "1.0"
+}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
@@ -83,6 +84,23 @@ def create_app(settings: BackendSettings | None = None) -> FastAPI:
     app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"], dependencies=protected)
     app.include_router(secrets.router, prefix="/api/secrets", tags=["secrets"], dependencies=protected)
     return app
+
+
+def create_app_from_env() -> FastAPI:
+    """Uvicorn reload factory.
+
+    Reload mode requires an import string, so CLI arguments are passed to the
+    reloaded worker through narrowly scoped environment variables.
+    """
+    project_root = os.environ.get("CALCCHAIN_BACKEND_PROJECT_ROOT")
+    mode = os.environ.get("CALCCHAIN_BACKEND_MODE") or "local"
+    host = os.environ.get("CALCCHAIN_BACKEND_HOST") or "127.0.0.1"
+    raw_port = os.environ.get("CALCCHAIN_BACKEND_PORT")
+    try:
+        port = int(raw_port) if raw_port else 8765
+    except ValueError:
+        port = 8765
+    return create_app(create_settings(project_root, mode=mode, host=host, port=port))
 
 
 def _backend_config(settings: BackendSettings) -> BackendConfig:

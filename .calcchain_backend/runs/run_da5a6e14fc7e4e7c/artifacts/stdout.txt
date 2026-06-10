@@ -1,0 +1,4 @@
+������� ����� ����� ������ 10: ���������� ������. ����� ������������ �������� ����� �� �������� ERROR.
+�������� ����� �������� � �����: demo_output
+- demo_output\result_status.txt
+- demo_output\result_report.json

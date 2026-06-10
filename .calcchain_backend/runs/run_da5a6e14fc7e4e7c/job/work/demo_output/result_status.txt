@@ -1,0 +1,10 @@
+STATUS: ERROR
+TIME_UTC: 2026-05-25T20:53:46.463997+00:00
+ENV_VAR_REQUIRED: CALCCHAIN_DEMO_TOKEN
+ENV_VAR_PRESENT: false
+USER_NUMBER: not provided
+
+MESSAGE: Демонстрационный расчёт завершился с ошибками.
+ERRORS:
+- Не задана обязательная переменная окружения CALCCHAIN_DEMO_TOKEN.
+- Не удалось прочитать число из stdin.

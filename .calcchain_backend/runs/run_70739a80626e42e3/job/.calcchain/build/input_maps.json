@@ -1,0 +1,36 @@
+[
+  {
+    "map": [
+      {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "source_path": "input_1.txt",
+        "work_path": "input_1.txt"
+      }
+    ],
+    "name": "node-0cbc48e1-9134-4457-acd6-8141796a8732",
+    "sources": [
+      {
+        "path": "D:\\CalcChain demo\\repo\\source_1",
+        "type": "local"
+      }
+    ],
+    "tree_sha256": "0f2c178087eb396492c523e69fc123d5bf5e9a79bd0c46c5d07b9c5ecaac6108"
+  },
+  {
+    "map": [
+      {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "source_path": "input_2.txt",
+        "work_path": "input_2.txt"
+      }
+    ],
+    "name": "node-e0e2b0a3-2c0e-40d9-b2e9-61b398582c4c",
+    "sources": [
+      {
+        "path": "D:\\CalcChain demo\\repo\\source_2",
+        "type": "local"
+      }
+    ],
+    "tree_sha256": "ce39e018d804f50eec4e90e33b4ac782a8331ac8cd19fef626ab628c0be4e85b"
+  }
+]

@@ -1,0 +1,12 @@
+schema_version = "1.0"
+
+[run]
+executable = "python"
+args = ["demo_calcchain_module.py", "input_1.txt", "input_2.txt", "--out-dir", "demo_output"]
+cwd = "."
+encoding = "utf-8"
+stdin_mode = "none"
+stdin_text = ""
+
+[run.env.public]
+CALCCHAIN_DEMO_TOKEN = "demo-token"

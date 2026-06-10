@@ -153,6 +153,7 @@ class SecretService:
         self._cleanup_session(session_key)
         nodes_by_id = {node.id: node for node in nodes}
         targets_by_auth_node_id = self._auth_targets(edges)
+        targets_by_env_node_id = self._env_targets(edges)
         requirements_by_ref: dict[str, SecretRequirement] = {}
 
         for node in nodes:
@@ -161,8 +162,15 @@ class SecretService:
                 continue
 
             secret_ref = secret_ref_for_graph_node(node)
+            if node.type.startswith("env."):
+                target_usages = targets_by_env_node_id.get(node.id, [])
+                if not target_usages:
+                    continue
+            else:
+                target_usages = targets_by_auth_node_id.get(node.id, [])
+
             used_by = [self._usage_for_node(node)]
-            for target_node_id, target_port_id in targets_by_auth_node_id.get(node.id, []):
+            for target_node_id, target_port_id in target_usages:
                 target_node = nodes_by_id.get(target_node_id)
                 if target_node is not None:
                     used_by.append(self._usage_for_node(target_node, port_id=target_port_id))
@@ -216,7 +224,9 @@ class SecretService:
         return None
 
     def _credential_kind_for_node(self, node: GraphNode) -> str:
-        return node.type.removeprefix("auth.").replace("_", "-")
+        if node.type.startswith("auth."):
+            return node.type.removeprefix("auth.").replace("_", "-")
+        return node.type.replace(".", "-").replace("_", "-")
 
     def _title_for_node(self, node: GraphNode) -> str:
         descriptor = self._descriptor_for_node(node)
@@ -244,6 +254,14 @@ class SecretService:
         result: dict[str, list[tuple[str, str]]] = {}
         for edge in edges:
             if edge.source.port_id == "auth":
+                result.setdefault(edge.source.node_id, []).append((edge.target.node_id, edge.target.port_id))
+        return result
+
+    @staticmethod
+    def _env_targets(edges: list[GraphEdge]) -> dict[str, list[tuple[str, str]]]:
+        result: dict[str, list[tuple[str, str]]] = {}
+        for edge in edges:
+            if edge.target.port_id == "env":
                 result.setdefault(edge.source.node_id, []).append((edge.target.node_id, edge.target.port_id))
         return result
 

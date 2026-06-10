@@ -62,6 +62,7 @@ class CoreConfigCompiler:
         }
 
         rules = _RulesBuilder()
+        used_input_names: set[str] = set()
         for input_edge in state.incoming(calculation.id, "input"):
             input_node = state.node(input_edge.source.node_id)
             if input_node is None:
@@ -75,14 +76,14 @@ class CoreConfigCompiler:
                 rule_set_name = rules.add_from_rule_node(input_node, rule_type="input")
 
             input_config = {
-                "name": _node_name(source_node, default="input"),
+                "name": _unique_input_name(source_node, used_input_names),
                 "source": self._source_ref(state, source_node),
             }
             if rule_set_name is not None:
                 input_config["rule_set"] = rule_set_name
             build_config["inputs"].append(input_config)
 
-        run_config = self._run_config(calculation, diagnostics)
+        run_config = self._run_config(state, calculation, diagnostics)
         publish_config = self._publish_config(state, graph, compile_options, rules, diagnostics)
         rules_config = rules.to_dict()
 
@@ -202,7 +203,7 @@ class CoreConfigCompiler:
             result["secrets"] = secrets
         return result
 
-    def _run_config(self, calculation: GraphNode, diagnostics: list[Diagnostic]) -> dict[str, Any] | None:
+    def _run_config(self, state: "_GraphState", calculation: GraphNode, diagnostics: list[Diagnostic]) -> dict[str, Any] | None:
         config = calculation.config
         executable = config.get("executable")
         args = config.get("args")
@@ -224,15 +225,61 @@ class CoreConfigCompiler:
             "executable": command[0],
             "args": command[1:],
             "cwd": str(config.get("working_directory") or config.get("cwd") or "."),
-            "timeout_seconds": config.get("timeout_seconds"),
+            "timeout_seconds": _optional_timeout_seconds(config.get("timeout_seconds"), calculation, diagnostics),
             "encoding": str(config.get("encoding") or "utf-8"),
             "stdin_mode": str(config.get("stdin_mode") or "none"),
             "stdin_text": str(config.get("stdin_text") or ""),
         }
-        env = _run_env(config)
+        env = self._run_env(state, calculation, config, diagnostics)
         if env:
             run["env"] = env
         return {"schema_version": "1.0", "run": run}
+
+    def _run_env(
+        self,
+        state: "_GraphState",
+        calculation: GraphNode,
+        calculation_config: dict[str, Any],
+        diagnostics: list[Diagnostic],
+    ) -> dict[str, Any]:
+        public = _string_dict(calculation_config.get("env") or calculation_config.get("public_env") or {})
+        secrets = _string_dict(calculation_config.get("secret_env") or {})
+
+        for env_edge in state.incoming(calculation.id, "env"):
+            env_node = state.node(env_edge.source.node_id)
+            if env_node is None:
+                continue
+            name = _string_config(env_node, "name")
+            if not name:
+                diagnostics.append(
+                    Diagnostic(
+                        code="compile_missing_env_name",
+                        message="Environment variable name is required",
+                        node_id=env_node.id,
+                    ),
+                )
+                continue
+            if env_node.type in {"env.secret", "env.secure"}:
+                secrets[name] = secret_ref_for_graph_node(env_node)
+                continue
+            value = env_node.config.get("value")
+            if value in (None, ""):
+                diagnostics.append(
+                    Diagnostic(
+                        code="compile_missing_env_value",
+                        message=f"Environment variable value is required: {name}",
+                        node_id=env_node.id,
+                    ),
+                )
+                continue
+            public[name] = str(value)
+
+        result: dict[str, Any] = {}
+        if public:
+            result["public"] = public
+        if secrets:
+            result["secrets"] = secrets
+        return result
 
     def _publish_config(
         self,
@@ -360,21 +407,49 @@ def _split_command(value: Any) -> list[str]:
     return shlex.split(value, posix=os.name != "nt")
 
 
+def _optional_timeout_seconds(value: Any, node: GraphNode, diagnostics: list[Diagnostic]) -> int | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        diagnostics.append(
+            Diagnostic(
+                code="compile_invalid_timeout_seconds",
+                message="Timeout seconds must be an integer or empty",
+                node_id=node.id,
+                details={"field": "timeout_seconds"},
+            ),
+        )
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            diagnostics.append(
+                Diagnostic(
+                    code="compile_invalid_timeout_seconds",
+                    message="Timeout seconds must be an integer or empty",
+                    node_id=node.id,
+                    details={"field": "timeout_seconds"},
+                ),
+            )
+            return None
+    diagnostics.append(
+        Diagnostic(
+            code="compile_invalid_timeout_seconds",
+            message="Timeout seconds must be an integer or empty",
+            node_id=node.id,
+            details={"field": "timeout_seconds"},
+        ),
+    )
+    return None
+
+
 def _string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value]
-
-
-def _run_env(config: dict[str, Any]) -> dict[str, Any]:
-    public = _string_dict(config.get("env") or config.get("public_env") or {})
-    secrets = _string_dict(config.get("secret_env") or {})
-    result: dict[str, Any] = {}
-    if public:
-        result["public"] = public
-    if secrets:
-        result["secrets"] = secrets
-    return result
 
 
 def _string_dict(value: Any) -> dict[str, str]:
@@ -386,6 +461,23 @@ def _string_dict(value: Any) -> dict[str, str]:
 def _node_name(node: GraphNode, *, default: str) -> str:
     raw = node.config.get("name") or node.title or node.id or default
     return str(raw)
+
+
+def _unique_input_name(node: GraphNode, used_names: set[str]) -> str:
+    raw = node.config.get("name") or node.id or "input"
+    base = _safe_input_name(str(raw), fallback="input")
+    name = base
+    index = 2
+    while name in used_names:
+        name = f"{base}_{index}"
+        index += 1
+    used_names.add(name)
+    return name
+
+
+def _safe_input_name(value: str, *, fallback: str) -> str:
+    normalized = "".join(char if char.isalnum() or char in {"_", "-"} else "_" for char in value).strip("_")
+    return normalized or fallback
 
 
 def _string_config(node: GraphNode, key: str) -> str:

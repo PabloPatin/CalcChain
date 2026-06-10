@@ -1,0 +1,26 @@
+schema_version = "1.0"
+
+[build]
+name = "Untitled calculation graph"
+
+[code]
+name = "Local Code Source"
+version = ""
+
+[code.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\demo_calcchain_module.py"
+
+[[inputs]]
+name = "Local Input Source"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_1"
+
+[[inputs]]
+name = "Local Input Source"
+
+[inputs.source]
+type = "local"
+path = "D:\\CalcChain demo\\repo\\source_2"

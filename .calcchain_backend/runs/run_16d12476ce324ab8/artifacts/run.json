@@ -1,0 +1,37 @@
+{
+  "run_id": "run_16d12476ce324ab8",
+  "status": "failed",
+  "name": "Untitled calculation graph",
+  "created_at": "2026-05-25T20:50:16.214932+00:00",
+  "started_at": "2026-05-25T20:50:16.216337+00:00",
+  "finished_at": "2026-05-25T20:50:17.343639+00:00",
+  "job_dir": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_16d12476ce324ab8\\job",
+  "error": "source capability local list_files failed: local source is not a directory: D:\\CalcChain demo\\repo\\demo_calcchain_module.py",
+  "logs": [
+    {
+      "timestamp": "2026-05-25T20:50:16.216357Z",
+      "level": "info",
+      "message": "Run started"
+    },
+    {
+      "timestamp": "2026-05-25T20:50:16.216548Z",
+      "level": "info",
+      "message": "Processing step: write_configs"
+    },
+    {
+      "timestamp": "2026-05-25T20:50:16.238428Z",
+      "level": "info",
+      "message": "Processing step: create_build_lock"
+    },
+    {
+      "timestamp": "2026-05-25T20:50:17.328965Z",
+      "level": "info",
+      "message": "Processing step: validate_build"
+    },
+    {
+      "timestamp": "2026-05-25T20:50:17.343646Z",
+      "level": "error",
+      "message": "source capability local list_files failed: local source is not a directory: D:\\CalcChain demo\\repo\\demo_calcchain_module.py"
+    }
+  ]
+}

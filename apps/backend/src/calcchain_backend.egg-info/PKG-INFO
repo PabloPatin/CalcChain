@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: calcchain-backend
+Version: 0.1.0
+Summary: Backend API for CalcChain
+Requires-Python: >=3.11
+Requires-Dist: calcchain-core>=0.1.0
+Requires-Dist: calcchain-plugin-system>=0.1.0
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn[standard]>=0.30
+Requires-Dist: pydantic>=2.7

@@ -23,7 +23,7 @@ export interface ConnectionCheckContext {
 export function canConnect(context: ConnectionCheckContext): ConnectionCheckResult {
   const { nodes, edges, descriptors, connectionRules = [], from, to } = context;
 
-  if (from.nodeId === to.nodeId) {
+  if (from.node_id === to.node_id) {
     return {
       ok: false,
       reason: "A block cannot be connected to itself.",
@@ -31,13 +31,13 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
     };
   }
 
-  const fromNode = findNode(nodes, from.nodeId);
-  const toNode = findNode(nodes, to.nodeId);
+  const fromNode = findNode(nodes, from.node_id);
+  const toNode = findNode(nodes, to.node_id);
 
   if (!fromNode) {
     return {
       ok: false,
-      reason: `Source node not found: ${from.nodeId}`,
+      reason: `Source node not found: ${from.node_id}`,
       code: "source_node_not_found",
     };
   }
@@ -45,7 +45,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!toNode) {
     return {
       ok: false,
-      reason: `Target node not found: ${to.nodeId}`,
+      reason: `Target node not found: ${to.node_id}`,
       code: "target_node_not_found",
     };
   }
@@ -69,13 +69,13 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
     };
   }
 
-  const fromPort = findOutputPort(fromDescriptor, from.portId);
-  const toPort = findInputPort(toDescriptor, to.portId);
+  const fromPort = findOutputPort(fromDescriptor, from.port_id);
+  const toPort = findInputPort(toDescriptor, to.port_id);
 
   if (!fromPort) {
     return {
       ok: false,
-      reason: `Source output port not found: ${fromNode.title}.${from.portId}`,
+      reason: `Source output port not found: ${fromNode.title}.${from.port_id}`,
       code: "source_output_port_not_found",
     };
   }
@@ -83,7 +83,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!toPort) {
     return {
       ok: false,
-      reason: `Target input port not found: ${toNode.title}.${to.portId}`,
+      reason: `Target input port not found: ${toNode.title}.${to.port_id}`,
       code: "target_input_port_not_found",
     };
   }
@@ -149,10 +149,10 @@ export function isDuplicateConnection(
 ): boolean {
   return edges.some(
     (edge) =>
-      edge.from.nodeId === from.nodeId &&
-      edge.from.portId === from.portId &&
-      edge.to.nodeId === to.nodeId &&
-      edge.to.portId === to.portId,
+      edge.source.node_id === from.node_id &&
+      edge.source.port_id === from.port_id &&
+      edge.target.node_id === to.node_id &&
+      edge.target.port_id === to.port_id,
   );
 }
 
@@ -162,8 +162,8 @@ export function countIncomingConnections(
 ): number {
   return edges.filter(
     (edge) =>
-      edge.to.nodeId === endpoint.nodeId &&
-      edge.to.portId === endpoint.portId,
+      edge.target.node_id === endpoint.node_id &&
+      edge.target.port_id === endpoint.port_id,
   ).length;
 }
 
@@ -218,8 +218,8 @@ export function getCompatibleInputEndpoints(
 
     for (const inputPort of descriptor.inputs) {
       const to: GraphPortEndpoint = {
-        nodeId: node.id,
-        portId: inputPort.id,
+        node_id: node.id,
+        port_id: inputPort.id,
       };
 
       const check = canConnect({

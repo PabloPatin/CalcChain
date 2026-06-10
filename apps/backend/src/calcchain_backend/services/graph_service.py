@@ -204,7 +204,8 @@ class GraphService:
         if secret_fields:
             for field in secret_fields:
                 config.pop(field, None)
-            config.setdefault("credential_ref", secret_ref_for_graph_node(node))
+            if not isinstance(config.get("credential_ref"), str) or not config.get("credential_ref"):
+                config["credential_ref"] = secret_ref_for_graph_node(node)
         data["config"] = config
         return data
 

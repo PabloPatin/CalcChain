@@ -1,0 +1,141 @@
+{
+  "build": {
+    "code": {
+      "map": [
+        {
+          "sha256": "8714644f678b1421bd14191f24c2852adb911ece99238db6035202764fd5b5b8",
+          "source_path": "demo_calcchain_module.py",
+          "work_path": "demo_calcchain_module.py"
+        }
+      ],
+      "name": "Local Code Source",
+      "sources": [
+        {
+          "path": "D:\\CalcChain demo\\repo\\code",
+          "type": "local"
+        }
+      ],
+      "tree_sha256": "5b41ec416d3e376fed7d85f291a999821a49d80a85a3f392b28bb2f79e4ff3be"
+    },
+    "inputs": [
+      {
+        "map": [
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_1.txt",
+            "work_path": "input_1.txt"
+          },
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_2.txt",
+            "work_path": "input_2.txt"
+          }
+        ],
+        "name": "Local Input Source",
+        "sources": [
+          {
+            "path": "D:\\CalcChain demo\\repo\\source_1",
+            "type": "local"
+          },
+          {
+            "path": "D:\\CalcChain demo\\repo\\source_2",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "a448a5f25e9142c76885fe4b7f14afe887206e5e7dcc983f0af5d1926a9a805d"
+      },
+      {
+        "map": [
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_1.txt",
+            "target_path": "input_1.txt",
+            "work_path": "input_1.txt"
+          },
+          {
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "source_path": "input_2.txt",
+            "target_path": "input_2.txt",
+            "work_path": "input_2.txt"
+          }
+        ],
+        "name": "frozen_inputs",
+        "sources": [
+          {
+            "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_1657aa08ff6e4453\\job\\.calcchain\\frozen_inputs",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "a448a5f25e9142c76885fe4b7f14afe887206e5e7dcc983f0af5d1926a9a805d"
+      }
+    ],
+    "lock": {
+      "sha256": "22eadd2a579e25b755421675798b5e694512331bdccfdf6baf23e932f8bc9bb0",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_1657aa08ff6e4453\\job\\.calcchain\\build\\build_lock.json",
+          "type": "local"
+        }
+      ]
+    }
+  },
+  "job": {
+    "created_at": "2026-05-26T08:23:32.139530+00:00",
+    "hostname": "Lenovid",
+    "id": "job",
+    "job_dir": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_1657aa08ff6e4453\\job",
+    "status": "Failed",
+    "user": "pashk"
+  },
+  "run": {
+    "file_groups": {
+      "code": [
+        "demo_calcchain_module.py"
+      ],
+      "deleted": [],
+      "ignored": [],
+      "inputs": [
+        "input_1.txt",
+        "input_2.txt"
+      ],
+      "logs": [],
+      "outputs": [
+        "demo_output/result_report.json",
+        "demo_output/result_status.txt"
+      ],
+      "temp": [],
+      "unknown": []
+    },
+    "status": "Failed"
+  },
+  "schema_version": "1.0",
+  "snapshots": {
+    "build": {
+      "sha256": "47219ce01f71bdffbc5df6d4bdb5668eb06200176e7d1a2fd2f26230ecf5839e",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_1657aa08ff6e4453\\job\\.calcchain\\snapshots\\build_snapshot.json",
+          "type": "local"
+        }
+      ]
+    },
+    "post_run": {
+      "sha256": "28b2b8a8041c94919920e5131a573370c7a732784285e420ff68aa1c78237299",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_1657aa08ff6e4453\\job\\.calcchain\\snapshots\\post_run_snapshot.json",
+          "type": "local"
+        }
+      ]
+    },
+    "pre_run": {
+      "sha256": "4b9188d3bb4015c2fd941b43cf16680a8e582a0d36213ca3227dc42b57cbe4af",
+      "sources": [
+        {
+          "path": "D:\\AI_Coding\\CalcChain\\.calcchain_backend\\runs\\run_1657aa08ff6e4453\\job\\.calcchain\\snapshots\\pre_run_snapshot.json",
+          "type": "local"
+        }
+      ]
+    }
+  }
+}

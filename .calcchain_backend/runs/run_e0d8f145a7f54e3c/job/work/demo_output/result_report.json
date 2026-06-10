@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "status": "OK",
+  "created_at_utc": "2026-05-26T09:34:18.966828+00:00",
+  "required_env_var": "CALCCHAIN_DEMO_TOKEN",
+  "env_var_present": true,
+  "env_var_value_saved": false,
+  "user_number": 8,
+  "input_files": [
+    {
+      "path": "input_1.txt",
+      "name": "input_1.txt",
+      "size_bytes": 0,
+      "line_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "input_2.txt",
+      "name": "input_2.txt",
+      "size_bytes": 0,
+      "line_count": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "simulated_work": {
+    "steps": [
+      "read_input_files",
+      "validate_environment",
+      "validate_interactive_parameter",
+      "simulate_calculation",
+      "write_artifacts"
+    ],
+    "description": "Фактический расчёт не выполняется; скрипт имитирует работу программного модуля."
+  },
+  "errors": []
+}
