@@ -1,0 +1,5 @@
+*
+!.gitignore
+!calcchain_svn-0.1.0-py3-none-any.whl
+!svn_client-0.1.0-py3-none-any.whl
+!wheels.lock.json

@@ -155,7 +155,8 @@ export function EdgeLayer({
               fill="none"
               strokeWidth="12"
               stroke="transparent"
-              className="pointer-events-stroke cursor-pointer"
+              className="cursor-pointer"
+              style={{ pointerEvents: "stroke" }}
               onClick={(event) => {
                 event.stopPropagation();
                 onSelectEdge(edge.id);
@@ -167,6 +168,7 @@ export function EdgeLayer({
               fill="none"
               strokeWidth={selected ? 3 : 2.25}
               className={selected ? "stroke-slate-950" : "stroke-slate-500"}
+              style={{ pointerEvents: "none" }}
               markerEnd={selected ? "url(#edge-arrow-selected)" : "url(#edge-arrow-default)"}
             />
           </g>

@@ -207,6 +207,33 @@ def test_graph_compile_returns_publish_and_rules_configs_for_targets():
     RulesFile.from_dict(result.rules_config)
 
 
+def test_graph_compile_defaults_service_target_for_publish_targets():
+    result = _service().compile(
+        GraphDocument(
+            name="Publish Default",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", config={"path": "code"}),
+                GraphNode(id="calc", type="calculation", config={"command": "solver.exe"}),
+                GraphNode(id="artifact", type="artifact.output", config={}),
+                GraphNode(id="target", type="target.local", config={"path": "out"}),
+            ],
+            edges=[
+                _edge("code", "output", "calc", "code"),
+                _edge("calc", "output", "artifact", "source"),
+                _edge("artifact", "artifact", "target", "artifact"),
+            ],
+        ),
+    )
+
+    assert result.valid
+    assert result.publish_config["service_target"] == {
+        "type": "local",
+        "path": ".calcchain_backend/service_publish/publish_default",
+    }
+
+    PublishConfig.from_dict(result.publish_config)
+
+
 def test_graph_compile_uses_connected_env_nodes_only():
     result = _service().compile(
         GraphDocument(

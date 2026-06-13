@@ -1,8 +1,13 @@
-import { CheckCircle2, FolderOpen, Rocket, Save } from "lucide-react";
+import { CheckCircle2, FilePlus2, FolderOpen, Rocket, Save } from "lucide-react";
 
 export interface GraphToolbarProps {
   message?: string;
   busyAction: "validate" | "compile-run" | null;
+  projectBusy: boolean;
+  projectName: string;
+  activeProjectId: string | null;
+  onProjectNameChange: (name: string) => void;
+  onNewProject: () => void;
   onSave: () => void;
   onLoad: () => void;
   onValidate: () => void;
@@ -12,27 +17,54 @@ export interface GraphToolbarProps {
 export function GraphToolbar({
   message,
   busyAction,
+  projectBusy,
+  projectName,
+  activeProjectId,
+  onProjectNameChange,
+  onNewProject,
   onSave,
   onLoad,
   onValidate,
   onCompileRun,
 }: GraphToolbarProps) {
-  const disabled = busyAction !== null;
+  const disabled = busyAction !== null || projectBusy;
   const secondaryButtonClass =
-    "flex h-9 min-w-24 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:hover:bg-white";
+    "flex h-9 min-w-20 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:hover:bg-white";
   const primaryButtonClass =
     "flex h-9 min-w-36 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:hover:bg-slate-950";
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white/80 px-6 backdrop-blur">
-      <div className="min-w-0">
-        <div className="text-sm font-semibold text-slate-950">Workspace</div>
+      <div className="min-w-0 flex-1 pr-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <input
+            value={projectName}
+            onChange={(event) => onProjectNameChange(event.target.value)}
+            disabled={disabled}
+            aria-label="Project name"
+            className="h-8 w-64 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-slate-400 disabled:bg-slate-50"
+            placeholder="Project name"
+          />
+          <div className="shrink-0 text-xs text-slate-400">
+            {activeProjectId === null ? "Unsaved project" : "Saved project"}
+          </div>
+        </div>
         <div className="truncate text-xs text-slate-500">
-          {message ?? "Собери расчетный граф из блоков."}
+          {message ?? "Build a calculation graph from blocks."}
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onNewProject}
+          disabled={disabled}
+          className={secondaryButtonClass}
+        >
+          <FilePlus2 size={16} />
+          New
+        </button>
+
         <button
           type="button"
           onClick={onSave}

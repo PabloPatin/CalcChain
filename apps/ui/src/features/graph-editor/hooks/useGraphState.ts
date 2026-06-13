@@ -96,6 +96,7 @@ export interface UseGraphStateResult {
   edges: GraphEdge[];
 
   selectedNodeId: NodeId | null;
+  selectedNodeIds: Set<NodeId>;
   selectedEdgeId: EdgeId | null;
 
   selectedNode: GraphNode | null;
@@ -105,13 +106,17 @@ export interface UseGraphStateResult {
   clearGraph: () => void;
 
   selectNode: (nodeId: NodeId | null) => void;
+  selectNodes: (nodeIds: NodeId[]) => void;
+  toggleNodeSelection: (nodeId: NodeId) => void;
   selectEdge: (edgeId: EdgeId | null) => void;
 
   addNode: (descriptor: BlockDescriptor, position: CanvasPosition) => GraphNode;
   updateNodeData: (nodeId: NodeId, dataPatch: Partial<BlockData>) => void;
   replaceNodeData: (nodeId: NodeId, data: BlockData) => void;
   moveNode: (nodeId: NodeId, position: CanvasPosition) => void;
+  moveNodes: (positions: Record<NodeId, CanvasPosition>) => void;
   deleteNode: (nodeId: NodeId) => void;
+  deleteNodes: (nodeIds: NodeId[]) => void;
 
   addEdge: (from: GraphPortEndpoint, to: GraphPortEndpoint) => GraphEdge | null;
   deleteEdge: (edgeId: EdgeId) => void;
@@ -125,6 +130,7 @@ export function useGraphState(
   );
 
   const [selectedNodeId, setSelectedNodeId] = useState<NodeId | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<NodeId>>(new Set());
   const [selectedEdgeId, setSelectedEdgeId] = useState<EdgeId | null>(null);
 
   const nodes = document.nodes;
@@ -149,6 +155,7 @@ export function useGraphState(
   const setDocument = useCallback((nextDocument: GraphDocument) => {
     setDocumentState(nextDocument);
     setSelectedNodeId(null);
+    setSelectedNodeIds(new Set());
     setSelectedEdgeId(null);
   }, []);
 
@@ -160,17 +167,42 @@ export function useGraphState(
     }));
 
     setSelectedNodeId(null);
+    setSelectedNodeIds(new Set());
     setSelectedEdgeId(null);
   }, []);
 
   const selectNode = useCallback((nodeId: NodeId | null) => {
     setSelectedNodeId(nodeId);
+    setSelectedNodeIds(nodeId === null ? new Set() : new Set([nodeId]));
+    setSelectedEdgeId(null);
+  }, []);
+
+  const selectNodes = useCallback((nodeIds: NodeId[]) => {
+    const uniqueNodeIds = Array.from(new Set(nodeIds));
+    setSelectedNodeIds(new Set(uniqueNodeIds));
+    setSelectedNodeId(uniqueNodeIds[uniqueNodeIds.length - 1] ?? null);
+    setSelectedEdgeId(null);
+  }, []);
+
+  const toggleNodeSelection = useCallback((nodeId: NodeId) => {
+    setSelectedNodeIds((current) => {
+      const next = new Set(current);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      const nodeIds = Array.from(next);
+      setSelectedNodeId(nodeIds[nodeIds.length - 1] ?? null);
+      return next;
+    });
     setSelectedEdgeId(null);
   }, []);
 
   const selectEdge = useCallback((edgeId: EdgeId | null) => {
     setSelectedEdgeId(edgeId);
     setSelectedNodeId(null);
+    setSelectedNodeIds(new Set());
   }, []);
 
   const addNode = useCallback(
@@ -187,6 +219,7 @@ export function useGraphState(
       }));
 
       setSelectedNodeId(node.id);
+      setSelectedNodeIds(new Set([node.id]));
       setSelectedEdgeId(null);
 
       return node;
@@ -239,6 +272,20 @@ export function useGraphState(
     }));
   }, []);
 
+  const moveNodes = useCallback((positions: Record<NodeId, CanvasPosition>) => {
+    setDocumentState((current) => ({
+      ...current,
+      nodes: current.nodes.map((node) =>
+        Object.prototype.hasOwnProperty.call(positions, node.id)
+          ? {
+              ...node,
+              position: positions[node.id],
+            }
+          : node,
+      ),
+    }));
+  }, []);
+
   const deleteNode = useCallback((nodeId: NodeId) => {
     setDocumentState((current) => ({
       ...current,
@@ -249,6 +296,30 @@ export function useGraphState(
     }));
 
     setSelectedNodeId((current) => (current === nodeId ? null : current));
+    setSelectedNodeIds((current) => {
+      const next = new Set(current);
+      next.delete(nodeId);
+      return next;
+    });
+    setSelectedEdgeId(null);
+  }, []);
+
+  const deleteNodes = useCallback((nodeIds: NodeId[]) => {
+    const nodeIdSet = new Set(nodeIds);
+    if (nodeIdSet.size === 0) {
+      return;
+    }
+
+    setDocumentState((current) => ({
+      ...current,
+      nodes: current.nodes.filter((node) => !nodeIdSet.has(node.id)),
+      edges: current.edges.filter(
+        (edge) => !nodeIdSet.has(edge.source.node_id) && !nodeIdSet.has(edge.target.node_id),
+      ),
+    }));
+
+    setSelectedNodeId(null);
+    setSelectedNodeIds(new Set());
     setSelectedEdgeId(null);
   }, []);
 
@@ -296,6 +367,7 @@ export function useGraphState(
     edges,
 
     selectedNodeId,
+    selectedNodeIds,
     selectedEdgeId,
 
     selectedNode,
@@ -305,13 +377,17 @@ export function useGraphState(
     clearGraph,
 
     selectNode,
+    selectNodes,
+    toggleNodeSelection,
     selectEdge,
 
     addNode,
     updateNodeData,
     replaceNodeData,
     moveNode,
+    moveNodes,
     deleteNode,
+    deleteNodes,
 
     addEdge,
     deleteEdge,

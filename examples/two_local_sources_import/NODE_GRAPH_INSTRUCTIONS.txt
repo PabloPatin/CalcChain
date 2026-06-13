@@ -1,0 +1,136 @@
+CalcChain node graph instructions for examples/two_local_sources_import
+====================================================================
+
+All paths below are relative to the project root:
+
+  D:\AI_Coding\CalcChain
+
+Use these nodes
+---------------
+
+1. Local Code Source
+2. Local Input Source
+3. Local Input Source
+4. Calculation
+5. Artifact Output
+6. Local Target Output
+
+Node settings
+-------------
+
+Local Code Source:
+
+  Path:
+  examples/two_local_sources_import/sources/code
+
+Local Input Source 1:
+
+  Path:
+  examples/two_local_sources_import/sources/measurements
+
+Local Input Source 2:
+
+  Path:
+  examples/two_local_sources_import/sources/calibration
+
+Calculation:
+
+  Command:
+  python solver.py
+
+  Working directory:
+  .
+
+  Stdin mode:
+  none
+
+  Encoding:
+  utf-8
+
+  Timeout seconds:
+  10
+
+Artifact Output:
+
+  Name:
+  outputs
+
+Local Target Output:
+
+  Path:
+  examples/two_local_sources_import/imported_results
+
+Connect nodes in this sequence
+------------------------------
+
+1. Local Code Source output -> Calculation code
+
+2. Local Input Source 1 output -> Calculation input
+
+3. Local Input Source 2 output -> Calculation input
+
+4. Calculation output -> Artifact Output source
+
+5. Artifact Output artifact -> Local Target Output artifact
+
+Service folder for publish/import
+---------------------------------
+
+There are two different output folders in this example.
+
+1. Local Target Output path is the folder where the user-facing result files are
+   imported:
+
+     examples/two_local_sources_import/imported_results
+
+2. Service target path is an internal CalcChain publish folder. CalcChain writes
+   manifest, frozen inputs, snapshots, and publish metadata there so the
+   calculation can be audited/restored later:
+
+     examples/two_local_sources_import/service_publish
+
+In core config this service folder is called service_target.
+
+You do not need to add another node or manually enter graph metadata for it.
+If the graph does not specify a service target, CalcChain uses this default
+folder:
+
+  .calcchain_backend/service_publish/<graph_name>
+
+For example, a graph named "two local sources import" will use:
+
+  .calcchain_backend/service_publish/two_local_sources_import
+
+The ready-made script still uses an explicit service folder for this example:
+
+  python examples/two_local_sources_import/run_demo.py
+
+That script writes this service target into publish.toml:
+
+  examples/two_local_sources_import/service_publish
+
+Expected successful result
+--------------------------
+
+When launched through the backend graph runner, the calculation job folder is
+created under the backend runs directory:
+
+  .calcchain_backend/runs/<run_id>/job
+
+The work directory for that run is:
+
+  .calcchain_backend/runs/<run_id>/job/work
+
+The source files are copied into that work directory before executing:
+
+  python solver.py
+
+If you launch the standalone example script instead, it creates the calculation
+work folder at:
+
+  examples/two_local_sources_import/job/work
+
+The imported result files should appear at:
+
+  examples/two_local_sources_import/imported_results/report.txt
+  examples/two_local_sources_import/imported_results/summary.json

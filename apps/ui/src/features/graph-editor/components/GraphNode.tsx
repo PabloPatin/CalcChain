@@ -23,7 +23,6 @@ export interface GraphNodeProps {
   pendingConnectionFrom: GraphPortEndpoint | null;
   isCompatibleInput: (nodeId: NodeId, portId: PortId) => boolean;
 
-  onSelect: (nodeId: NodeId) => void;
   onPointerDown: (event: MouseEvent<HTMLDivElement>, nodeId: NodeId) => void;
 
   onPortClick: (
@@ -159,7 +158,6 @@ export function GraphNode({
   invalid,
   pendingConnectionFrom,
   isCompatibleInput,
-  onSelect,
   onPointerDown,
   onPortClick,
   registerPort,
@@ -174,7 +172,6 @@ export function GraphNode({
       onMouseDown={(event) => onPointerDown(event, node.id)}
       onClick={(event) => {
         event.stopPropagation();
-        onSelect(node.id);
       }}
       className={[
         "absolute select-none rounded-3xl border bg-white shadow-sm transition",

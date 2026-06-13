@@ -1,0 +1,13 @@
+{
+	admin off
+	auto_https disable_redirects
+	storage file_system {
+		root {$CALCCHAIN_CADDY_STORAGE}
+	}
+}
+
+https://{$CALCCHAIN_LAN_HOST}:{$CALCCHAIN_HTTPS_PORT} {
+	tls internal
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:{$CALCCHAIN_BACKEND_PORT}
+}

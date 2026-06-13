@@ -41,7 +41,7 @@ export interface GraphCanvasProps {
   nodes: GraphNodeModel[];
   edges: GraphEdge[];
 
-  selectedNodeId: NodeId | null;
+  selectedNodeIds: Set<NodeId>;
   selectedEdgeId: EdgeId | null;
   invalidNodeIds: Set<NodeId>;
 
@@ -58,6 +58,8 @@ export interface GraphCanvasProps {
   ) => void;
 
   onSelectNode: (nodeId: NodeId | null) => void;
+  onSelectNodes: (nodeIds: NodeId[]) => void;
+  onToggleNodeSelection: (nodeId: NodeId) => void;
   onSelectEdge: (edgeId: EdgeId | null) => void;
 
   onAddNode: (
@@ -65,7 +67,7 @@ export interface GraphCanvasProps {
     position: CanvasPosition,
   ) => GraphNodeModel;
 
-  onMoveNode: (nodeId: NodeId, position: CanvasPosition) => void;
+  onMoveNodes: (positions: Record<NodeId, CanvasPosition>) => void;
 
   onStartConnection: (from: GraphPortEndpoint) => void;
   onCompleteConnection: (to: GraphPortEndpoint) => ConnectionCheckResult;
@@ -75,9 +77,9 @@ export interface GraphCanvasProps {
 }
 
 interface NodeDragState {
-  nodeId: NodeId;
+  nodeIds: NodeId[];
   startPointer: CanvasPosition;
-  startPosition: CanvasPosition;
+  startPositions: Record<NodeId, CanvasPosition>;
 }
 
 interface CanvasPanState {
@@ -92,6 +94,18 @@ interface ZoomAnchor {
   pointerY: number;
   worldX: number;
   worldY: number;
+}
+
+interface SelectionState {
+  start: CanvasPosition;
+  end: CanvasPosition;
+}
+
+interface SelectionRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 }
 
 function getDescriptorByType(
@@ -161,12 +175,32 @@ function isCanvasPanTarget(target: EventTarget | null): boolean {
   return target.closest("[data-graph-node='true'], button") === null;
 }
 
+function selectionRectFromState(selection: SelectionState): SelectionRect {
+  const left = Math.min(selection.start.x, selection.end.x);
+  const top = Math.min(selection.start.y, selection.end.y);
+  return {
+    left,
+    top,
+    width: Math.abs(selection.end.x - selection.start.x),
+    height: Math.abs(selection.end.y - selection.start.y),
+  };
+}
+
+function rectsIntersect(a: SelectionRect, b: SelectionRect): boolean {
+  return (
+    a.left <= b.left + b.width &&
+    a.left + a.width >= b.left &&
+    a.top <= b.top + b.height &&
+    a.top + a.height >= b.top
+  );
+}
+
 export function GraphCanvas({
   canvasRef,
   descriptors,
   nodes,
   edges,
-  selectedNodeId,
+  selectedNodeIds,
   selectedEdgeId,
   invalidNodeIds,
   pendingConnection,
@@ -175,9 +209,11 @@ export function GraphCanvas({
   portPositions,
   registerPort,
   onSelectNode,
+  onSelectNodes,
+  onToggleNodeSelection,
   onSelectEdge,
   onAddNode,
-  onMoveNode,
+  onMoveNodes,
   onStartConnection,
   onCompleteConnection,
   onZoomChange,
@@ -186,6 +222,7 @@ export function GraphCanvas({
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [dragState, setDragState] = useState<NodeDragState | null>(null);
   const [panState, setPanState] = useState<CanvasPanState | null>(null);
+  const [selectionState, setSelectionState] = useState<SelectionState | null>(null);
   const zoomAnchorRef = useRef<ZoomAnchor | null>(null);
 
   const descriptorByType = useMemo(
@@ -289,6 +326,9 @@ export function GraphCanvas({
     nodeId: NodeId,
   ) {
     event.stopPropagation();
+    if (event.button !== 0 || event.target instanceof Element && event.target.closest("button")) {
+      return;
+    }
 
     const node = nodes.find((candidate) => candidate.id === nodeId);
 
@@ -296,25 +336,50 @@ export function GraphCanvas({
       return;
     }
 
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      onToggleNodeSelection(nodeId);
+      return;
+    }
+
+    const draggedNodeIds = selectedNodeIds.has(nodeId)
+      ? Array.from(selectedNodeIds)
+      : [nodeId];
+    const startPositions = Object.fromEntries(
+      nodes
+        .filter((candidate) => draggedNodeIds.includes(candidate.id))
+        .map((candidate) => [candidate.id, candidate.position]),
+    );
+
     setDragState({
-      nodeId,
+      nodeIds: draggedNodeIds,
       startPointer: {
         x: event.clientX,
         y: event.clientY,
       },
-      startPosition: node.position,
+      startPositions,
     });
 
-    onSelectNode(nodeId);
+    if (!selectedNodeIds.has(nodeId)) {
+      onSelectNode(nodeId);
+    }
   }
 
   function handleCanvasMouseDown(event: ReactMouseEvent<HTMLDivElement>) {
-    if (event.detail < 2 || !isCanvasPanTarget(event.target)) {
+    if (event.button !== 0 || !isCanvasPanTarget(event.target)) {
       return;
     }
 
     event.preventDefault();
     setDragState(null);
+    onSelectEdge(null);
+
+    if (event.detail < 2) {
+      const point = getCanvasPoint(canvasRef, event.clientX, event.clientY, zoom);
+      setSelectionState({ start: point, end: point });
+      return;
+    }
+
+    setSelectionState(null);
     setPanState({
       startPointer: {
         x: event.clientX,
@@ -340,6 +405,14 @@ export function GraphCanvas({
       return;
     }
 
+    if (selectionState) {
+      setSelectionState({
+        ...selectionState,
+        end: getCanvasPoint(canvasRef, event.clientX, event.clientY, zoom),
+      });
+      return;
+    }
+
     if (!dragState) {
       return;
     }
@@ -347,13 +420,52 @@ export function GraphCanvas({
     const dx = (event.clientX - dragState.startPointer.x) / zoom;
     const dy = (event.clientY - dragState.startPointer.y) / zoom;
 
-    onMoveNode(dragState.nodeId, {
-      x: Math.max(16, dragState.startPosition.x + dx),
-      y: Math.max(16, dragState.startPosition.y + dy),
-    });
+    const positions = Object.fromEntries(
+      dragState.nodeIds.map((nodeId) => {
+        const startPosition = dragState.startPositions[nodeId];
+        return [
+          nodeId,
+          {
+            x: Math.max(16, startPosition.x + dx),
+            y: Math.max(16, startPosition.y + dy),
+          },
+        ];
+      }),
+    );
+    onMoveNodes(positions);
   }
 
-  function handleMouseUp() {
+  function handleMouseUp(event?: ReactMouseEvent<HTMLDivElement>) {
+    if (selectionState) {
+      const finalSelection = event
+        ? {
+            ...selectionState,
+            end: getCanvasPoint(canvasRef, event.clientX, event.clientY, zoom),
+          }
+        : selectionState;
+      const rect = selectionRectFromState(finalSelection);
+      if (rect.width < 4 && rect.height < 4) {
+        onSelectNodes([]);
+      } else {
+        const selectedIds = nodes
+          .filter((node) => {
+            const descriptor = descriptorByType.get(node.type);
+            if (!descriptor) {
+              return false;
+            }
+            const size = getPreferredNodeSize(descriptor);
+            return rectsIntersect(rect, {
+              left: node.position.x,
+              top: node.position.y,
+              width: size.width,
+              height: size.height,
+            });
+          })
+          .map((node) => node.id);
+        onSelectNodes(selectedIds);
+      }
+      setSelectionState(null);
+    }
     setDragState(null);
     setPanState(null);
   }
@@ -385,10 +497,6 @@ export function GraphCanvas({
         "relative min-h-0 flex-1 overflow-auto",
         panState ? "cursor-grabbing" : "cursor-default",
       ].join(" ")}
-      onClick={() => {
-        onSelectNode(null);
-        onSelectEdge(null);
-      }}
       onMouseDown={handleCanvasMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -442,6 +550,13 @@ export function GraphCanvas({
             onSelectEdge={onSelectEdge}
           />
 
+          {selectionState && (
+            <div
+              className="pointer-events-none absolute z-40 border border-sky-500 bg-sky-400/10"
+              style={selectionRectFromState(selectionState)}
+            />
+          )}
+
           {nodes.map((node) => {
             const descriptor = descriptorByType.get(node.type);
 
@@ -454,11 +569,10 @@ export function GraphCanvas({
                 key={node.id}
                 node={node}
                 descriptor={descriptor}
-                selected={selectedNodeId === node.id}
+                selected={selectedNodeIds.has(node.id)}
                 invalid={invalidNodeIds.has(node.id)}
                 pendingConnectionFrom={pendingConnection?.from ?? null}
                 isCompatibleInput={isCompatibleInput}
-                onSelect={onSelectNode}
                 onPointerDown={handleNodePointerDown}
                 onPortClick={handlePortClick}
                 registerPort={registerPort}

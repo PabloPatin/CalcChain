@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "plugin_id": "calcchain.svn",
+  "plugin_version": "0.1.0",
+  "requires_plugin_api": ">=1.0,<2.0",
+  "python_requires": ">=3.10",
+  "entrypoint": "calcchain_svn_plugin.plugin:SvnPlugin",
+  "dependencies": {
+    "mode": "wheels",
+    "wheels_path": "wheels",
+    "requirements": "requirements.txt"
+  },
+  "declared_capabilities": [
+    {
+      "namespace": "source",
+      "id": "svn"
+    },
+    {
+      "namespace": "target",
+      "id": "svn"
+    }
+  ]
+}

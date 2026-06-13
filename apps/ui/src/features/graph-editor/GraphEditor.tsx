@@ -3,20 +3,24 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   compileGraph,
+  createProject,
   createRun,
   getCatalog,
   getRun,
   getRunLogs,
   getSecretRequirements,
+  listProjects,
   listRunArtifacts,
   storeSessionSecret,
   streamRunEvents,
+  updateProject,
   validateGraph,
 } from "../../shared/api/backendApi";
 import type {
   ArtifactSummary,
   LogItem,
   GraphValidateResponse,
+  Project,
   RunDetails,
   RunEvent,
   RunStatus,
@@ -36,7 +40,7 @@ import {
 import { mapCatalogResponse, type EditorCatalog } from "./model/catalog";
 import { sanitizeGraphSecrets } from "./model/secrets";
 
-import { useGraphState } from "./hooks/useGraphState";
+import { createEmptyGraphDocument, useGraphState } from "./hooks/useGraphState";
 import { usePortPositions } from "./hooks/usePortPositions";
 import { useConnectionCreation } from "./hooks/useConnectionCreation";
 
@@ -49,9 +53,9 @@ import {
   SecretPromptModal,
   type SecretFormValues,
 } from "./components/SecretPromptModal";
+import { ProjectLoadDialog } from "./components/ProjectLoadDialog";
 
 const BLOCK_DRAG_MIME = "application/x-calcchain-block";
-const GRAPH_STORAGE_KEY = "calcchain.graph";
 const RUN_POLL_INTERVAL_MS = 2_000;
 
 const FALLBACK_CATALOG: EditorCatalog = {
@@ -116,6 +120,12 @@ export function GraphEditor() {
   const [message, setMessage] = useState(
     "Поле пустое. Добавь блоки из палитры слева.",
   );
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Untitled calculation graph");
+  const [projectBusy, setProjectBusy] = useState(false);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
   const [catalog, setCatalog] = useState<EditorCatalog>(FALLBACK_CATALOG);
   const [catalogSource, setCatalogSource] = useState<"backend" | "fallback">("fallback");
   const [busyAction, setBusyAction] = useState<"validate" | "compile-run" | null>(null);
@@ -250,6 +260,7 @@ export function GraphEditor() {
     nodes,
     edges,
     selectedNodeId,
+    selectedNodeIds,
     selectedEdgeId,
     selectedNode,
     selectedEdge,
@@ -257,11 +268,14 @@ export function GraphEditor() {
     setDocument,
 
     selectNode,
+    selectNodes,
+    toggleNodeSelection,
     selectEdge,
 
     addNode,
-    moveNode,
+    moveNodes,
     deleteNode,
+    deleteNodes,
 
     addEdge,
     deleteEdge,
@@ -282,6 +296,33 @@ export function GraphEditor() {
     connectionRules: catalog.connectionRules,
     onCreateEdge: addEdge,
   });
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Delete" || isTypingTarget(event.target)) {
+        return;
+      }
+
+      if (selectedEdgeId !== null) {
+        event.preventDefault();
+        deleteEdge(selectedEdgeId);
+        setMessage("Selected connection deleted.");
+        return;
+      }
+
+      if (selectedNodeIds.size > 0) {
+        event.preventDefault();
+        const nodeCount = selectedNodeIds.size;
+        deleteNodes(Array.from(selectedNodeIds));
+        setMessage(nodeCount === 1 ? "Selected node deleted." : `${nodeCount} selected nodes deleted.`);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [deleteEdge, deleteNodes, selectedEdgeId, selectedNodeIds]);
 
   function handleAddAtCenter(descriptor: BlockDescriptor): GraphNode {
     const center = getVisibleCanvasCenter(canvasRef.current);
@@ -311,14 +352,62 @@ export function GraphEditor() {
     selectNode(nodeId);
   }
 
-  function handleSave() {
-    const safeGraph = sanitizeGraphSecrets(document, descriptors);
-    localStorage.setItem(GRAPH_STORAGE_KEY, JSON.stringify(safeGraph, null, 2));
-    setDocument(safeGraph);
-    setMessage("Граф сохранен в localStorage.");
+  function handleNewProject() {
+    const next = createEmptyGraphDocument();
+    setDocument(next);
+    connection.cancelConnection();
+    setActiveProjectId(null);
+    setProjectName(next.name);
+    setValidationDebug(null);
+    setValidationIssueNodeIds(new Set());
+    setMessage("New project started.");
   }
 
-  function handleLoad() {
+  async function handleSave() {
+    const name = projectName.trim();
+    if (!name) {
+      setMessage("Project name is required before saving.");
+      return;
+    }
+
+    const safeGraph = graphWithName(sanitizeGraphSecrets(document, descriptors), name);
+    setProjectBusy(true);
+    setMessage("Saving project...");
+    try {
+      const saved = activeProjectId === null
+        ? await createProject({ name, graph: safeGraph })
+        : await updateProject(activeProjectId, { name, graph: safeGraph });
+      const loadedGraph = graphFromProject(saved);
+      setDocument(loadedGraph);
+      setActiveProjectId(saved.id);
+      setProjectName(saved.name);
+      setMessage(`Project saved: ${saved.name}`);
+    } catch (caught) {
+      setMessage(`Project save failed: ${caught instanceof Error ? caught.message : "unknown error"}`);
+    } finally {
+      setProjectBusy(false);
+    }
+  }
+
+  async function handleLoad() {
+    setProjectDialogOpen(true);
+    setProjectsLoading(true);
+    setProjectBusy(true);
+    setMessage("Loading project list...");
+    try {
+      const result = await listProjects();
+      setSavedProjects(result.items);
+      setMessage(`Projects loaded: ${result.items.length}`);
+    } catch (caught) {
+      setSavedProjects([]);
+      setMessage(`Project list failed: ${caught instanceof Error ? caught.message : "unknown error"}`);
+    } finally {
+      setProjectsLoading(false);
+      setProjectBusy(false);
+    }
+  }
+
+  /*
     const rawGraph = localStorage.getItem(GRAPH_STORAGE_KEY);
     if (rawGraph === null) {
       setMessage("Сохраненный граф не найден.");
@@ -345,13 +434,27 @@ export function GraphEditor() {
     }
   }
 
+    */
+
+  function handleLoadProject(project: Project) {
+    const loadedGraph = graphFromProject(project);
+    setDocument(loadedGraph);
+    connection.cancelConnection();
+    setActiveProjectId(project.id);
+    setProjectName(project.name);
+    setProjectDialogOpen(false);
+    setValidationDebug(null);
+    setValidationIssueNodeIds(new Set());
+    setMessage(`Project loaded: ${project.name}`);
+  }
+
   async function handleValidate() {
     if (nodes.length === 0) {
       setMessage("Граф пустой. Добавь хотя бы один блок.");
       return;
     }
 
-    const safeGraph = sanitizeGraphSecrets(document, descriptors);
+    const safeGraph = graphWithName(sanitizeGraphSecrets(document, descriptors), projectName.trim() || document.name);
     setDocument(safeGraph);
     setBusyAction("validate");
     setValidationDebug(null);
@@ -392,7 +495,7 @@ export function GraphEditor() {
       return;
     }
 
-    const safeGraph = sanitizeGraphSecrets(document, descriptors);
+    const safeGraph = graphWithName(sanitizeGraphSecrets(document, descriptors), projectName.trim() || document.name);
     setDocument(safeGraph);
     setBusyAction("compile-run");
     setMessage("Checking secrets...");
@@ -461,7 +564,10 @@ export function GraphEditor() {
         });
       }
 
-      const graphWithoutSecrets = sanitizeGraphSecrets(secretPrompt.graph, descriptors);
+      const graphWithoutSecrets = graphWithName(
+        sanitizeGraphSecrets(secretPrompt.graph, descriptors),
+        projectName.trim() || secretPrompt.graph.name,
+      );
       setDocument(graphWithoutSecrets);
       setSecretPrompt(null);
       await compileAndRun(graphWithoutSecrets);
@@ -508,6 +614,11 @@ export function GraphEditor() {
         <GraphToolbar
           message={message}
           busyAction={busyAction}
+          projectBusy={projectBusy}
+          projectName={projectName}
+          activeProjectId={activeProjectId}
+          onProjectNameChange={setProjectName}
+          onNewProject={handleNewProject}
           onSave={handleSave}
           onLoad={handleLoad}
           onValidate={handleValidate}
@@ -526,7 +637,7 @@ export function GraphEditor() {
           descriptors={descriptors}
           nodes={nodes}
           edges={edges}
-          selectedNodeId={selectedNodeId}
+          selectedNodeIds={selectedNodeIds}
           selectedEdgeId={selectedEdgeId}
           invalidNodeIds={validationIssueNodeIds}
           pendingConnection={connection.pendingConnection}
@@ -535,9 +646,11 @@ export function GraphEditor() {
           portPositions={portPositions}
           registerPort={registerPort}
           onSelectNode={handleSelectNode}
+          onSelectNodes={selectNodes}
+          onToggleNodeSelection={toggleNodeSelection}
           onSelectEdge={selectEdge}
           onAddNode={addNode}
-          onMoveNode={moveNode}
+          onMoveNodes={moveNodes}
           onStartConnection={connection.startConnection}
           onCompleteConnection={connection.completeConnection}
           onZoomChange={setCanvasZoom}
@@ -565,6 +678,15 @@ export function GraphEditor() {
           onChange={handleSecretChange}
           onSubmit={handleSecretSubmit}
           onCancel={() => setSecretPrompt(null)}
+        />
+      )}
+
+      {projectDialogOpen && (
+        <ProjectLoadDialog
+          projects={savedProjects}
+          loading={projectsLoading}
+          onLoad={handleLoadProject}
+          onClose={() => setProjectDialogOpen(false)}
         />
       )}
     </div>
@@ -607,15 +729,33 @@ function createSecretValues(
   return values;
 }
 
-function isGraphDocumentLike(value: unknown): value is GraphDocument {
-  if (typeof value !== "object" || value === null) {
+function graphWithName(graph: GraphDocument, name: string): GraphDocument {
+  return {
+    ...graph,
+    name,
+  };
+}
+
+function graphFromProject(project: Project): GraphDocument {
+  const graph = project.graph;
+  return {
+    schema_version: graph.schema_version ?? "1.0",
+    name: graph.name ?? project.name,
+    nodes: graph.nodes.map((node, index) => ({
+      id: node.id,
+      type: node.type,
+      title: node.title ?? node.type,
+      position: node.position ?? { x: 80 + index * 32, y: 80 + index * 32 },
+      config: node.config,
+    })),
+    edges: graph.edges,
+    metadata: graph.metadata,
+  };
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
     return false;
   }
-
-  const candidate = value as Partial<GraphDocument>;
-  return (
-    typeof candidate.schema_version === "string" &&
-    Array.isArray(candidate.nodes) &&
-    Array.isArray(candidate.edges)
-  );
+  return target.closest("input, textarea, select, [contenteditable='true']") !== null;
 }
