@@ -22,7 +22,7 @@ export function PairingPage() {
     try {
       await pair(normalizedCode);
     } catch (caught) {
-      setLocalError(caught instanceof Error ? caught.message : 'Не удалось выполнить pairing.');
+      setLocalError(caught instanceof Error ? caught.message : 'Не удалось выполнить подключение.');
     } finally {
       setSubmitting(false);
     }
@@ -33,12 +33,12 @@ export function PairingPage() {
       <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
         <h1 className="text-2xl font-semibold">Подключение к CalcChain</h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          CalcChain запущен в LAN-режиме. Введите одноразовый pairing code из окна запуска.
+          CalcChain запущен в LAN-режиме. Введите одноразовый код подключения из окна запуска.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <label className="block text-sm font-medium text-slate-200" htmlFor="pairing-code">
-            Pairing code
+            Код подключения
           </label>
           <input
             id="pairing-code"

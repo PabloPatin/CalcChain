@@ -1,8 +1,8 @@
-import { CheckCircle2, FilePlus2, FolderOpen, Rocket, Save } from "lucide-react";
+import { CheckCircle2, FileJson, FilePlus2, FolderOpen, Rocket, Save } from "lucide-react";
 
 export interface GraphToolbarProps {
   message?: string;
-  busyAction: "validate" | "compile-run" | null;
+  busyAction: "validate" | "compile-run" | "import" | null;
   projectBusy: boolean;
   projectName: string;
   activeProjectId: string | null;
@@ -10,6 +10,7 @@ export interface GraphToolbarProps {
   onNewProject: () => void;
   onSave: () => void;
   onLoad: () => void;
+  onImportManifest: () => void;
   onValidate: () => void;
   onCompileRun: () => void;
 }
@@ -24,6 +25,7 @@ export function GraphToolbar({
   onNewProject,
   onSave,
   onLoad,
+  onImportManifest,
   onValidate,
   onCompileRun,
 }: GraphToolbarProps) {
@@ -41,16 +43,16 @@ export function GraphToolbar({
             value={projectName}
             onChange={(event) => onProjectNameChange(event.target.value)}
             disabled={disabled}
-            aria-label="Project name"
+            aria-label="Название проекта"
             className="h-8 w-64 min-w-0 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-slate-400 disabled:bg-slate-50"
-            placeholder="Project name"
+            placeholder="Название проекта"
           />
           <div className="shrink-0 text-xs text-slate-400">
-            {activeProjectId === null ? "Unsaved project" : "Saved project"}
+            {activeProjectId === null ? "Проект не сохранён" : "Проект сохранён"}
           </div>
         </div>
         <div className="truncate text-xs text-slate-500">
-          {message ?? "Build a calculation graph from blocks."}
+          {message ?? "Соберите граф расчёта из блоков."}
         </div>
       </div>
 
@@ -59,30 +61,44 @@ export function GraphToolbar({
           type="button"
           onClick={onNewProject}
           disabled={disabled}
+          aria-label="Новый"
+          title="Новый"
           className={secondaryButtonClass}
         >
           <FilePlus2 size={16} />
-          New
         </button>
 
         <button
           type="button"
           onClick={onSave}
           disabled={disabled}
+          aria-label="Сохранить"
+          title="Сохранить"
           className={secondaryButtonClass}
         >
           <Save size={16} />
-          Save
         </button>
 
         <button
           type="button"
           onClick={onLoad}
           disabled={disabled}
+          aria-label="Загрузить"
+          title="Загрузить"
           className={secondaryButtonClass}
         >
           <FolderOpen size={16} />
-          Load
+        </button>
+
+        <button
+          type="button"
+          onClick={onImportManifest}
+          disabled={disabled}
+          aria-busy={busyAction === "import"}
+          className={secondaryButtonClass}
+        >
+          <FileJson size={16} />
+          Импорт
         </button>
 
         <button
@@ -93,7 +109,7 @@ export function GraphToolbar({
           className={secondaryButtonClass}
         >
           <CheckCircle2 size={16} />
-          Validate
+          Проверить
         </button>
 
         <button
@@ -104,7 +120,7 @@ export function GraphToolbar({
           className={primaryButtonClass}
         >
           <Rocket size={16} />
-          Compile + Run
+          Запуск
         </button>
       </div>
     </header>

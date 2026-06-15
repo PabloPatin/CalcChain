@@ -20,14 +20,14 @@ export function ProjectLoadDialog({
       <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <div className="text-sm font-semibold text-slate-950">Load project</div>
-            <div className="text-xs text-slate-500">Projects are stored by the CalcChain backend.</div>
+            <div className="text-sm font-semibold text-slate-950">Загрузить проект</div>
+            <div className="text-xs text-slate-500">Проекты хранятся в backend CalcChain.</div>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="grid h-9 w-9 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            aria-label="Close"
+            aria-label="Закрыть"
           >
             <X size={18} />
           </button>
@@ -35,9 +35,9 @@ export function ProjectLoadDialog({
 
         <div className="max-h-[60vh] overflow-y-auto p-3">
           {loading ? (
-            <div className="px-3 py-8 text-center text-sm text-slate-500">Loading projects...</div>
+            <div className="px-3 py-8 text-center text-sm text-slate-500">Загрузка проектов...</div>
           ) : projects.length === 0 ? (
-            <div className="px-3 py-8 text-center text-sm text-slate-500">No saved projects yet.</div>
+            <div className="px-3 py-8 text-center text-sm text-slate-500">Сохранённых проектов пока нет.</div>
           ) : (
             <div className="space-y-2">
               {projects.map((project) => (
@@ -53,11 +53,11 @@ export function ProjectLoadDialog({
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold text-slate-950">{project.name}</div>
                     <div className="truncate text-xs text-slate-500">
-                      Updated {formatDate(project.updated_at)}
+                      Обновлён {formatDate(project.updated_at)}
                     </div>
                   </div>
                   <div className="shrink-0 text-xs text-slate-400">
-                    {project.graph.nodes.length} nodes
+                    Нод: {project.graph.nodes.length}
                   </div>
                 </button>
               ))}

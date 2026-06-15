@@ -87,6 +87,60 @@ class TestCoreCurrentManifestReports(unittest.TestCase):
         self.assertEqual(ran.to_dict()['build']['code']['name'], 'code')
         self.assertEqual(ran.to_dict()['run']['file_groups']['outputs'], ['result.txt'])
 
+    def test_manifest_writer_after_run_preserves_run_result_details(self):
+        code_set = FileSetMap(
+            name='code',
+            tree_sha256='code-tree',
+            map=[FileMapEntry(sha256='h1', source_path='solver.py', work_path='solver.py')],
+        )
+
+        class FileGroupsLike:
+            def to_dict(self):
+                return {'outputs': ['result.txt'], 'logs': ['logs/solver.log'], 'temp': [], 'ignored': [], 'unknown': [], 'deleted': []}
+
+        class RunResultLike:
+            status = RunStatus.SUCCEEDED
+
+            def to_dict(self):
+                return {
+                    'command': ['python', 'solver.py'],
+                    'cwd': '.',
+                    'timeout_seconds': 10,
+                    'encoding': 'utf-8',
+                    'env': {'VISIBLE': '1'},
+                    'secret_names': ['TOKEN'],
+                    'stdin': {'mode': 'script', 'log': '.calcchain/logs/stdin.txt'},
+                    'stdout_log': '.calcchain/logs/stdout.txt',
+                    'stderr_log': '.calcchain/logs/stderr.txt',
+                    'status': 'raw-status',
+                    'return_code': 0,
+                    'started_at': '2026-06-13T10:00:00+00:00',
+                    'finished_at': '2026-06-13T10:00:01+00:00',
+                    'post_run_snapshot': {'schema_version': '1.0', 'entries': []},
+                    'warnings': [],
+                }
+
+        manifest = ManifestWriter.create_after_run(
+            JobManifestInfo(id='job-1', job_dir=Path('job')),
+            SimpleNamespace(code_set=code_set, input_sets=[]),
+            RunResultLike(),
+            FileGroupsLike(),
+        ).to_dict()
+
+        run = manifest['run']
+        self.assertEqual(run['command'], ['python', 'solver.py'])
+        self.assertEqual(run['cwd'], '.')
+        self.assertEqual(run['env'], {'VISIBLE': '1'})
+        self.assertEqual(run['secret_names'], ['TOKEN'])
+        self.assertEqual(run['stdin']['mode'], 'script')
+        self.assertEqual(run['stdout_log'], '.calcchain/logs/stdout.txt')
+        self.assertEqual(run['stderr_log'], '.calcchain/logs/stderr.txt')
+        self.assertEqual(run['return_code'], 0)
+        self.assertEqual(run['started_at'], '2026-06-13T10:00:00+00:00')
+        self.assertEqual(run['finished_at'], '2026-06-13T10:00:01+00:00')
+        self.assertEqual(run['status'], 'Succeeded')
+        self.assertEqual(run['file_groups']['outputs'], ['result.txt'])
+
     def test_output_classifier_defaults_to_outputs_without_output_rules(self):
         build_result = type(
             'BuildResultLike',

@@ -80,15 +80,22 @@ function isOutputDescriptor(descriptor: BlockDescriptor): boolean {
     descriptor.type.includes("artifact") ||
     descriptor.category === "Outputs" ||
     descriptor.category === "Output" ||
-    descriptor.category === "Target";
+    descriptor.category === "Target" ||
+    descriptor.category === "Результаты" ||
+    descriptor.category === "Назначения";
 }
 
 function isMappingDescriptor(descriptor: BlockDescriptor): boolean {
-  return descriptor.category === "Mapping" || descriptor.category === "Transform";
+  return descriptor.type === "rule-set" ||
+    descriptor.category === "Mapping" ||
+    descriptor.category === "Transform" ||
+    descriptor.category === "Правила";
 }
 
 function isContextDescriptor(descriptor: BlockDescriptor): boolean {
-  return descriptor.category === "Context" || descriptor.category === "Environment";
+  return descriptor.category === "Context" ||
+    descriptor.category === "Environment" ||
+    descriptor.category === "Окружение";
 }
 
 function getNodeSize(descriptor: BlockDescriptor) {
@@ -209,7 +216,7 @@ export function GraphNode({
 
         <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-xs text-slate-600">
           {getDataPreviewEntries(node, descriptor).length === 0 ? (
-            <div className="text-slate-400">No data</div>
+            <div className="text-slate-400">Нет данных</div>
           ) : (
             getDataPreviewEntries(node, descriptor).map(([key, value]) => (
               <div key={key} className="flex gap-2">
@@ -225,11 +232,11 @@ export function GraphNode({
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <div className="px-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Inputs
+              Входы
             </div>
 
             {descriptor.inputs.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-slate-300">none</div>
+              <div className="px-2 py-1.5 text-xs text-slate-300">нет</div>
             ) : (
               descriptor.inputs.map((port) => (
                 <PortButton
@@ -248,12 +255,12 @@ export function GraphNode({
 
           <div className="space-y-1">
             <div className="px-2 text-right text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              Outputs
+              Выходы
             </div>
 
             {descriptor.outputs.length === 0 ? (
               <div className="px-2 py-1.5 text-right text-xs text-slate-300">
-                none
+                нет
               </div>
             ) : (
               descriptor.outputs.map((port) => (

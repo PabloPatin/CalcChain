@@ -121,10 +121,7 @@ class ManifestWriter:
             'schema_version': MANIFEST_SCHEMA_VERSION,
             'job': job.to_dict(status_value),
             'build': _build_dict(build_result, artifacts, frozen_inputs=frozen_inputs),
-            'run': {
-                'status': status_value,
-                'file_groups': file_groups.to_dict(),
-            },
+            'run': _run_dict(run_result, status_value=status_value, file_groups=file_groups),
         }
         if artifacts.rules is not None:
             data['rules'] = artifacts.rules.to_dict()
@@ -186,6 +183,23 @@ def _publication_dict(publish_result: PublishManifestSource) -> dict[str, Any]:
             for artifact in publish_result.service_artifacts
         ]
     result['service_target'] = publish_result.service_target.to_dict()
+    return result
+
+
+def _run_dict(
+    run_result: RunManifestSource,
+    *,
+    status_value: str,
+    file_groups: FileGroupsManifestSource,
+) -> dict[str, Any]:
+    to_dict = getattr(run_result, 'to_dict', None)
+    if callable(to_dict):
+        raw = to_dict()
+        result = dict(raw) if isinstance(raw, Mapping) else {}
+    else:
+        result = {}
+    result['status'] = status_value
+    result['file_groups'] = file_groups.to_dict()
     return result
 
 

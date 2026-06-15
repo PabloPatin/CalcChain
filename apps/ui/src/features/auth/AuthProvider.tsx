@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearSessionToken();
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Cannot reach CalcChain backend');
+      setError(caught instanceof Error ? caught.message : 'Не удалось подключиться к серверу CalcChain');
       setAuthRequired(true);
       setAuthenticated(false);
     } finally {
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) {
           return;
         }
-        setError(caught instanceof Error ? caught.message : 'Cannot reach CalcChain backend');
+        setError(caught instanceof Error ? caught.message : 'Не удалось подключиться к серверу CalcChain');
         setAuthRequired(true);
         setAuthenticated(false);
       } finally {

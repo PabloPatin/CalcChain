@@ -54,6 +54,28 @@ def test_graph_compile_returns_core_build_and_run_configs():
     RunConfig.from_dict(result.run_config)
 
 
+def test_graph_validate_reports_multiple_calculation_nodes():
+    result = _service().validate(
+        GraphDocument(
+            name="two calculations",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", config={"path": "code"}),
+                GraphNode(id="calc_a", type="calculation", config={"command": "python a.py"}),
+                GraphNode(id="calc_b", type="calculation", config={"command": "python b.py"}),
+            ],
+            edges=[
+                _edge("code", "output", "calc_a", "code"),
+                _edge("code", "output", "calc_b", "code"),
+            ],
+        ),
+    )
+
+    assert not result.valid
+    errors = [item for item in result.errors if item.code == "multiple_calculations"]
+    assert [item.node_id for item in errors] == ["calc_a", "calc_b"]
+    assert errors[0].details == {"calculation_node_ids": ["calc_a", "calc_b"]}
+
+
 def test_graph_compile_preserves_calculation_stdin_config():
     result = _service().compile(
         GraphDocument(
@@ -204,6 +226,40 @@ def test_graph_compile_returns_publish_and_rules_configs_for_targets():
     assert result.rules_config["rule_sets"]["outputs"]["type"] == "output"
 
     PublishConfig.from_dict(result.publish_config)
+    RulesFile.from_dict(result.rules_config)
+
+
+def test_graph_compile_preserves_logs_rule_set_type_for_publish_target():
+    result = _service().compile(
+        GraphDocument(
+            name="publish logs",
+            nodes=[
+                GraphNode(id="code", type="source.local.code", config={"path": "code"}),
+                GraphNode(id="calc", type="calculation", config={"command": "solver.exe"}),
+                GraphNode(id="artifact", type="artifact.output", config={}),
+                GraphNode(
+                    id="target",
+                    type="target.local",
+                    config={
+                        "path": "logs-out",
+                        "rule_sets": ["logs"],
+                        "rules": [{"source": r"^logs/solver\.log$", "destination": "solver.log"}],
+                    },
+                ),
+            ],
+            edges=[
+                _edge("code", "output", "calc", "code"),
+                _edge("calc", "output", "artifact", "source"),
+                _edge("artifact", "artifact", "target", "artifact"),
+            ],
+        ),
+        {"service_target_path": "service"},
+    )
+
+    assert result.valid
+    assert result.publish_config["targets"][0]["rule_sets"] == ["logs"]
+    assert result.rules_config["rule_sets"]["logs"]["type"] == "logs"
+
     RulesFile.from_dict(result.rules_config)
 
 

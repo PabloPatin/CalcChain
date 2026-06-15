@@ -1,0 +1,26 @@
+schema_version = "1.0"
+
+[build]
+name = "manifest-import-demo"
+
+[code]
+name = "demo_solver"
+version = "fdffe0c8dfbb8f593c6c6522073190f423698de1381290547ad55082a5ffaf8f"
+
+[code.source]
+type = "local"
+path = "examples/manifest_import/code"
+
+[[inputs]]
+name = "input_a"
+
+[inputs.source]
+type = "local"
+path = "examples/manifest_import/input_a"
+
+[[inputs]]
+name = "input_b"
+
+[inputs.source]
+type = "local"
+path = "examples/manifest_import/input_b"

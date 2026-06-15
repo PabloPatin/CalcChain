@@ -15,6 +15,7 @@ import type {
   ConnectionRule,
   DeleteSessionSecretResponse,
   GraphCompileResponse,
+  GraphManifestImportResponse,
   GraphValidateResponse,
   HealthResponse,
   JsonObject,
@@ -86,6 +87,13 @@ export function compileGraph(
   return apiFetch<GraphCompileResponse>('/api/graphs/compile', {
     method: 'POST',
     body: JSON.stringify({ graph, compile_options: compileOptions }),
+  });
+}
+
+export async function importManifest(file: File): Promise<GraphManifestImportResponse> {
+  return apiFetch<GraphManifestImportResponse>('/api/graphs/import/manifest', {
+    method: 'POST',
+    body: await file.text(),
   });
 }
 

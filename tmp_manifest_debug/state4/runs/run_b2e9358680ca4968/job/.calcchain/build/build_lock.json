@@ -1,0 +1,36 @@
+{
+  "build": {
+    "description": "",
+    "name": "manifest-import-demo"
+  },
+  "code": {
+    "name": "demo_solver",
+    "source": {
+      "path": "examples/manifest_import/code",
+      "type": "local"
+    },
+    "version": "fdffe0c8dfbb8f593c6c6522073190f423698de1381290547ad55082a5ffaf8f"
+  },
+  "inputs": [
+    {
+      "name": "input_a",
+      "source": {
+        "path": "examples/manifest_import/input_a",
+        "type": "local"
+      }
+    },
+    {
+      "name": "input_b",
+      "source": {
+        "path": "examples/manifest_import/input_b",
+        "type": "local"
+      }
+    }
+  ],
+  "lock": {
+    "build_toml_sha256": "702ee920d72d137eb61f8d6c82369dfc958dffc9da1ba79c23cf63387d9fb7ce",
+    "created_at": "2026-06-14T21:19:35.176689+00:00",
+    "created_from": "build.toml"
+  },
+  "schema_version": "1.0"
+}

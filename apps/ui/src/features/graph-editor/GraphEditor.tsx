@@ -1,4 +1,4 @@
-import type { DragEvent } from "react";
+import type { ChangeEvent, DragEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -9,6 +9,7 @@ import {
   getRun,
   getRunLogs,
   getSecretRequirements,
+  importManifest,
   listProjects,
   listRunArtifacts,
   storeSessionSecret,
@@ -18,8 +19,10 @@ import {
 } from "../../shared/api/backendApi";
 import type {
   ArtifactSummary,
+  BackendGraphDocument,
   LogItem,
   GraphValidateResponse,
+  JsonObject,
   Project,
   RunDetails,
   RunEvent,
@@ -117,18 +120,19 @@ function getCenteredNodePosition(
 
 export function GraphEditor() {
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const manifestInputRef = useRef<HTMLInputElement | null>(null);
   const [message, setMessage] = useState(
-    "Поле пустое. Добавь блоки из палитры слева.",
+    "Рабочая область пустая. Добавьте блоки из палитры слева.",
   );
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [projectName, setProjectName] = useState("Untitled calculation graph");
+  const [projectName, setProjectName] = useState("Новый граф расчёта");
   const [projectBusy, setProjectBusy] = useState(false);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [savedProjects, setSavedProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [catalog, setCatalog] = useState<EditorCatalog>(FALLBACK_CATALOG);
   const [catalogSource, setCatalogSource] = useState<"backend" | "fallback">("fallback");
-  const [busyAction, setBusyAction] = useState<"validate" | "compile-run" | null>(null);
+  const [busyAction, setBusyAction] = useState<"validate" | "compile-run" | "import" | null>(null);
   const [secretPrompt, setSecretPrompt] = useState<SecretPromptState | null>(null);
   const [canvasZoom, setCanvasZoom] = useState(1);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -163,7 +167,7 @@ export function GraphEditor() {
         setCatalog(FALLBACK_CATALOG);
         setCatalogSource("fallback");
         setMessage(
-          `Каталог backend недоступен, используются fallback-блоки. ${
+          `Каталог backend недоступен, используются резервные блоки. ${
             caught instanceof Error ? caught.message : "Неизвестная ошибка"
           }`,
         );
@@ -216,8 +220,8 @@ export function GraphEditor() {
       } catch (caught) {
         if (!cancelled) {
           setMessage(
-            `Run polling failed: ${
-              caught instanceof Error ? caught.message : "unknown error"
+            `Не удалось обновить состояние расчёта: ${
+              caught instanceof Error ? caught.message : "неизвестная ошибка"
             }`,
           );
         }
@@ -234,8 +238,8 @@ export function GraphEditor() {
     ).catch((caught) => {
       if (!abortController.signal.aborted) {
         setMessage(
-          `Run event stream unavailable, polling is active: ${
-            caught instanceof Error ? caught.message : "unknown error"
+          `Поток событий недоступен, используется опрос: ${
+            caught instanceof Error ? caught.message : "неизвестная ошибка"
           }`,
         );
       }
@@ -306,7 +310,7 @@ export function GraphEditor() {
       if (selectedEdgeId !== null) {
         event.preventDefault();
         deleteEdge(selectedEdgeId);
-        setMessage("Selected connection deleted.");
+        setMessage("Выбранное соединение удалено.");
         return;
       }
 
@@ -314,7 +318,7 @@ export function GraphEditor() {
         event.preventDefault();
         const nodeCount = selectedNodeIds.size;
         deleteNodes(Array.from(selectedNodeIds));
-        setMessage(nodeCount === 1 ? "Selected node deleted." : `${nodeCount} selected nodes deleted.`);
+        setMessage(nodeCount === 1 ? "Выбранный блок удалён." : `Выбранные блоки удалены: ${nodeCount}.`);
       }
     }
 
@@ -342,7 +346,7 @@ export function GraphEditor() {
     event.dataTransfer.setData(BLOCK_DRAG_MIME, descriptor.type);
     event.dataTransfer.setData("text/plain", descriptor.type);
 
-    setMessage(`Перетащи ${descriptor.title} на рабочую область.`);
+    setMessage(`Перетащите ${descriptor.title} на рабочую область.`);
   }
 
   function handleSelectNode(nodeId: string | null) {
@@ -360,19 +364,19 @@ export function GraphEditor() {
     setProjectName(next.name);
     setValidationDebug(null);
     setValidationIssueNodeIds(new Set());
-    setMessage("New project started.");
+    setMessage("Создан новый проект.");
   }
 
   async function handleSave() {
     const name = projectName.trim();
     if (!name) {
-      setMessage("Project name is required before saving.");
+      setMessage("Перед сохранением укажите название проекта.");
       return;
     }
 
     const safeGraph = graphWithName(sanitizeGraphSecrets(document, descriptors), name);
     setProjectBusy(true);
-    setMessage("Saving project...");
+    setMessage("Сохранение проекта...");
     try {
       const saved = activeProjectId === null
         ? await createProject({ name, graph: safeGraph })
@@ -381,9 +385,9 @@ export function GraphEditor() {
       setDocument(loadedGraph);
       setActiveProjectId(saved.id);
       setProjectName(saved.name);
-      setMessage(`Project saved: ${saved.name}`);
+      setMessage(`Проект сохранён: ${saved.name}`);
     } catch (caught) {
-      setMessage(`Project save failed: ${caught instanceof Error ? caught.message : "unknown error"}`);
+      setMessage(`Не удалось сохранить проект: ${caught instanceof Error ? caught.message : "неизвестная ошибка"}`);
     } finally {
       setProjectBusy(false);
     }
@@ -393,14 +397,14 @@ export function GraphEditor() {
     setProjectDialogOpen(true);
     setProjectsLoading(true);
     setProjectBusy(true);
-    setMessage("Loading project list...");
+    setMessage("Загрузка списка проектов...");
     try {
       const result = await listProjects();
       setSavedProjects(result.items);
-      setMessage(`Projects loaded: ${result.items.length}`);
+      setMessage(`Проекты загружены: ${result.items.length}.`);
     } catch (caught) {
       setSavedProjects([]);
-      setMessage(`Project list failed: ${caught instanceof Error ? caught.message : "unknown error"}`);
+      setMessage(`Не удалось загрузить список проектов: ${caught instanceof Error ? caught.message : "неизвестная ошибка"}`);
     } finally {
       setProjectsLoading(false);
       setProjectBusy(false);
@@ -428,7 +432,7 @@ export function GraphEditor() {
     } catch (caught) {
       setMessage(
         `Не удалось загрузить граф: ${
-          caught instanceof Error ? caught.message : "unknown error"
+          caught instanceof Error ? caught.message : "неизвестная ошибка"
         }`,
       );
     }
@@ -445,12 +449,73 @@ export function GraphEditor() {
     setProjectDialogOpen(false);
     setValidationDebug(null);
     setValidationIssueNodeIds(new Set());
-    setMessage(`Project loaded: ${project.name}`);
+    setMessage(`Проект загружен: ${project.name}`);
+  }
+
+  function handleImportManifestClick() {
+    manifestInputRef.current?.click();
+  }
+
+  function handleManifestInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (file === null) {
+      return;
+    }
+    void handleImportManifestFile(file);
+  }
+
+  async function handleImportManifestFile(file: File, position?: CanvasPosition) {
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      setMessage("Не удалось импортировать manifest: выберите файл .json.");
+      return;
+    }
+
+    setBusyAction("import");
+    setValidationDebug(null);
+    setValidationIssueNodeIds(new Set());
+    setMessage(`Импорт manifest: ${file.name}...`);
+
+    try {
+      const result = await importManifest(file);
+      if (!result.valid || !result.graph) {
+        setValidationDebug(result);
+        setMessage(
+          `Не удалось импортировать manifest: ${result.diagnostics[0]?.message ?? "неизвестная ошибка manifest"}`,
+        );
+        return;
+      }
+
+      const anchor = position ?? getFreeImportPosition(document.nodes, descriptors, canvasRef.current);
+      const merged = mergeImportedGraph(document, result.graph, anchor, result.environment?.import_id);
+      setDocument(merged.document);
+      selectNodes(merged.importedNodeIds);
+      connection.cancelConnection();
+      setValidationDebug(result);
+
+      const calculationCount = merged.document.nodes.filter((node) => node.type === "calculation").length;
+      const warningText = result.warnings.length > 0 ? ` Предупреждений: ${result.warnings.length}.` : "";
+      const calculationText = calculationCount > 1
+        ? " Проверка покажет ошибку о нескольких нодах «Расчёт», пока в графе не останется только одна такая нода."
+        : "";
+      const environmentText = result.environment?.target_job_dir
+        ? ` Окружение: ${result.environment.target_job_dir}.`
+        : "";
+      setMessage(
+        `Manifest импортирован: добавлено нод: ${merged.importedNodeIds.length}.${environmentText}${warningText}${calculationText}`,
+      );
+    } catch (caught) {
+      setMessage(
+        `Не удалось импортировать manifest: ${caught instanceof Error ? caught.message : "неизвестная ошибка"}`,
+      );
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   async function handleValidate() {
     if (nodes.length === 0) {
-      setMessage("Граф пустой. Добавь хотя бы один блок.");
+      setMessage("Граф пустой. Добавьте хотя бы один блок.");
       return;
     }
 
@@ -459,12 +524,12 @@ export function GraphEditor() {
     setBusyAction("validate");
     setValidationDebug(null);
     setValidationIssueNodeIds(new Set());
-    setMessage("Validating graph...");
+    setMessage("Проверка графа...");
     try {
       const result = await validateGraph(safeGraph);
       if (result.valid) {
         setMessage(
-          `Backend validation passed (${catalogSource} catalog, ${catalog.connectionRules.length} connection rules).`,
+          `Проверка backend пройдена: каталог ${catalogSource}, правил соединений: ${catalog.connectionRules.length}.`,
         );
         return;
       }
@@ -472,16 +537,16 @@ export function GraphEditor() {
       setValidationDebug(result);
       setValidationIssueNodeIds(getValidationIssueNodeIds(result));
       setMessage(
-        `Backend validation failed: ${result.errors[0]?.message ?? "unknown graph error"}`,
+        `Проверка backend не пройдена: ${result.errors[0]?.message ?? "неизвестная ошибка графа"}`,
       );
     } catch (caught) {
       setValidationIssueNodeIds(new Set());
       setValidationDebug({
-        error: caught instanceof Error ? caught.message : "unknown error",
+        error: caught instanceof Error ? caught.message : "неизвестная ошибка",
       });
       setMessage(
-        `Backend validation unavailable: ${
-          caught instanceof Error ? caught.message : "unknown error"
+        `Проверка backend недоступна: ${
+          caught instanceof Error ? caught.message : "неизвестная ошибка"
         }`,
       );
     } finally {
@@ -491,14 +556,14 @@ export function GraphEditor() {
 
   async function handleCompileRun() {
     if (nodes.length === 0) {
-      setMessage("Граф пустой. Добавь хотя бы один блок.");
+      setMessage("Граф пустой. Добавьте хотя бы один блок.");
       return;
     }
 
     const safeGraph = graphWithName(sanitizeGraphSecrets(document, descriptors), projectName.trim() || document.name);
     setDocument(safeGraph);
     setBusyAction("compile-run");
-    setMessage("Checking secrets...");
+    setMessage("Проверка секретов...");
     try {
       const requirements = await getSecretRequirements({ graph: safeGraph });
       const pendingRequirements = requirements.requirements.filter(
@@ -520,8 +585,8 @@ export function GraphEditor() {
       await compileAndRun(safeGraph);
     } catch (caught) {
       setMessage(
-        `Compile + Run failed: ${
-          caught instanceof Error ? caught.message : "unknown error"
+        `Не удалось собрать и запустить: ${
+          caught instanceof Error ? caught.message : "неизвестная ошибка"
         }`,
       );
     } finally {
@@ -573,8 +638,8 @@ export function GraphEditor() {
       await compileAndRun(graphWithoutSecrets);
     } catch (caught) {
       setMessage(
-        `Compile + Run failed: ${
-          caught instanceof Error ? caught.message : "unknown error"
+        `Не удалось собрать и запустить: ${
+          caught instanceof Error ? caught.message : "неизвестная ошибка"
         }`,
       );
     } finally {
@@ -583,23 +648,23 @@ export function GraphEditor() {
   }
 
   async function compileAndRun(graphDocument: GraphDocument) {
-    setMessage("Compiling graph...");
+    setMessage("Сборка графа...");
     const compileResult = await compileGraph(graphDocument);
     if (!compileResult.valid) {
       setMessage(
-        `Compile failed: ${compileResult.diagnostics[0]?.message ?? "unknown graph error"}`,
+        `Сборка не выполнена: ${compileResult.diagnostics[0]?.message ?? "неизвестная ошибка графа"}`,
       );
       return;
     }
 
-    setMessage("Compile passed. Starting run...");
+    setMessage("Сборка пройдена. Запуск расчёта...");
     const run = await createRun(compileResult);
     setActiveRunId(run.run_id);
     setRunDetails(null);
     setRunEvents([]);
     setRunLogs([]);
     setRunArtifacts([]);
-    setMessage(`Run ${run.run_id} started with status: ${run.status}.`);
+    setMessage(`Расчёт ${run.run_id} запущен, статус: ${run.status}.`);
   }
 
   return (
@@ -621,8 +686,17 @@ export function GraphEditor() {
           onNewProject={handleNewProject}
           onSave={handleSave}
           onLoad={handleLoad}
+          onImportManifest={handleImportManifestClick}
           onValidate={handleValidate}
           onCompileRun={handleCompileRun}
+        />
+
+        <input
+          ref={manifestInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={handleManifestInputChange}
         />
 
         <RunMonitorPanel
@@ -655,6 +729,7 @@ export function GraphEditor() {
           onCompleteConnection={connection.completeConnection}
           onZoomChange={setCanvasZoom}
           onMessage={setMessage}
+          onImportManifestFile={handleImportManifestFile}
         />
       </main>
 
@@ -751,6 +826,164 @@ function graphFromProject(project: Project): GraphDocument {
     edges: graph.edges,
     metadata: graph.metadata,
   };
+}
+
+interface MergeImportedGraphResult {
+  document: GraphDocument;
+  importedNodeIds: string[];
+}
+
+function mergeImportedGraph(
+  current: GraphDocument,
+  imported: BackendGraphDocument,
+  anchor: CanvasPosition,
+  importId?: string,
+): MergeImportedGraphResult {
+  const normalizedImport = graphFromBackendDocument(imported);
+  const prefix = safeGraphIdPart(importId || `manifest_${Date.now()}`);
+  const existingNodeIds = new Set(current.nodes.map((node) => node.id));
+  const existingEdgeIds = new Set(current.edges.map((edge) => edge.id));
+  const usedNodeIds = new Set(existingNodeIds);
+  const usedEdgeIds = new Set(existingEdgeIds);
+  const nodeIdMap = new Map<string, string>();
+
+  for (const node of normalizedImport.nodes) {
+    const nextId = uniqueImportedId(`${prefix}_${safeGraphIdPart(node.id)}`, usedNodeIds);
+    usedNodeIds.add(nextId);
+    nodeIdMap.set(node.id, nextId);
+  }
+
+  const bounds = getGraphBounds(normalizedImport.nodes);
+  const dx = Math.max(16, anchor.x) - bounds.left;
+  const dy = Math.max(16, anchor.y) - bounds.top;
+  const importedNodes = normalizedImport.nodes.map((node) => ({
+    ...node,
+    id: nodeIdMap.get(node.id) ?? node.id,
+    position: {
+      x: Math.max(16, node.position.x + dx),
+      y: Math.max(16, node.position.y + dy),
+    },
+  }));
+  const importedNodeIds = importedNodes.map((node) => node.id);
+
+  const importedEdges = normalizedImport.edges
+    .map((edge) => {
+      const sourceNodeId = nodeIdMap.get(edge.source.node_id);
+      const targetNodeId = nodeIdMap.get(edge.target.node_id);
+      if (!sourceNodeId || !targetNodeId) {
+        return null;
+      }
+      const edgeId = uniqueImportedId(`${prefix}_${safeGraphIdPart(edge.id)}`, usedEdgeIds);
+      usedEdgeIds.add(edgeId);
+      return {
+        ...edge,
+        id: edgeId,
+        source: {
+          ...edge.source,
+          node_id: sourceNodeId,
+        },
+        target: {
+          ...edge.target,
+          node_id: targetNodeId,
+        },
+      };
+    })
+    .filter((edge): edge is GraphDocument["edges"][number] => edge !== null);
+
+  const importedMetadata = isJsonObject(imported.metadata) ? imported.metadata : {};
+  const importRecord = isJsonObject(importedMetadata.manifest_import)
+    ? importedMetadata.manifest_import
+    : { import_id: prefix };
+  const importHistory = getImportHistory(current.metadata);
+  const metadata: JsonObject = {
+    ...(current.metadata ?? {}),
+    last_manifest_import: importRecord,
+    manifest_imports: [...importHistory, importRecord],
+  };
+
+  return {
+    document: {
+      ...current,
+      nodes: [...current.nodes, ...importedNodes],
+      edges: [...current.edges, ...importedEdges],
+      metadata,
+    },
+    importedNodeIds,
+  };
+}
+
+function graphFromBackendDocument(graph: BackendGraphDocument): GraphDocument {
+  return {
+    schema_version: graph.schema_version ?? "1.0",
+    name: graph.name ?? "Импортированный manifest",
+    nodes: graph.nodes.map((node, index) => ({
+      id: node.id,
+      type: node.type,
+      title: node.title ?? node.type,
+      position: node.position ?? { x: 80 + index * 32, y: 80 + index * 32 },
+      config: node.config,
+    })),
+    edges: graph.edges,
+    metadata: graph.metadata,
+  };
+}
+
+function getFreeImportPosition(
+  nodes: GraphNode[],
+  descriptors: BlockDescriptor[],
+  canvasElement: HTMLDivElement | null,
+): CanvasPosition {
+  if (nodes.length === 0) {
+    const center = getVisibleCanvasCenter(canvasElement);
+    return { x: Math.max(16, center.x - 180), y: Math.max(16, center.y - 120) };
+  }
+
+  let right = 80;
+  let top = Number.POSITIVE_INFINITY;
+  for (const node of nodes) {
+    const descriptor = descriptors.find((candidate) => candidate.type === node.type);
+    const size = descriptor ? getPreferredNodeSize(descriptor) : { width: 252, height: 168 };
+    right = Math.max(right, node.position.x + size.width);
+    top = Math.min(top, node.position.y);
+  }
+
+  return {
+    x: right + 320,
+    y: Number.isFinite(top) ? Math.max(80, top) : 80,
+  };
+}
+
+function getGraphBounds(nodes: GraphNode[]): { left: number; top: number } {
+  if (nodes.length === 0) {
+    return { left: 0, top: 0 };
+  }
+
+  return {
+    left: Math.min(...nodes.map((node) => node.position.x)),
+    top: Math.min(...nodes.map((node) => node.position.y)),
+  };
+}
+
+function uniqueImportedId(base: string, usedIds: Set<string>): string {
+  let candidate = base;
+  for (let index = 2; usedIds.has(candidate); index += 1) {
+    candidate = `${base}_${index}`;
+  }
+  return candidate;
+}
+
+function safeGraphIdPart(value: string): string {
+  const normalized = value.replace(/[^A-Za-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+  return normalized || "import";
+}
+
+function getImportHistory(metadata: JsonObject | undefined): JsonObject[] {
+  const rawHistory = metadata?.manifest_imports;
+  return Array.isArray(rawHistory) ? rawHistory.filter(isJsonObject) : [];
+}
+
+function isJsonObject(value: unknown): value is JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {

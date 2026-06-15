@@ -52,7 +52,7 @@ class CoreConfigCompiler:
 
         build_config = {
             "schema_version": "1.0",
-            "build": {"name": graph.name or calculation.title or "Untitled CalcChain run"},
+            "build": {"name": graph.name or calculation.title or "Новый расчёт CalcChain"},
             "code": {
                 "name": _node_name(code_node, default="code"),
                 "version": _string_config(code_node, "version"),
@@ -103,10 +103,10 @@ class CoreConfigCompiler:
     ) -> GraphNode | None:
         calculations = [node for node in graph.nodes if node.type == "calculation"]
         if not calculations:
-            diagnostics.append(Diagnostic(code="compile_missing_calculation", message="Graph has no calculation node"))
+            diagnostics.append(Diagnostic(code="compile_missing_calculation", message="В графе нет ноды «Расчёт»"))
             return None
         if len(calculations) > 1:
-            diagnostics.append(Diagnostic(code="compile_multiple_calculations", message="Only one calculation node is supported for now"))
+            diagnostics.append(Diagnostic(code="compile_multiple_calculations", message="Пока поддерживается только одна нода «Расчёт»"))
             return None
         return calculations[0]
 
@@ -122,7 +122,7 @@ class CoreConfigCompiler:
             diagnostics.append(
                 Diagnostic(
                     code="compile_missing_connection",
-                    message=f"Missing connection for {node.type}.{port_id}",
+                    message=f"Нет соединения для {node.type}.{port_id}",
                     node_id=node.id,
                     port_id=port_id,
                 ),
@@ -132,7 +132,7 @@ class CoreConfigCompiler:
             diagnostics.append(
                 Diagnostic(
                     code="compile_too_many_connections",
-                    message=f"Expected one connection for {node.type}.{port_id}",
+                    message=f"Ожидалось одно соединение для {node.type}.{port_id}",
                     node_id=node.id,
                     port_id=port_id,
                 ),
@@ -215,7 +215,7 @@ class CoreConfigCompiler:
             diagnostics.append(
                 Diagnostic(
                     code="compile_missing_command",
-                    message="Calculation command is required",
+                    message="Команда расчёта обязательна",
                     node_id=calculation.id,
                 ),
             )
@@ -254,7 +254,7 @@ class CoreConfigCompiler:
                 diagnostics.append(
                     Diagnostic(
                         code="compile_missing_env_name",
-                        message="Environment variable name is required",
+                        message="Имя переменной окружения обязательно",
                         node_id=env_node.id,
                     ),
                 )
@@ -267,7 +267,7 @@ class CoreConfigCompiler:
                 diagnostics.append(
                     Diagnostic(
                         code="compile_missing_env_value",
-                        message=f"Environment variable value is required: {name}",
+                        message=f"Значение переменной окружения обязательно: {name}",
                         node_id=env_node.id,
                     ),
                 )
@@ -328,7 +328,7 @@ class _RulesBuilder:
         return name
 
     def add_output_rule_set(self, name: str, config: dict[str, Any] | None = None) -> str:
-        self._rule_sets.setdefault(name, _rule_set_from_config(config or {}, rule_type="output"))
+        self._rule_sets.setdefault(name, _rule_set_from_config(config or {}, rule_type=_publish_rule_type(name, config)))
         return name
 
     def to_dict(self) -> dict[str, Any] | None:
@@ -406,7 +406,7 @@ def _optional_timeout_seconds(value: Any, node: GraphNode, diagnostics: list[Dia
         diagnostics.append(
             Diagnostic(
                 code="compile_invalid_timeout_seconds",
-                message="Timeout seconds must be an integer or empty",
+                message="Тайм-аут должен быть целым числом или пустым",
                 node_id=node.id,
                 details={"field": "timeout_seconds"},
             ),
@@ -421,7 +421,7 @@ def _optional_timeout_seconds(value: Any, node: GraphNode, diagnostics: list[Dia
             diagnostics.append(
                 Diagnostic(
                     code="compile_invalid_timeout_seconds",
-                    message="Timeout seconds must be an integer or empty",
+                    message="Тайм-аут должен быть целым числом или пустым",
                     node_id=node.id,
                     details={"field": "timeout_seconds"},
                 ),
@@ -430,7 +430,7 @@ def _optional_timeout_seconds(value: Any, node: GraphNode, diagnostics: list[Dia
     diagnostics.append(
         Diagnostic(
             code="compile_invalid_timeout_seconds",
-            message="Timeout seconds must be an integer or empty",
+            message="Тайм-аут должен быть целым числом или пустым",
             node_id=node.id,
             details={"field": "timeout_seconds"},
         ),
@@ -507,6 +507,18 @@ def _rule_set_from_config(config: dict[str, Any], *, rule_type: str) -> dict[str
         "ensure_all_files": bool(config.get("ensure_all_files", True)),
         "rules": rules,
     }
+
+
+def _publish_rule_type(name: str, config: dict[str, Any] | None) -> str:
+    raw_type = (config or {}).get("type")
+    if isinstance(raw_type, str) and raw_type in {"output", "logs", "temp"}:
+        return raw_type
+    normalized = name.lower()
+    if normalized in {"logs", "log"} or normalized.endswith("_logs") or normalized.startswith("logs_"):
+        return "logs"
+    if normalized in {"temp", "tmp"} or normalized.endswith("_temp") or normalized.startswith("temp_"):
+        return "temp"
+    return "output"
 
 
 def _target_rule_sets(state: _GraphState, target: GraphNode, rules: _RulesBuilder) -> list[str]:

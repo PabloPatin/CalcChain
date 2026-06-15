@@ -1,0 +1,36 @@
+{
+  "build": {
+    "description": "",
+    "name": "Тестовый граф"
+  },
+  "code": {
+    "name": "demo_solver",
+    "source": {
+      "path": "examples/manifest_import/code",
+      "type": "local"
+    },
+    "version": "fdffe0c8dfbb8f593c6c6522073190f423698de1381290547ad55082a5ffaf8f"
+  },
+  "inputs": [
+    {
+      "name": "input_a",
+      "source": {
+        "path": "examples/manifest_import/input_a",
+        "type": "local"
+      }
+    },
+    {
+      "name": "input_b",
+      "source": {
+        "path": "examples/manifest_import/input_b",
+        "type": "local"
+      }
+    }
+  ],
+  "lock": {
+    "build_toml_sha256": "2cd5bc26bd8e003e171738521372a682a5bb8be563ad8b1745b64786f2306dc5",
+    "created_at": "2026-06-15T18:02:19.685062+00:00",
+    "created_from": "build.toml"
+  },
+  "schema_version": "1.0"
+}

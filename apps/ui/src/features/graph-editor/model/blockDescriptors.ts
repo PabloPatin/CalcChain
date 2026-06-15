@@ -367,10 +367,10 @@ export function resolveBlockDescriptors(
   backendDescriptors: BlockDescriptor[] | null | undefined,
 ): BlockDescriptor[] {
   if (backendDescriptors && backendDescriptors.length > 0) {
-    return backendDescriptors;
+    return backendDescriptors.map(localizeDescriptor);
   }
 
-  return FALLBACK_BLOCK_DESCRIPTORS;
+  return FALLBACK_BLOCK_DESCRIPTORS.map(localizeDescriptor);
 }
 
 /**
@@ -385,10 +385,10 @@ export function mergeWithFallbackBlockDescriptors(
   const result = createBlockDescriptorMap(FALLBACK_BLOCK_DESCRIPTORS);
 
   for (const descriptor of backendDescriptors ?? []) {
-    result.set(descriptor.type, descriptor);
+    result.set(descriptor.type, localizeDescriptor(descriptor));
   }
 
-  return Array.from(result.values());
+  return Array.from(result.values()).map(localizeDescriptor);
 }
 
 export function getBlockDescriptor(
@@ -405,7 +405,7 @@ export function requireBlockDescriptor(
   const descriptor = getBlockDescriptor(descriptors, type);
 
   if (!descriptor) {
-    throw new Error(`Unknown block type: ${type}`);
+    throw new Error(`Неизвестный тип блока: ${type}`);
   }
 
   return descriptor;
@@ -423,3 +423,180 @@ export function groupBlockDescriptorsByCategory(
     {},
   );
 }
+
+function localizeDescriptor(descriptor: BlockDescriptor): BlockDescriptor {
+  return {
+    ...descriptor,
+    title: BLOCK_TITLE_BY_TYPE[descriptor.type] ?? descriptor.title,
+    category: (CATEGORY_BY_VALUE[descriptor.category] ?? descriptor.category) as BlockDescriptor["category"],
+    description: BLOCK_DESCRIPTION_BY_TYPE[descriptor.type] ?? descriptor.description,
+    inputs: descriptor.inputs.map(localizePort),
+    outputs: descriptor.outputs.map(localizePort),
+    configSchema: localizeConfigSchema(descriptor.configSchema),
+  };
+}
+
+function localizePort(port: BlockDescriptor["inputs"][number]): BlockDescriptor["inputs"][number] {
+  return {
+    ...port,
+    label: PORT_LABEL_BY_ID[port.id] ?? PORT_LABEL_BY_KIND[port.kind] ?? port.label,
+    description: port.description ? PORT_DESCRIPTION_BY_ID[port.id] ?? port.description : port.description,
+  };
+}
+
+function localizeConfigSchema(schema: BlockDescriptor["configSchema"]): BlockDescriptor["configSchema"] {
+  const properties = schema?.properties;
+  if (typeof properties !== "object" || properties === null || Array.isArray(properties)) {
+    return schema;
+  }
+
+  const nextProperties: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(properties)) {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      nextProperties[key] = value;
+      continue;
+    }
+    const property = value as Record<string, unknown>;
+    const rawTitle = property.title;
+    const title = typeof rawTitle === "string"
+      ? CONFIG_TITLE_BY_VALUE[rawTitle] ?? CONFIG_TITLE_BY_KEY[key] ?? rawTitle
+      : CONFIG_TITLE_BY_KEY[key];
+    nextProperties[key] = title ? { ...property, title } : property;
+  }
+
+  return {
+    ...schema,
+    properties: nextProperties,
+  };
+}
+
+const BLOCK_TITLE_BY_TYPE: Record<string, string> = {
+  calculation: "Расчёт",
+  "rule-set": "Набор правил",
+  "env.public": "Переменная окружения",
+  "env.secret": "Секретная переменная окружения",
+  "artifact.output": "Выходной артефакт",
+  "output-artifact": "Выходной артефакт",
+  "source.local.input": "Локальный источник данных",
+  "source.local.code": "Локальный источник кода",
+  "source.svn.input": "SVN-источник данных",
+  "source.svn.code": "SVN-источник кода",
+  "target.local": "Локальная папка результата",
+  "target.svn": "SVN-папка результата",
+  "auth.login-password": "Логин и пароль",
+  "local-input": "Локальный источник данных",
+  "local-code-input": "Локальный источник кода",
+  "local-output": "Локальная папка результата",
+};
+
+const BLOCK_DESCRIPTION_BY_TYPE: Record<string, string> = {
+  calculation: "Запускает команду расчёта с подготовленным кодом, данными и окружением.",
+  "rule-set": "Применяет правила сопоставления к файлам.",
+  "env.public": "Обычная переменная окружения для запуска.",
+  "env.secret": "Секретная переменная окружения из хранилища сессии.",
+  "artifact.output": "Именованный артефакт, созданный расчётом.",
+  "output-artifact": "Именованный артефакт, созданный расчётом.",
+  "source.local.input": "Входные файлы из локальной папки.",
+  "source.local.code": "Код расчёта из локальной папки.",
+  "source.svn.input": "Входные данные из SVN.",
+  "source.svn.code": "Код расчёта из SVN.",
+  "target.local": "Публикация результатов в локальную папку.",
+  "target.svn": "Публикация результатов в SVN.",
+  "auth.login-password": "Учётные данные для источников и папок результата.",
+  "local-input": "Входные файлы из локальной папки.",
+  "local-code-input": "Код расчёта из локальной папки.",
+  "local-output": "Публикация результатов в локальную папку.",
+};
+
+const CATEGORY_BY_VALUE: Record<string, string> = {
+  Input: "Источники",
+  Code: "Код",
+  Sources: "Источники",
+  Transform: "Правила",
+  Mapping: "Правила",
+  Run: "Расчёт",
+  Processing: "Расчёт",
+  Environment: "Окружение",
+  Context: "Окружение",
+  Output: "Результаты",
+  Outputs: "Результаты",
+  Target: "Назначения",
+  Auth: "Доступ",
+};
+
+const PORT_LABEL_BY_ID: Record<string, string> = {
+  auth: "Доступ",
+  output: "Выход",
+  input: "Данные",
+  code: "Код",
+  env: "Окружение",
+  source: "Источник",
+  mapped: "После правил",
+  artifact: "Артефакт",
+  files: "Файлы",
+  publish: "Публикация",
+};
+
+const PORT_LABEL_BY_KIND: Record<string, string> = {
+  auth: "Доступ",
+  input: "Данные",
+  code: "Код",
+  env: "Окружение",
+  output: "Результат",
+  artifact: "Артефакт",
+  mapped: "После правил",
+  target: "Назначение",
+  "calculation.input": "Данные расчёта",
+  "calculation.code": "Код расчёта",
+  "calculation.env": "Окружение расчёта",
+  "calculation.output": "Результат расчёта",
+};
+
+const PORT_DESCRIPTION_BY_ID: Record<string, string> = {
+  auth: "Данные доступа.",
+  output: "Выход блока.",
+  input: "Входные данные.",
+  code: "Код расчёта.",
+  env: "Окружение запуска.",
+  source: "Источник файлов.",
+  mapped: "Файлы после применения правил.",
+  artifact: "Артефакт для публикации или следующего расчёта.",
+};
+
+const CONFIG_TITLE_BY_VALUE: Record<string, string> = {
+  Command: "Команда",
+  "Working directory": "Рабочая папка",
+  "Stdin mode": "Режим stdin",
+  "Stdin text": "Текст stdin",
+  Encoding: "Кодировка",
+  "Timeout seconds": "Тайм-аут, сек",
+  Path: "Путь",
+  Name: "Имя",
+  Value: "Значение",
+  Username: "Логин",
+  Password: "Пароль",
+  "Credential reference": "Ссылка на секрет",
+  "SVN URL": "URL SVN",
+  Revision: "Ревизия",
+};
+
+const CONFIG_TITLE_BY_KEY: Record<string, string> = {
+  command: "Команда",
+  working_directory: "Рабочая папка",
+  cwd: "Рабочая папка",
+  stdin_mode: "Режим stdin",
+  stdin_text: "Текст stdin",
+  encoding: "Кодировка",
+  timeout_seconds: "Тайм-аут, сек",
+  path: "Путь",
+  name: "Имя",
+  value: "Значение",
+  username: "Логин",
+  password: "Пароль",
+  credential_ref: "Ссылка на секрет",
+  location: "Адрес",
+  revision: "Ревизия",
+  rules: "Правила",
+  rule_set: "Набор правил",
+  rule_sets: "Наборы правил",
+};

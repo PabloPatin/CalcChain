@@ -14,6 +14,7 @@ from .common.hash import sha256_dict
 from .io.source import SourceRegistry
 from .io.target import TargetRegistry
 from .manifest import BuildManifestArtifacts, JobManifestInfo, Manifest, ManifestWriter, write_manifest
+from .manifest_import import ManifestEnvironmentRequest, ManifestEnvironmentResult, create_environment_from_manifest
 from .publish import (
     PublishConfig,
     PublishLock,
@@ -154,6 +155,9 @@ class CalculationCore:
 
     def restore(self, request: RestoreRequest) -> RestoreResult:
         return restore_from_manifest(request, self.source_registry)
+
+    def create_environment_from_manifest(self, request: ManifestEnvironmentRequest) -> ManifestEnvironmentResult:
+        return create_environment_from_manifest(request, self.source_registry)
 
     def cleanup(self, *, dry_run: bool = False) -> CleanupResult:
         return cleanup_work_dir(self.layout, dry_run=dry_run)

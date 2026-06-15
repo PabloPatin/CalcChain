@@ -1,0 +1,24 @@
+{
+  "created_at": "2026-06-14T21:19:35.230473+00:00",
+  "entries": [
+    {
+      "kind": "file",
+      "path": "solver.py",
+      "sha256": "0deb2ae59b14a02c1919cf6db42ae0e780e37ec2b26c440b69a89ccf433270ed",
+      "size": 816
+    },
+    {
+      "kind": "file",
+      "path": "value_a.txt",
+      "sha256": "10159baf262b43a92d95db59dae1f72c645127301661e0a3ce4e38b295a97c58",
+      "size": 2
+    },
+    {
+      "kind": "file",
+      "path": "value_b.txt",
+      "sha256": "90d7ec0f0acef104d8b6252794295f661a0149634868d02a1ae0c358099638f5",
+      "size": 3
+    }
+  ],
+  "schema_version": "1.0"
+}

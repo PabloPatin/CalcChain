@@ -131,6 +131,26 @@ export type GraphCompileResponse = {
   warnings: Diagnostic[];
 };
 
+export type GraphManifestImportEnvironment = {
+  import_id: string;
+  target_job_dir: string;
+  manifest_path: string;
+  written_files: string[];
+  restored_files: string[];
+};
+
+export type GraphManifestImportResponse = {
+  valid: boolean;
+  graph?: BackendGraphDocument | null;
+  build_config?: JsonObject | null;
+  run_config?: JsonObject | null;
+  publish_config?: JsonObject | null;
+  rules_config?: JsonObject | null;
+  environment?: GraphManifestImportEnvironment | null;
+  diagnostics: Diagnostic[];
+  warnings: Diagnostic[];
+};
+
 export type SecretRequirementStatus = 'missing' | 'partial' | 'satisfied';
 
 export type SecretFieldRequirement = {

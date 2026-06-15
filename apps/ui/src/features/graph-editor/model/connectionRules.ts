@@ -26,7 +26,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (from.node_id === to.node_id) {
     return {
       ok: false,
-      reason: "A block cannot be connected to itself.",
+      reason: "Блок нельзя соединить с самим собой.",
       code: "self_connection",
     };
   }
@@ -37,7 +37,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!fromNode) {
     return {
       ok: false,
-      reason: `Source node not found: ${from.node_id}`,
+      reason: `Исходная нода не найдена: ${from.node_id}`,
       code: "source_node_not_found",
     };
   }
@@ -45,7 +45,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!toNode) {
     return {
       ok: false,
-      reason: `Target node not found: ${to.node_id}`,
+      reason: `Целевая нода не найдена: ${to.node_id}`,
       code: "target_node_not_found",
     };
   }
@@ -56,7 +56,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!fromDescriptor) {
     return {
       ok: false,
-      reason: `Unknown source block type: ${fromNode.type}`,
+      reason: `Неизвестный тип исходного блока: ${fromNode.type}`,
       code: "source_descriptor_not_found",
     };
   }
@@ -64,7 +64,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!toDescriptor) {
     return {
       ok: false,
-      reason: `Unknown target block type: ${toNode.type}`,
+      reason: `Неизвестный тип целевого блока: ${toNode.type}`,
       code: "target_descriptor_not_found",
     };
   }
@@ -75,7 +75,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!fromPort) {
     return {
       ok: false,
-      reason: `Source output port not found: ${fromNode.title}.${from.port_id}`,
+      reason: `Выходной порт не найден: ${fromNode.title}.${from.port_id}`,
       code: "source_output_port_not_found",
     };
   }
@@ -83,7 +83,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!toPort) {
     return {
       ok: false,
-      reason: `Target input port not found: ${toNode.title}.${to.port_id}`,
+      reason: `Входной порт не найден: ${toNode.title}.${to.port_id}`,
       code: "target_input_port_not_found",
     };
   }
@@ -91,7 +91,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (!isPortKindAccepted(fromPort, toPort, connectionRules)) {
     return {
       ok: false,
-      reason: `${toNode.title}.${toPort.label} does not accept ${fromPort.kind}.`,
+      reason: `${toNode.title}.${toPort.label} не принимает тип ${fromPort.kind}.`,
       code: "port_kind_mismatch",
     };
   }
@@ -99,7 +99,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (isDuplicateConnection(edges, from, to)) {
     return {
       ok: false,
-      reason: "This connection already exists.",
+      reason: "Такое соединение уже существует.",
       code: "duplicate_connection",
     };
   }
@@ -107,7 +107,7 @@ export function canConnect(context: ConnectionCheckContext): ConnectionCheckResu
   if (isInputPortAtCapacity(edges, toPort, to)) {
     return {
       ok: false,
-      reason: `${toNode.title}.${toPort.label} has reached its connection limit.`,
+      reason: `${toNode.title}.${toPort.label} достиг лимита подключений.`,
       code: "max_connections_reached",
     };
   }

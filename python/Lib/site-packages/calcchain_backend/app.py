@@ -19,6 +19,7 @@ from calcchain_backend.security.sessions import SessionManager
 from calcchain_backend.services.artifact_service import ArtifactService
 from calcchain_backend.services.catalog_service import CatalogService
 from calcchain_backend.services.graph_service import GraphService
+from calcchain_backend.services.manifest_import_service import ManifestImportService
 from calcchain_backend.services.plugin_service import PluginService
 from calcchain_backend.services.project_store import ProjectStore
 from calcchain_backend.services.run_service import RunService
@@ -60,6 +61,7 @@ def create_app(settings: BackendSettings | None = None) -> FastAPI:
     app.state.plugin_service = PluginService(settings)
     app.state.catalog_service = CatalogService(app.state.plugin_service)
     app.state.graph_service = GraphService(app.state.catalog_service)
+    app.state.manifest_import_service = ManifestImportService(app.state.catalog_service)
     app.state.project_store = ProjectStore(settings.projects_path)
     app.state.artifact_service = ArtifactService(settings.runs_dir)
     app.state.secret_service = SecretService(app.state.catalog_service)

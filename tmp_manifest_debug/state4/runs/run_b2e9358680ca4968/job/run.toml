@@ -1,0 +1,13 @@
+schema_version = "1.0"
+
+[run]
+executable = "python"
+args = ["solver.py"]
+cwd = "examples/manifest_import/original_job/work"
+timeout_seconds = 120
+encoding = "utf-8"
+stdin_mode = "none"
+stdin_text = ""
+
+[run.env.public]
+CALCCHAIN_MODE = "manifest-import-demo"

@@ -54,15 +54,22 @@ function isOutputDescriptor(descriptor: BlockDescriptor): boolean {
     descriptor.type.includes("artifact") ||
     descriptor.category === "Outputs" ||
     descriptor.category === "Output" ||
-    descriptor.category === "Target";
+    descriptor.category === "Target" ||
+    descriptor.category === "Результаты" ||
+    descriptor.category === "Назначения";
 }
 
 function isMappingDescriptor(descriptor: BlockDescriptor): boolean {
-  return descriptor.category === "Mapping" || descriptor.category === "Transform";
+  return descriptor.type === "rule-set" ||
+    descriptor.category === "Mapping" ||
+    descriptor.category === "Transform" ||
+    descriptor.category === "Правила";
 }
 
 function isContextDescriptor(descriptor: BlockDescriptor): boolean {
-  return descriptor.category === "Context" || descriptor.category === "Environment";
+  return descriptor.category === "Context" ||
+    descriptor.category === "Environment" ||
+    descriptor.category === "Окружение";
 }
 
 export function PaletteItem({

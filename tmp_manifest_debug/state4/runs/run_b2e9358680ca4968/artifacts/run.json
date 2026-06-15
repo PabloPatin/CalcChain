@@ -1,0 +1,47 @@
+{
+  "run_id": "run_b2e9358680ca4968",
+  "status": "failed",
+  "name": "manifest-import-demo",
+  "created_at": "2026-06-14T21:19:33.350866+00:00",
+  "started_at": "2026-06-14T21:19:33.350866+00:00",
+  "finished_at": "2026-06-14T21:19:35.235958+00:00",
+  "job_dir": "D:\\AI_Coding\\CalcChain\\tmp_manifest_debug\\state4\\runs\\run_b2e9358680ca4968\\job",
+  "error": "run cwd does not exist: examples/manifest_import/original_job/work",
+  "logs": [
+    {
+      "timestamp": "2026-06-14T21:19:33.350866Z",
+      "level": "info",
+      "message": "Run started"
+    },
+    {
+      "timestamp": "2026-06-14T21:19:33.350866Z",
+      "level": "info",
+      "message": "Processing step: write_configs"
+    },
+    {
+      "timestamp": "2026-06-14T21:19:33.366985Z",
+      "level": "info",
+      "message": "Processing step: create_build_lock"
+    },
+    {
+      "timestamp": "2026-06-14T21:19:35.179887Z",
+      "level": "info",
+      "message": "Processing step: validate_build"
+    },
+    {
+      "timestamp": "2026-06-14T21:19:35.196200Z",
+      "level": "info",
+      "message": "Processing step: build"
+    },
+    {
+      "timestamp": "2026-06-14T21:19:35.223637Z",
+      "level": "info",
+      "message": "Processing step: run"
+    },
+    {
+      "timestamp": "2026-06-14T21:19:35.235958Z",
+      "level": "error",
+      "message": "run cwd does not exist: examples/manifest_import/original_job/work"
+    }
+  ]
+}

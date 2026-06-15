@@ -186,7 +186,7 @@ function isJsonObject(value: unknown): value is JsonObject {
 }
 
 function getNodeTitle(nodes: GraphNode[], nodeId: NodeId): string {
-  return nodes.find((node) => node.id === nodeId)?.title ?? "unknown";
+  return nodes.find((node) => node.id === nodeId)?.title ?? "неизвестно";
 }
 
 function ValidationDebugPanel({ value }: { value: unknown | null }) {
@@ -197,7 +197,7 @@ function ValidationDebugPanel({ value }: { value: unknown | null }) {
   return (
     <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4">
       <div className="text-sm font-semibold text-rose-950">
-        Validation debug
+        Диагностика проверки
       </div>
       <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-white p-3 font-mono text-[11px] leading-4 text-rose-950">
         {JSON.stringify(value, null, 2)}
@@ -242,22 +242,22 @@ export function Inspector({
         <ValidationDebugPanel value={validationDebug} />
 
         <div className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-          Selected connection
+          Выбранное соединение
         </div>
 
         <h2 className="mt-1 text-xl font-semibold text-slate-950">
-          Connection
+          Соединение
         </h2>
 
         <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
           <div>
-            <span className="text-slate-400">from</span>{" "}
+            <span className="text-slate-400">из</span>{" "}
             {getNodeTitle(nodes, selectedEdge.source.node_id)}.
             {selectedEdge.source.port_id}
           </div>
 
           <div className="mt-2">
-            <span className="text-slate-400">to</span>{" "}
+            <span className="text-slate-400">в</span>{" "}
             {getNodeTitle(nodes, selectedEdge.target.node_id)}.{selectedEdge.target.port_id}
           </div>
         </div>
@@ -268,7 +268,7 @@ export function Inspector({
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
         >
           <Trash2 size={16} />
-          Delete connection
+          Удалить соединение
         </button>
       </aside>
     );
@@ -280,7 +280,7 @@ export function Inspector({
         <ValidationDebugPanel value={validationDebug} />
 
         <div className="rounded-3xl border border-dashed border-slate-300 p-5 text-sm leading-6 text-slate-500">
-          Выбери блок или соединение, чтобы посмотреть параметры.
+          Выберите блок или соединение, чтобы посмотреть параметры.
         </div>
       </aside>
     );
@@ -298,7 +298,7 @@ export function Inspector({
       <ValidationDebugPanel value={validationDebug} />
 
       <div className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-        Selected block
+        Выбранный блок
       </div>
 
       <h2 className="mt-1 text-xl font-semibold text-slate-950">
@@ -306,7 +306,7 @@ export function Inspector({
       </h2>
 
       <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-        <div className="text-sm font-semibold text-slate-900">Block data</div>
+        <div className="text-sm font-semibold text-slate-900">Параметры блока</div>
 
         <div className="mt-3 space-y-3">
           {configFields.map(({ key, value, title, secret, multiline, enumValues }) => {
@@ -359,8 +359,8 @@ export function Inspector({
                     {secret && (
                       <button
                         type="button"
-                        aria-label={isSecretVisible(selectedNode.id, key) ? "Hide secret" : "Show secret"}
-                        title={isSecretVisible(selectedNode.id, key) ? "Hide secret" : "Show secret"}
+                      aria-label={isSecretVisible(selectedNode.id, key) ? "Скрыть секрет" : "Показать секрет"}
+                      title={isSecretVisible(selectedNode.id, key) ? "Скрыть секрет" : "Показать секрет"}
                         onClick={() => toggleSecretVisibility(selectedNode.id, key)}
                         className="grid w-10 place-items-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                       >
@@ -380,7 +380,7 @@ export function Inspector({
       </div>
 
       <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
-        <div className="text-sm font-semibold text-slate-900">Connections</div>
+        <div className="text-sm font-semibold text-slate-900">Соединения</div>
 
         {nodeEdges.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500">Нет подключений.</p>
@@ -419,7 +419,7 @@ export function Inspector({
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
       >
         <Trash2 size={16} />
-        Delete block
+        Удалить блок
       </button>
     </aside>
   );

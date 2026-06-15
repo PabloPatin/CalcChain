@@ -1,0 +1,25 @@
+schema_version = "1.0"
+
+[lock]
+created_at = "2026-06-15T18:02:19.908858+00:00"
+created_from = "publish.toml"
+publish_toml_sha256 = "a0289f043100fdee6cb33d916db6e716e22cf5fd1c94aa45dc79abee1b0e4911"
+
+[publish]
+message = ""
+
+[service_target]
+type = "local"
+path = ".calcchain_backend/service_publish/тестовый_граф"
+
+[[targets]]
+name = "Локальная папка результата"
+type = "local"
+path = "examples/manifest_import/imported_results"
+rule_sets = ["outputs"]
+
+[[targets]]
+name = "Локальная папка результата"
+type = "local"
+path = "examples/manifest_import/imported_logs"
+rule_sets = ["logs"]

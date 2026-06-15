@@ -1,0 +1,274 @@
+{
+  "catalog_version": "builtin-2026-05-24:calcchain.svn",
+  "compile_options": {},
+  "compiled_at": "2026-06-14T21:19:33.350866+00:00",
+  "edges": [
+    {
+      "id": "edge_code_code_calculation_code",
+      "source": {
+        "node_id": "code_code",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "calculation",
+        "port_id": "code"
+      }
+    },
+    {
+      "id": "edge_input_input_a_calculation_input",
+      "source": {
+        "node_id": "input_input_a",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "calculation",
+        "port_id": "input"
+      }
+    },
+    {
+      "id": "edge_input_input_b_calculation_input",
+      "source": {
+        "node_id": "input_input_b",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "calculation",
+        "port_id": "input"
+      }
+    },
+    {
+      "id": "edge_env_calcchain_mode_calculation_env",
+      "source": {
+        "node_id": "env_calcchain_mode",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "calculation",
+        "port_id": "env"
+      }
+    },
+    {
+      "id": "edge_calculation_artifact_demo_outputs_source",
+      "source": {
+        "node_id": "calculation",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "artifact_demo_outputs",
+        "port_id": "source"
+      }
+    },
+    {
+      "id": "edge_artifact_demo_outputs_target_demo_outputs_artifact",
+      "source": {
+        "node_id": "artifact_demo_outputs",
+        "port_id": "artifact"
+      },
+      "target": {
+        "node_id": "target_demo_outputs",
+        "port_id": "artifact"
+      }
+    },
+    {
+      "id": "edge_calculation_artifact_demo_logs_source",
+      "source": {
+        "node_id": "calculation",
+        "port_id": "output"
+      },
+      "target": {
+        "node_id": "artifact_demo_logs",
+        "port_id": "source"
+      }
+    },
+    {
+      "id": "edge_artifact_demo_logs_target_demo_logs_artifact",
+      "source": {
+        "node_id": "artifact_demo_logs",
+        "port_id": "artifact"
+      },
+      "target": {
+        "node_id": "target_demo_logs",
+        "port_id": "artifact"
+      }
+    }
+  ],
+  "execution_plan": [
+    "code_code",
+    "input_input_a",
+    "input_input_b",
+    "env_calcchain_mode",
+    "calculation",
+    "artifact_demo_outputs",
+    "artifact_demo_logs",
+    "target_demo_outputs",
+    "target_demo_logs"
+  ],
+  "graph_digest": "95b1e84e574b2aa4dca3d152957b252fcd110fe7d16aa38387fd035dd2925a6d",
+  "kind": "calcchain.graph_config",
+  "name": "manifest-import-demo",
+  "nodes": [
+    {
+      "config": {
+        "name": "demo_solver",
+        "path": "examples/manifest_import/code",
+        "version": "fdffe0c8dfbb8f593c6c6522073190f423698de1381290547ad55082a5ffaf8f"
+      },
+      "id": "code_code",
+      "position": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "title": "Локальный источник кода",
+      "type": "source.local.code"
+    },
+    {
+      "config": {
+        "command": "python solver.py",
+        "encoding": "utf-8",
+        "stdin_mode": "none",
+        "stdin_text": "",
+        "timeout_seconds": 120,
+        "working_directory": "examples/manifest_import/original_job/work"
+      },
+      "id": "calculation",
+      "position": {
+        "x": 360.0,
+        "y": 0.0
+      },
+      "title": "Расчёт",
+      "type": "calculation"
+    },
+    {
+      "config": {
+        "name": "input_a",
+        "path": "examples/manifest_import/input_a"
+      },
+      "id": "input_input_a",
+      "position": {
+        "x": 0.0,
+        "y": 150.0
+      },
+      "title": "Локальный источник данных",
+      "type": "source.local.input"
+    },
+    {
+      "config": {
+        "name": "input_b",
+        "path": "examples/manifest_import/input_b"
+      },
+      "id": "input_input_b",
+      "position": {
+        "x": 0.0,
+        "y": 280.0
+      },
+      "title": "Локальный источник данных",
+      "type": "source.local.input"
+    },
+    {
+      "config": {
+        "name": "CALCCHAIN_MODE",
+        "value": "manifest-import-demo"
+      },
+      "id": "env_calcchain_mode",
+      "position": {
+        "x": 360.0,
+        "y": -150.0
+      },
+      "title": "Переменная окружения",
+      "type": "env.public"
+    },
+    {
+      "config": {
+        "name": "demo_outputs",
+        "rule_sets": [
+          "outputs"
+        ],
+        "rules": [
+          {
+            "destination": "report.txt",
+            "source": "^results/report\\.txt$"
+          },
+          {
+            "destination": "summary.json",
+            "source": "^results/summary\\.json$"
+          }
+        ]
+      },
+      "id": "artifact_demo_outputs",
+      "position": {
+        "x": 720.0,
+        "y": 0.0
+      },
+      "title": "Выходной артефакт",
+      "type": "artifact.output"
+    },
+    {
+      "config": {
+        "path": "examples/manifest_import/imported_results",
+        "rule_sets": [
+          "outputs"
+        ],
+        "rules": [
+          {
+            "destination": "report.txt",
+            "source": "^results/report\\.txt$"
+          },
+          {
+            "destination": "summary.json",
+            "source": "^results/summary\\.json$"
+          }
+        ]
+      },
+      "id": "target_demo_outputs",
+      "position": {
+        "x": 980.0,
+        "y": 0.0
+      },
+      "title": "Локальная папка результата",
+      "type": "target.local"
+    },
+    {
+      "config": {
+        "name": "demo_logs",
+        "rule_sets": [
+          "logs"
+        ],
+        "rules": [
+          {
+            "destination": "solver.log",
+            "source": "^logs/solver\\.log$"
+          }
+        ]
+      },
+      "id": "artifact_demo_logs",
+      "position": {
+        "x": 720.0,
+        "y": 140.0
+      },
+      "title": "Выходной артефакт",
+      "type": "artifact.output"
+    },
+    {
+      "config": {
+        "path": "examples/manifest_import/imported_logs",
+        "rule_sets": [
+          "logs"
+        ],
+        "rules": [
+          {
+            "destination": "solver.log",
+            "source": "^logs/solver\\.log$"
+          }
+        ]
+      },
+      "id": "target_demo_logs",
+      "position": {
+        "x": 980.0,
+        "y": 140.0
+      },
+      "title": "Локальная папка результата",
+      "type": "target.local"
+    }
+  ],
+  "schema_version": "1.0"
+}

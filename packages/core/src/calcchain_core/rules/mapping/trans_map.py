@@ -57,13 +57,17 @@ def _split_files_by_pattern_matching(
     remaining_files = []
 
     for file in files:
-        match = regex.fullmatch(file.as_posix())
+        match = regex.fullmatch(_match_path(file))
         if match:
             matches.append((file, match))
         else:
             remaining_files.append(file)
 
     return matches, remaining_files
+
+
+def _match_path(file: PurePath) -> str:
+    return file.as_posix().replace('\\', '/')
 
 
 def _gen_dst_file_path(

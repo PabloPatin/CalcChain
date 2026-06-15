@@ -1,0 +1,160 @@
+{
+  "build": {
+    "code": {
+      "map": [
+        {
+          "sha256": "0deb2ae59b14a02c1919cf6db42ae0e780e37ec2b26c440b69a89ccf433270ed",
+          "source_path": "solver.py",
+          "work_path": "solver.py"
+        }
+      ],
+      "name": "demo_solver",
+      "sources": [
+        {
+          "path": "examples/manifest_import/code",
+          "type": "local"
+        }
+      ],
+      "tree_sha256": "fdffe0c8dfbb8f593c6c6522073190f423698de1381290547ad55082a5ffaf8f"
+    },
+    "inputs": [
+      {
+        "map": [
+          {
+            "sha256": "10159baf262b43a92d95db59dae1f72c645127301661e0a3ce4e38b295a97c58",
+            "source_path": "value_a.txt",
+            "work_path": "input/value_a.txt"
+          }
+        ],
+        "name": "input_a",
+        "sources": [
+          {
+            "path": "examples/manifest_import/input_a",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "3ef3403ae6d7a57976b2d8e4e31fe6aa4b7c20b2014705436f90e8c74727db4b"
+      },
+      {
+        "map": [
+          {
+            "sha256": "90d7ec0f0acef104d8b6252794295f661a0149634868d02a1ae0c358099638f5",
+            "source_path": "value_b.txt",
+            "work_path": "input/value_b.txt"
+          }
+        ],
+        "name": "input_b",
+        "sources": [
+          {
+            "path": "examples/manifest_import/input_b",
+            "type": "local"
+          }
+        ],
+        "tree_sha256": "d5fe3ed5f7e6ae45324b1f1e67742b4ac4cc9af8be4017c8c55ca98672c33014"
+      }
+    ]
+  },
+  "job": {
+    "created_at": "2026-06-14T00:00:00+03:00",
+    "id": "manifest-import-demo",
+    "job_dir": "tmp_manifest_debug\\imports3\\manifest_3a4ccdd4a259446e\\job",
+    "status": "Published"
+  },
+  "publication": {
+    "logs": [
+      {
+        "map": [
+          {
+            "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "source_path": "logs/solver.log",
+            "target_path": "solver.log",
+            "work_path": "logs/solver.log"
+          }
+        ],
+        "name": "demo_logs",
+        "rules": {
+          "set": "logs"
+        },
+        "target": {
+          "path": "examples/manifest_import/imported_logs",
+          "type": "local"
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "map": [
+          {
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "source_path": "results/report.txt",
+            "target_path": "report.txt",
+            "work_path": "results/report.txt"
+          },
+          {
+            "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "source_path": "results/summary.json",
+            "target_path": "summary.json",
+            "work_path": "results/summary.json"
+          }
+        ],
+        "name": "demo_outputs",
+        "rules": {
+          "set": "outputs"
+        },
+        "target": {
+          "path": "examples/manifest_import/imported_results",
+          "type": "local"
+        }
+      }
+    ],
+    "service_target": {
+      "path": "examples/manifest_import/service_publish",
+      "type": "local"
+    }
+  },
+  "run": {
+    "command": [
+      "python",
+      "solver.py"
+    ],
+    "cwd": "examples/manifest_import/original_job/work",
+    "encoding": "utf-8",
+    "env": {
+      "CALCCHAIN_MODE": "manifest-import-demo"
+    },
+    "file_groups": {
+      "deleted": [],
+      "ignored": [],
+      "logs": [
+        "logs/solver.log"
+      ],
+      "outputs": [
+        "results/report.txt",
+        "results/summary.json"
+      ],
+      "temp": [],
+      "unknown": []
+    },
+    "finished_at": "2026-06-14T00:00:02+03:00",
+    "return_code": 0,
+    "started_at": "2026-06-14T00:00:01+03:00",
+    "status": "Succeeded",
+    "stderr": {
+      "log": {
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "sources": []
+      }
+    },
+    "stdin": {
+      "mode": "none"
+    },
+    "stdout": {
+      "log": {
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sources": []
+      }
+    },
+    "timeout_seconds": 120
+  },
+  "schema_version": "1.0"
+}

@@ -25,17 +25,17 @@ export function BlockPalette({
     <aside className="w-80 shrink-0 overflow-y-auto border-r border-slate-200 bg-white p-5">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-slate-950">
-          CalcChain UI
+          CalcChain
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          Конструктор расчётных блоков
+          Конструктор расчётных графов
         </p>
       </div>
 
       <div className="mt-6 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
         <div className="font-semibold text-slate-900">Как работать</div>
         <p className="mt-2 leading-5">
-          Перетащи блок на рабочую область или дважды кликни по нему, чтобы
+          Перетащите блок на рабочую область или дважды нажмите по нему, чтобы
           добавить в центр видимой области.
         </p>
       </div>

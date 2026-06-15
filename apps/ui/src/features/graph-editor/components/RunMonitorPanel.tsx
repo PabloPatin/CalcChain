@@ -27,14 +27,14 @@ export function RunMonitorPanel({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Run
+            Расчёт
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
             <span className="font-semibold text-slate-950">
-              {run?.id ?? "starting"}
+              {run?.id ?? "запускается"}
             </span>
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {run?.status ?? "queued"}
+              {run ? formatRunStatus(run.status) : "в очереди"}
             </span>
             {run?.error && (
               <span className="text-xs text-red-600">{run.error}</span>
@@ -49,15 +49,15 @@ export function RunMonitorPanel({
 
         <div className="grid min-w-[320px] flex-1 grid-cols-3 gap-3 text-xs">
           <SummaryList
-            title="Events"
+            title="События"
             items={events.slice(-4).map((event) => `${event.type} #${event.id}`)}
           />
           <SummaryList
-            title="Logs"
+            title="Логи"
             items={logs.slice(-4).map((item) => `${item.level}: ${item.message}`)}
           />
           <SummaryList
-            title="Artifacts"
+            title="Артефакты"
             items={artifacts.slice(0, 4).map((artifact) => artifact.name)}
           />
         </div>
@@ -74,7 +74,7 @@ function SummaryList({ title, items }: { title: string; items: string[] }) {
       </div>
       <div className="mt-1 space-y-1">
         {items.length === 0 ? (
-          <div className="text-slate-300">none</div>
+          <div className="text-slate-300">нет</div>
         ) : (
           items.map((item, index) => (
             <div key={`${item}-${index}`} className="truncate text-slate-600">
@@ -85,4 +85,16 @@ function SummaryList({ title, items }: { title: string; items: string[] }) {
       </div>
     </div>
   );
+}
+
+function formatRunStatus(status: string): string {
+  const labels: Record<string, string> = {
+    queued: "в очереди",
+    running: "выполняется",
+    success: "успешно",
+    failed: "ошибка",
+    cancelled: "отменён",
+  };
+
+  return labels[status] ?? status;
 }

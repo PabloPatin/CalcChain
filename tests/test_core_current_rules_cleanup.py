@@ -1,10 +1,11 @@
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from calcchain_core.cleanup import cleanup_work_dir
 from calcchain_core.common.errors import CleanupError, RulesError
 from calcchain_core.rules import Rule, RuleSet, RuleSetType, RulesFile, get_rule_set
+from calcchain_core.rules.mapping.trans_map import create_file_translation_map
 from calcchain_core.workspace.file_map import apply_rule_set, full_tree_map
 from calcchain_core.workspace.layout import JobLayout
 
@@ -47,6 +48,16 @@ class TestCoreCurrentRulesCleanup(unittest.TestCase):
 
         with self.assertRaises(RulesError):
             apply_rule_set(['covered/a.txt', 'skipped/b.txt'], rule_set)
+
+    def test_translation_rules_match_backslash_paths_with_posix_patterns(self):
+        translation_map = create_file_translation_map(
+            files=[PurePosixPath('logs\\solver.log')],
+            rules=[[r'^logs/solver\.log$', 'solver.log']],
+            additional_markers={},
+            check_skipped_files=True,
+        )
+
+        self.assertEqual(translation_map[PurePosixPath('logs\\solver.log')].as_posix(), 'solver.log')
 
     def test_full_tree_map_normalizes_and_rejects_unsafe_paths(self):
         entries = full_tree_map(['b.txt', 'dir\\a.txt'])

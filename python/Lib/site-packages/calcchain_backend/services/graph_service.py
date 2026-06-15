@@ -32,12 +32,25 @@ class GraphService:
         node_ids = [node.id for node in graph.nodes]
         duplicates = [node_id for node_id, count in Counter(node_ids).items() if count > 1]
         for node_id in duplicates:
-            errors.append(Diagnostic(code="duplicate_node_id", message=f"Duplicate node id: {node_id}", node_id=node_id))
+            errors.append(Diagnostic(code="duplicate_node_id", message=f"Дублируется id ноды: {node_id}", node_id=node_id))
+
+        calculation_nodes = [node for node in graph.nodes if node.type == "calculation"]
+        if len(calculation_nodes) > 1:
+            calculation_ids = [node.id for node in calculation_nodes]
+            for node in calculation_nodes:
+                errors.append(
+                    Diagnostic(
+                        code="multiple_calculations",
+                        message="Пока поддерживается только одна нода «Расчёт»",
+                        node_id=node.id,
+                        details={"calculation_node_ids": calculation_ids},
+                    ),
+                )
 
         nodes = {node.id: node for node in graph.nodes}
         for node in graph.nodes:
             if node.type not in blocks_by_type:
-                errors.append(Diagnostic(code="unknown_block_type", message=f"Unknown block type: {node.type}", node_id=node.id))
+                errors.append(Diagnostic(code="unknown_block_type", message=f"Неизвестный тип блока: {node.type}", node_id=node.id))
                 continue
             block = blocks_by_type[node.type]
             required_fields = block.config_schema.get("required", []) if isinstance(block.config_schema, dict) else []
@@ -49,7 +62,7 @@ class GraphService:
                     errors.append(
                         Diagnostic(
                             code="missing_required_config_field",
-                            message=f"Required config field is missing: {field_name}",
+                            message=f"Не заполнено обязательное поле: {field_name}",
                             node_id=node.id,
                             details={"field": field_name},
                         ),
@@ -61,28 +74,28 @@ class GraphService:
             source_node = nodes.get(edge.source.node_id)
             target_node = nodes.get(edge.target.node_id)
             if source_node is None:
-                errors.append(Diagnostic(code="edge_unknown_source_node", message="Edge source node does not exist", edge_id=edge.id, node_id=edge.source.node_id))
+                errors.append(Diagnostic(code="edge_unknown_source_node", message="Исходная нода соединения не существует", edge_id=edge.id, node_id=edge.source.node_id))
                 continue
             if target_node is None:
-                errors.append(Diagnostic(code="edge_unknown_target_node", message="Edge target node does not exist", edge_id=edge.id, node_id=edge.target.node_id))
+                errors.append(Diagnostic(code="edge_unknown_target_node", message="Целевая нода соединения не существует", edge_id=edge.id, node_id=edge.target.node_id))
                 continue
             source_port = self._find_port(blocks_by_type.get(source_node.type), edge.source.port_id)
             target_port = self._find_port(blocks_by_type.get(target_node.type), edge.target.port_id)
             if source_port is None:
-                errors.append(Diagnostic(code="edge_unknown_source_port", message="Edge source port does not exist", edge_id=edge.id, node_id=edge.source.node_id, port_id=edge.source.port_id))
+                errors.append(Diagnostic(code="edge_unknown_source_port", message="Исходный порт соединения не существует", edge_id=edge.id, node_id=edge.source.node_id, port_id=edge.source.port_id))
                 continue
             if target_port is None:
-                errors.append(Diagnostic(code="edge_unknown_target_port", message="Edge target port does not exist", edge_id=edge.id, node_id=edge.target.node_id, port_id=edge.target.port_id))
+                errors.append(Diagnostic(code="edge_unknown_target_port", message="Целевой порт соединения не существует", edge_id=edge.id, node_id=edge.target.node_id, port_id=edge.target.port_id))
                 continue
             if source_port.direction != "output":
-                errors.append(Diagnostic(code="edge_source_not_output", message="Edge source port must be output", edge_id=edge.id, node_id=edge.source.node_id, port_id=edge.source.port_id))
+                errors.append(Diagnostic(code="edge_source_not_output", message="Исходный порт соединения должен быть выходом", edge_id=edge.id, node_id=edge.source.node_id, port_id=edge.source.port_id))
             if target_port.direction != "input":
-                errors.append(Diagnostic(code="edge_target_not_input", message="Edge target port must be input", edge_id=edge.id, node_id=edge.target.node_id, port_id=edge.target.port_id))
+                errors.append(Diagnostic(code="edge_target_not_input", message="Целевой порт соединения должен быть входом", edge_id=edge.id, node_id=edge.target.node_id, port_id=edge.target.port_id))
             if not self._allowed(source_port, target_port, rules):
                 errors.append(
                     Diagnostic(
                         code="incompatible_ports",
-                        message=f"Cannot connect {source_port.kind} to {target_port.kind}",
+                        message=f"Нельзя соединить {source_port.kind} с {target_port.kind}",
                         edge_id=edge.id,
                         node_id=edge.target.node_id,
                         port_id=edge.target.port_id,
@@ -101,7 +114,7 @@ class GraphService:
                     errors.append(
                         Diagnostic(
                             code="missing_required_connection",
-                            message=f"Required port has no connection: {port.title}",
+                            message=f"Обязательный порт не подключён: {port.title}",
                             node_id=node.id,
                             port_id=port.id,
                         ),
@@ -110,7 +123,7 @@ class GraphService:
                     errors.append(
                         Diagnostic(
                             code="too_many_connections",
-                            message=f"Port accepts at most {port.max_connections} connection(s)",
+                            message=f"Порт принимает не больше подключений: {port.max_connections}",
                             node_id=node.id,
                             port_id=port.id,
                             details={"actual": count, "max": port.max_connections},
@@ -120,7 +133,7 @@ class GraphService:
         connected_nodes = {edge.source.node_id for edge in graph.edges} | {edge.target.node_id for edge in graph.edges}
         for node in graph.nodes:
             if node.id not in connected_nodes and len(graph.nodes) > 1:
-                warnings.append(Diagnostic(code="isolated_node", severity="warning", message="Node is not connected", node_id=node.id))
+                warnings.append(Diagnostic(code="isolated_node", severity="warning", message="Нода не подключена", node_id=node.id))
 
         return GraphValidateResponse(valid=not errors, errors=errors, warnings=warnings)
 
@@ -139,7 +152,7 @@ class GraphService:
         compiled = {
             "schema_version": "1.0",
             "kind": "calcchain.graph_config",
-            "name": safe_graph.name or "Untitled CalcChain run",
+            "name": safe_graph.name or "Новый расчёт CalcChain",
             "graph_digest": self._graph_digest(safe_graph),
             "compiled_at": now_utc().astimezone(timezone.utc).isoformat(),
             "compile_options": compile_options or {},

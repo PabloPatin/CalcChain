@@ -1,0 +1,17 @@
+{
+  "map": [
+    {
+      "sha256": "0deb2ae59b14a02c1919cf6db42ae0e780e37ec2b26c440b69a89ccf433270ed",
+      "source_path": "solver.py",
+      "work_path": "solver.py"
+    }
+  ],
+  "name": "demo_solver",
+  "sources": [
+    {
+      "path": "examples/manifest_import/code",
+      "type": "local"
+    }
+  ],
+  "tree_sha256": "fdffe0c8dfbb8f593c6c6522073190f423698de1381290547ad55082a5ffaf8f"
+}

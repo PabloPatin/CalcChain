@@ -8,6 +8,7 @@ from fastapi import Request
 from calcchain_backend.services.artifact_service import ArtifactService
 from calcchain_backend.services.catalog_service import CatalogService
 from calcchain_backend.services.graph_service import GraphService
+from calcchain_backend.services.manifest_import_service import ManifestImportService
 from calcchain_backend.services.plugin_service import PluginService
 from calcchain_backend.services.project_store import ProjectStore
 from calcchain_backend.services.run_service import RunService
@@ -36,6 +37,10 @@ def get_catalog_service(request: Request) -> CatalogService:
 
 def get_graph_service(request: Request) -> GraphService:
     return request.app.state.graph_service
+
+
+def get_manifest_import_service(request: Request) -> ManifestImportService:
+    return request.app.state.manifest_import_service
 
 
 def get_project_store(request: Request) -> ProjectStore:

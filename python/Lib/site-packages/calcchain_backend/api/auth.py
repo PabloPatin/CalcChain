@@ -73,7 +73,7 @@ def pair_browser(
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid, expired, or rate-limited pairing code",
+            detail="Код подключения неверный, истёк или временно заблокирован",
         )
 
     token, _session = sessions.create()

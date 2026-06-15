@@ -53,10 +53,10 @@ export function SecretPromptModal({
         className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl"
       >
         <div className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-          Secrets
+          Секреты
         </div>
         <h2 className="mt-1 text-lg font-semibold text-slate-950">
-          Required credentials
+          Требуются учётные данные
         </h2>
 
         <div className="mt-5 max-h-[52vh] space-y-5 overflow-y-auto pr-1">
@@ -91,13 +91,13 @@ export function SecretPromptModal({
                           type="button"
                           aria-label={
                             isSecretVisible(requirement.secret_ref, field.name)
-                              ? "Hide secret"
-                              : "Show secret"
+                              ? "Скрыть секрет"
+                              : "Показать секрет"
                           }
                           title={
                             isSecretVisible(requirement.secret_ref, field.name)
-                              ? "Hide secret"
-                              : "Show secret"
+                              ? "Скрыть секрет"
+                              : "Показать секрет"
                           }
                           onClick={() => toggleSecretVisibility(requirement.secret_ref, field.name)}
                           className="grid w-10 place-items-center rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-700"
@@ -123,14 +123,14 @@ export function SecretPromptModal({
             disabled={submitting}
             className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Cancel
+            Отмена
           </button>
           <button
             type="submit"
             disabled={submitting}
             className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Saving..." : "Save and Run"}
+            {submitting ? "Сохранение..." : "Сохранить и запустить"}
           </button>
         </div>
       </form>

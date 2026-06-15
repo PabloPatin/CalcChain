@@ -81,7 +81,7 @@ export function useConnectionCreation({
       if (!pendingConnection) {
         return {
           ok: false,
-          reason: "No pending connection.",
+          reason: "Нет начатого соединения.",
           code: "no_pending_connection",
         };
       }

@@ -1,0 +1,20 @@
+schema_version = "1.0"
+
+[publish]
+message = "Generated from manifest.json"
+
+[service_target]
+type = "local"
+path = "examples/manifest_import/service_publish"
+
+[[targets]]
+name = "demo_outputs"
+type = "local"
+path = "examples/manifest_import/imported_results"
+rule_sets = ["outputs"]
+
+[[targets]]
+name = "demo_logs"
+type = "local"
+path = "examples/manifest_import/imported_logs"
+rule_sets = ["logs"]

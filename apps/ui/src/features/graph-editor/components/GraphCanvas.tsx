@@ -74,6 +74,7 @@ export interface GraphCanvasProps {
   onZoomChange: (zoom: number) => void;
 
   onMessage?: (message: string) => void;
+  onImportManifestFile?: (file: File, position: CanvasPosition) => void;
 }
 
 interface NodeDragState {
@@ -218,6 +219,7 @@ export function GraphCanvas({
   onCompleteConnection,
   onZoomChange,
   onMessage,
+  onImportManifestFile,
 }: GraphCanvasProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [dragState, setDragState] = useState<NodeDragState | null>(null);
@@ -304,6 +306,20 @@ export function GraphCanvas({
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
 
+    const manifestFile = getManifestFile(event.dataTransfer.files);
+    if (manifestFile) {
+      onImportManifestFile?.(
+        manifestFile,
+        getCanvasPoint(canvasRef, event.clientX, event.clientY, zoom),
+      );
+      return;
+    }
+
+    if (event.dataTransfer.files.length > 0) {
+      onMessage?.("Для импорта перетащите файл manifest.json.");
+      return;
+    }
+
     const blockType =
       event.dataTransfer.getData("application/x-calcchain-block") ||
       event.dataTransfer.getData("text/plain");
@@ -311,7 +327,7 @@ export function GraphCanvas({
     const descriptor = getDescriptorByType(descriptors, blockType);
 
     if (!descriptor) {
-      onMessage?.(`Unknown block type: ${blockType}`);
+      onMessage?.(`Неизвестный тип блока: ${blockType}`);
       return;
     }
 
@@ -388,7 +404,7 @@ export function GraphCanvas({
       startScrollLeft: event.currentTarget.scrollLeft,
       startScrollTop: event.currentTarget.scrollTop,
     });
-    onMessage?.("Canvas grabbed. Move the pointer to pan.");
+    onMessage?.("Рабочая область захвачена. Перемещайте указатель для прокрутки.");
   }
 
   function handleMouseMove(event: ReactMouseEvent<HTMLDivElement>) {
@@ -535,8 +551,8 @@ export function GraphCanvas({
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                Перетащи блок из палитры слева или дважды кликни по нему.
-                Затем выбери выходной порт и подключи его к совместимому входу.
+                Перетащите блок из палитры слева или дважды нажмите по нему.
+                Затем выберите выходной порт и подключите его к совместимому входу.
               </p>
             </div>
           )}
@@ -583,4 +599,9 @@ export function GraphCanvas({
       </div>
     </div>
   );
+}
+
+function getManifestFile(fileList: FileList): File | null {
+  const files = Array.from(fileList);
+  return files.find((file) => file.name.toLowerCase().endsWith(".json")) ?? null;
 }

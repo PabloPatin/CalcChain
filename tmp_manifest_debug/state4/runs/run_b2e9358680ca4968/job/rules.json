@@ -1,0 +1,34 @@
+{
+  "rule_sets": {
+    "logs": {
+      "description": "",
+      "ensure_all_files": true,
+      "rules": [
+        {
+          "destination": "solver.log",
+          "source": "^logs/solver\\.log$"
+        }
+      ],
+      "status": "",
+      "type": "logs"
+    },
+    "outputs": {
+      "description": "",
+      "ensure_all_files": true,
+      "rules": [
+        {
+          "destination": "report.txt",
+          "source": "^results/report\\.txt$"
+        },
+        {
+          "destination": "summary.json",
+          "source": "^results/summary\\.json$"
+        }
+      ],
+      "status": "",
+      "type": "output"
+    }
+  },
+  "rules_file": {},
+  "schema_version": "1.0"
+}

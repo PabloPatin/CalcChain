@@ -12,7 +12,7 @@ import type {
   NodeId,
 } from "../model/types";
 
-const DEFAULT_GRAPH_NAME = "Untitled calculation graph";
+const DEFAULT_GRAPH_NAME = "Новый граф расчёта";
 const DEFAULT_SCHEMA_VERSION = "1.0";
 
 function createId(prefix: string): string {

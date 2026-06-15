@@ -7,7 +7,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <p>Подключаюсь к CalcChain backend…</p>
+        <p>Подключаюсь к серверу CalcChain...</p>
       </main>
     );
   }
